@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/firblab-blog/tavkit/releases/download/assets/tavkit-logo-master.svg" alt="TavKit Logo" width="200">
+  <img src="https://github.com/firblab-blog/tavkit/releases/download/assets/tavkit-logo-master.png" alt="TavKit Logo" width="200">
 </p>
 
 # TavKit
