@@ -2,7 +2,7 @@
 
 A web app I built to help me run D&D campaigns. It started as a way to keep my browser tabs organized, and turned into something that actually makes prep and session running easier.
 
-<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/home.webm" autoplay loop muted playsinline width="100%"></video>
+![TavKit Home](https://github.com/firblab-blog/tavkit/releases/download/assets/home.gif)
 
 ## What is this?
 
@@ -22,7 +22,7 @@ The AI generation stuff is built to understand your campaign context. It reads t
 - Control exactly what content gets included in the summary
 - Track which content belongs to which campaign
 
-<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/campaign-summary.webm" autoplay loop muted playsinline width="100%"></video>
+![Campaign Summary](https://github.com/firblab-blog/tavkit/releases/download/assets/campaign-summary.gif)
 
 ### Artificer's Toolkit (Content Generation)
 
@@ -44,7 +44,7 @@ Generate campaign content with AI that understands your world:
 
 Every generator can save directly to your campaign with one click. The content shows up in the Campaign Ledger immediately.
 
-<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/chase-generator.webm" autoplay loop muted playsinline width="100%"></video>
+![Chase Generator](https://github.com/firblab-blog/tavkit/releases/download/assets/chase-generator.gif)
 
 ### Tavern Toolkit (Session Running)
 
@@ -52,11 +52,11 @@ Tools for viewing content and running live gameplay:
 
 - **Campaign Ledger** - Browse all your campaign content organized by type. View NPCs, Locations, Sessions, Lore, GM Notes, and everything else. Search, filter, and edit entries with full markdown support.
 
-<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/campaign-sessions.webm" autoplay loop muted playsinline width="100%"></video>
+![Campaign Sessions](https://github.com/firblab-blog/tavkit/releases/download/assets/campaign-sessions.gif)
 
 - **Guild Roster** - Import player characters from D&D Beyond. Link characters to campaigns and track party composition.
 
-<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/guild-roster.webm" autoplay loop muted playsinline width="100%"></video>
+![Guild Roster](https://github.com/firblab-blog/tavkit/releases/download/assets/guild-roster.gif)
 
 - **The Pursuit** - Run chase scenes with distance tracking, obstacle management, and participant tracking. Works with content from the Chase Generator.
 
@@ -79,7 +79,7 @@ Embed your favorite D&D sites directly in the app:
 
 Sites stay loaded when you switch between them—no more losing your scroll position or having to log in again.
 
-<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/tavkit-ext-tools.webm" autoplay loop muted playsinline width="100%"></video>
+![External Tools](https://github.com/firblab-blog/tavkit/releases/download/assets/tavkit-ext-tools.gif)
 
 **Note on D&D Beyond**: Due to browser security restrictions (X-Frame-Options, CORS, third-party script requirements), D&D Beyond cannot be embedded directly. It opens in a new tab instead. Full embedding with login support would require an Electron desktop app wrapper—that's on the future roadmap.
 
@@ -91,13 +91,13 @@ When generating new content, you select which campaign to use as context. The AI
 
 The summary regenerates automatically when you add significant new content, keeping everything in sync.
 
-<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/summary-context.webm" autoplay loop muted playsinline width="100%"></video>
+![Summary Context](https://github.com/firblab-blog/tavkit/releases/download/assets/summary-context.gif)
 
 ## Themes
 
 TavKit includes multiple color themes to match your style:
 
-<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/themes.webm" autoplay loop muted playsinline width="100%"></video>
+![Themes](https://github.com/firblab-blog/tavkit/releases/download/assets/themes.gif)
 
 ## Tech Stack
 
