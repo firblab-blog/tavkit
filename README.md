@@ -2,6 +2,8 @@
 
 A web app I built to help me run D&D campaigns. It started as a way to keep my browser tabs organized, and turned into something that actually makes prep and session running easier.
 
+<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/home.webm" autoplay loop muted playsinline width="100%"></video>
+
 ## What is this?
 
 I got tired of having 47 browser tabs open during game sessions, losing track of NPCs I made up on the spot, and forgetting which merchant the party already visited. TavKit is my solution to that mess.
@@ -19,6 +21,8 @@ The AI generation stuff is built to understand your campaign context. It reads t
 - AI-generated Campaign Summaries that provide context for all content generation
 - Control exactly what content gets included in the summary
 - Track which content belongs to which campaign
+
+<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/campaign-summary.webm" autoplay loop muted playsinline width="100%"></video>
 
 ### Artificer's Toolkit (Content Generation)
 
@@ -40,12 +44,20 @@ Generate campaign content with AI that understands your world:
 
 Every generator can save directly to your campaign with one click. The content shows up in the Campaign Ledger immediately.
 
+<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/chase-generator.webm" autoplay loop muted playsinline width="100%"></video>
+
 ### Tavern Toolkit (Session Running)
 
 Tools for viewing content and running live gameplay:
 
 - **Campaign Ledger** - Browse all your campaign content organized by type. View NPCs, Locations, Sessions, Lore, GM Notes, and everything else. Search, filter, and edit entries with full markdown support.
+
+<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/campaign-sessions.webm" autoplay loop muted playsinline width="100%"></video>
+
 - **Guild Roster** - Import player characters from D&D Beyond. Link characters to campaigns and track party composition.
+
+<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/guild-roster.webm" autoplay loop muted playsinline width="100%"></video>
+
 - **The Pursuit** - Run chase scenes with distance tracking, obstacle management, and participant tracking. Works with content from the Chase Generator.
 
 Coming eventually:
@@ -67,6 +79,8 @@ Embed your favorite D&D sites directly in the app:
 
 Sites stay loaded when you switch between them—no more losing your scroll position or having to log in again.
 
+<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/tavkit-ext-tools.webm" autoplay loop muted playsinline width="100%"></video>
+
 **Note on D&D Beyond**: Due to browser security restrictions (X-Frame-Options, CORS, third-party script requirements), D&D Beyond cannot be embedded directly. It opens in a new tab instead. Full embedding with login support would require an Electron desktop app wrapper—that's on the future roadmap.
 
 ## How It Works
@@ -76,6 +90,14 @@ The Campaign Summary is the magic that ties everything together. It reads throug
 When generating new content, you select which campaign to use as context. The AI then knows about your world's themes, existing NPCs, locations, and plot threads. Generate a new location and it might reference NPCs you created earlier or tie into existing places in your world.
 
 The summary regenerates automatically when you add significant new content, keeping everything in sync.
+
+<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/summary-context.webm" autoplay loop muted playsinline width="100%"></video>
+
+## Themes
+
+TavKit includes multiple color themes to match your style:
+
+<video src="https://github.com/firblab-blog/tavkit/releases/download/assets/themes.webm" autoplay loop muted playsinline width="100%"></video>
 
 ## Tech Stack
 
