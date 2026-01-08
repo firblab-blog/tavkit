@@ -2,7 +2,7 @@
   <img src="https://github.com/firblab-blog/tavkit/releases/download/assets/tavkit-logo-master.png" alt="TavKit Logo" width="200">
 </p>
 
-# TavKit
+# TavKit - Tavern Toolkit
 
 A web app I built to help me run D&D campaigns. It started as a way to keep my browser tabs organized, and turned into something that actually makes prep and session running easier.
 
