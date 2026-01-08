@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://github.com/firblab-blog/tavkit/releases/download/assets/tavkit-logo-master.svg" alt="TavKit Logo" width="200">
+</p>
+
 # TavKit
 
 A web app I built to help me run D&D campaigns. It started as a way to keep my browser tabs organized, and turned into something that actually makes prep and session running easier.
@@ -44,8 +48,6 @@ Generate campaign content with AI that understands your world:
 
 Every generator can save directly to your campaign with one click. The content shows up in the Campaign Ledger immediately.
 
-![Chase Generator](https://github.com/firblab-blog/tavkit/releases/download/assets/chase-generator.gif)
-
 ### Tavern Toolkit (Session Running)
 
 Tools for viewing content and running live gameplay:
@@ -91,13 +93,9 @@ When generating new content, you select which campaign to use as context. The AI
 
 The summary regenerates automatically when you add significant new content, keeping everything in sync.
 
-![Summary Context](https://github.com/firblab-blog/tavkit/releases/download/assets/summary-context.gif)
-
 ## Themes
 
-TavKit includes multiple color themes to match your style:
-
-![Themes](https://github.com/firblab-blog/tavkit/releases/download/assets/themes.gif)
+TavKit includes multiple color themes to match your style.
 
 ## Tech Stack
 
