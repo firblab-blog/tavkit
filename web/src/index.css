@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+
+  /* Theme colors - set dynamically by ThemeProvider */
+  --color-darkest: #0c0a1b;
+  --color-dark: #222034;
+  --color-panel: #222034;
+  --color-primary: #83aa9c;
+  --color-primary-dark: #6882b6;
+  --color-primary-light: #a4c2cd;
+  --color-text: #cbdbfc;
+  --color-text-muted: #626d83;
+  --color-border: #394c62;
+  --color-accent: #6882b6;
+
+  color: var(--color-text);
+  background-color: var(--color-darkest);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--color-darkest);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Markdown prose styling */
+.prose-tavern {
+  @apply text-tavern-light;
+}
+
+.prose-tavern h1 {
+  @apply text-3xl font-bold text-tavern-light mb-4 mt-8 first:mt-0;
+}
+
+.prose-tavern h2 {
+  @apply text-2xl font-bold text-tavern-light mb-3 mt-6;
+}
+
+.prose-tavern h3 {
+  @apply text-xl font-semibold text-tavern-light mb-2 mt-4;
+}
+
+.prose-tavern h4 {
+  @apply text-lg font-semibold text-tavern-light mb-2 mt-3;
+}
+
+.prose-tavern p {
+  @apply text-tavern-cream mb-4 leading-relaxed;
+}
+
+.prose-tavern a {
+  @apply text-primary hover:text-primary-light underline transition-colors;
+}
+
+.prose-tavern ul,
+.prose-tavern ol {
+  @apply mb-4 ml-6;
+}
+
+.prose-tavern ul {
+  @apply list-disc;
+}
+
+.prose-tavern ol {
+  @apply list-decimal;
+}
+
+.prose-tavern li {
+  @apply text-tavern-cream mb-1;
+}
+
+.prose-tavern code {
+  @apply bg-tavern-dark text-primary px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.prose-tavern pre {
+  @apply bg-tavern-dark border border-border rounded-lg p-4 overflow-x-auto mb-4;
+}
+
+.prose-tavern pre code {
+  @apply bg-transparent p-0 text-tavern-cream;
+}
+
+.prose-tavern blockquote {
+  @apply border-l-4 border-primary pl-4 italic text-tavern-mauve mb-4;
+}
+
+.prose-tavern hr {
+  @apply border-border my-6;
+}
+
+.prose-tavern table {
+  @apply w-full border-collapse mb-4;
+}
+
+.prose-tavern th {
+  @apply bg-tavern-dark text-tavern-light font-semibold px-4 py-2 border border-border text-left;
+}
+
+.prose-tavern td {
+  @apply px-4 py-2 border border-border text-tavern-cream;
+}
+
+.prose-tavern img {
+  @apply max-w-full h-auto rounded-lg my-4;
+}
+
+.prose-tavern strong {
+  @apply font-bold text-tavern-light;
+}
+
+.prose-tavern em {
+  @apply italic;
+}

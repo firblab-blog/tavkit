@@ -1,0 +1,63 @@
+[tool.poetry]
+name = "tavkit-ai-service"
+version = "0.1.0"
+description = "AI service for Tavkit - LLM-powered D&D content generation"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.5"
+uvicorn = {extras = ["standard"], version = "^0.32.1"}
+pydantic = "^2.10.3"
+pydantic-settings = "^2.6.1"
+aiohttp = "^3.11.11"
+anthropic = "^0.42.0"
+openai = "^1.59.6"
+
+# RAG & Wiki Scraping dependencies
+asyncpg = "^0.30.0"                  # Async PostgreSQL driver
+pgvector = "^0.3.6"                  # pgvector Python bindings
+beautifulsoup4 = "^4.12.3"           # HTML parsing for wiki scraping
+lxml = "^5.3.0"                      # Fast XML/HTML parser
+tiktoken = "^0.8.0"                  # Token counting for chunking
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+black = "^24.10.0"
+ruff = "^0.8.4"
+mypy = "^1.13.0"
+bandit = "^1.8.0"
+safety = "^3.2.11"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

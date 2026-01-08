@@ -1,0 +1,243 @@
+# ================================
+# Environment & Secrets
+# ================================
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+*.key
+*.pem
+secrets/
+.claude/
+.gitlab/
+files/
+
+# PostgreSQL secrets (auto-generated, never commit)
+.postgres-secrets
+
+# ================================
+# Go Backend
+# ================================
+# Binaries
+backend/bin/
+backend/*.exe
+backend/*.dll
+backend/*.so
+backend/*.dylib
+
+# Test & Coverage
+backend/*.test
+backend/*.out
+backend/coverage.*
+backend/*.prof
+
+# Dependencies
+backend/vendor/
+
+# IDE
+backend/.idea/
+backend/*.swp
+backend/*.swo
+backend/*~
+
+# ================================
+# Python AI Service
+# ================================
+# Virtual environments
+ai-service/venv/
+ai-service/.venv/
+ai-service/env/
+ai-service/ENV/
+
+# Python cache
+ai-service/__pycache__/
+ai-service/*.py[cod]
+ai-service/*$py.class
+ai-service/*.so
+ai-service/.Python
+
+# Poetry
+ai-service/poetry.lock
+ai-service/dist/
+ai-service/build/
+ai-service/*.egg-info/
+
+# Testing
+ai-service/.pytest_cache/
+ai-service/.coverage
+ai-service/htmlcov/
+ai-service/.tox/
+
+# Type checking
+ai-service/.mypy_cache/
+ai-service/.pytype/
+
+# ================================
+# React Frontend
+# ================================
+# Dependencies
+web/node_modules/
+web/.pnp
+web/.pnp.js
+
+# Build output
+web/dist/
+web/build/
+web/.next/
+web/out/
+
+# Testing
+web/coverage/
+web/.nyc_output/
+
+# Cache
+web/.cache/
+web/.parcel-cache/
+web/.vite/
+
+# IDE
+web/.vscode/
+web/.idea/
+
+# Misc
+web/.DS_Store
+web/*.log
+web/.eslintcache
+
+# ================================
+# Docker
+# ================================
+docker-compose.override.yml
+
+# ================================
+# Database
+# ================================
+*.db
+*.sqlite
+*.sqlite3
+data/
+postgres-data/
+pgdata/
+*.sql.bak
+
+# ================================
+# Logs
+# ================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+debug/
+
+# ================================
+# OS Files
+# ================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ================================
+# IDE / Editors
+# ================================
+.idea/
+.vscode/
+.history/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# ================================
+# Terraform
+# ================================
+deploy/terraform/**/.terraform/
+deploy/terraform/**/*.tfstate
+deploy/terraform/**/*.tfstate.backup
+deploy/terraform/**/.terraform.lock.hcl
+deploy/terraform/**/crash.log
+deploy/
+
+# ================================
+# Kubernetes
+# ================================
+deploy/kubernetes/secrets/
+
+# ================================
+# Monitoring & Profiling
+# ================================
+*.pprof
+*.trace
+
+# ================================
+# Temporary Files
+# ================================
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+
+# ================================
+# CI/CD Artifacts
+# ================================
+.gitlab-ci-local/
+coverage*/
+test-results/
+*.xml
+.gitlab-ci.yml
+sonar-project.properties
+
+# ================================
+# Documentation Build
+# ================================
+docs/_build/
+docs/.doctrees/
+docs/archive
+docs/archive/
+docs/plans/
+docs/architecture/
+
+# ================================
+# Ollama Data (if running locally)
+# ================================
+ollama-data/
+.ollama/
+
+# ================================
+# Backups
+# ================================
+*.backup
+*.old
+*.orig
+
+# ================================
+# Testing Files
+# ================================
+tests/
+
+# ================================
+# Matrix/Dendrite Data
+# ================================
+config/
+
+# ================================
+# Additional Ignored Files
+# ================================
+web/dist/
+backend/coverage.html

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Saved Content API</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #fff; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+        pre { background: #2a2a2a; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .section { margin: 20px 0; border: 1px solid #444; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Saved Content API Tester</h1>
+    
+    <div class="section">
+        <h2>Step 1: Enter Auth Token</h2>
+        <p>Get your token from localStorage in the app (F12 → Application → Local Storage → token)</p>
+        <input type="text" id="token" placeholder="Paste token here" style="width: 500px; padding: 10px;">
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Fetch NPCs</h2>
+        <button onclick="fetchNPCs()">Fetch NPCs</button>
+        <div id="npc-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Check Individual NPC Fields</h2>
+        <div id="field-check"></div>
+    </div>
+
+    <script>
+        async function fetchNPCs() {
+            const token = document.getElementById('token').value;
+            if (!token) {
+                alert('Please enter auth token first');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/npcs', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                // Display raw response
+                document.getElementById('npc-result').innerHTML = `
+                    <h3>Raw Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+
+                // Check first NPC fields
+                if (Array.isArray(data) && data.length > 0) {
+                    const firstNPC = data[0];
+                    const fieldCheck = document.getElementById('field-check');
+                    
+                    fieldCheck.innerHTML = `
+                        <h3>First NPC Field Analysis:</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 1px solid #444;">
+                                <th style="text-align: left; padding: 10px;">Field</th>
+                                <th style="text-align: left; padding: 10px;">Type</th>
+                                <th style="text-align: left; padding: 10px;">Has Value?</th>
+                                <th style="text-align: left; padding: 10px;">Preview</th>
+                            </tr>
+                            ${Object.keys(firstNPC).map(key => {
+                                const value = firstNPC[key];
+                                const type = typeof value;
+                                const hasValue = value !== null && value !== undefined && value !== '';
+                                const preview = hasValue 
+                                    ? (type === 'object' ? JSON.stringify(value).substring(0, 100) : String(value).substring(0, 100))
+                                    : 'EMPTY';
+                                    
+                                return `
+                                    <tr style="border-bottom: 1px solid #333;">
+                                        <td style="padding: 10px;"><strong>${key}</strong></td>
+                                        <td style="padding: 10px; color: #888;">${type}</td>
+                                        <td style="padding: 10px; color: ${hasValue ? '#0f0' : '#f00'};">${hasValue ? 'YES' : 'NO'}</td>
+                                        <td style="padding: 10px; color: #aaa; font-size: 11px;">${preview}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </table>
+                        
+                        <h4 style="margin-top: 20px;">Stats Field Detailed Check:</h4>
+                        <pre style="background: #1a1a1a;">${
+                            firstNPC.stats 
+                                ? `Type: ${typeof firstNPC.stats}\nRaw: ${JSON.stringify(firstNPC.stats, null, 2)}`
+                                : 'Stats field is empty/null'
+                        }</pre>
+                        
+                        <h4 style="margin-top: 20px;">Personality Field Detailed Check:</h4>
+                        <pre style="background: #1a1a1a;">${
+                            firstNPC.personality 
+                                ? `Type: ${typeof firstNPC.personality}\nRaw: ${JSON.stringify(firstNPC.personality, null, 2)}`
+                                : 'Personality field is empty/null'
+                        }</pre>
+                        
+                        <h4 style="margin-top: 20px;">Backstory Field Detailed Check:</h4>
+                        <pre style="background: #1a1a1a;">${
+                            firstNPC.backstory 
+                                ? `Type: ${typeof firstNPC.backstory}\nLength: ${firstNPC.backstory.length} chars\nPreview: ${firstNPC.backstory.substring(0, 200)}...`
+                                : 'Backstory field is empty/null'
+                        }</pre>
+                    `;
+                } else {
+                    document.getElementById('field-check').innerHTML = '<p style="color: #f00;">No NPCs found in response</p>';
+                }
+            } catch (error) {
+                document.getElementById('npc-result').innerHTML = `
+                    <h3 style="color: #f00;">Error:</h3>
+                    <pre style="color: #f00;">${error.message}\n${error.stack}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

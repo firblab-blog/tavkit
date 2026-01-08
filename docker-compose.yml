@@ -1,0 +1,307 @@
+services:
+  # =============================================================================
+  # PostgreSQL Database - Conditional Deployment
+  # =============================================================================
+  # Deploy with: docker compose --profile ${DB_HOST:-sqlite} up -d
+  # Or simply:   docker compose --profile postgres up -d
+  #
+  # OPTION 1: SQLite (default)
+  #   DB_TYPE=sqlite (or unset)
+  #   Command: docker compose up -d
+  #   PostgreSQL container will NOT start
+  #
+  # OPTION 2: Bundled PostgreSQL (Docker container)
+  #   DB_TYPE=postgres
+  #   DB_HOST=postgres
+  #   Command: docker compose --profile postgres up -d
+  #   PostgreSQL container WILL start
+  #
+  # OPTION 3: External PostgreSQL (your own database)
+  #   DB_TYPE=postgres
+  #   DB_HOST=your-server.com (anything other than "postgres")
+  #   Command: docker compose up -d
+  #   PostgreSQL container will NOT start
+  #
+  # =============================================================================
+  postgres:
+    # Using pgvector image for vector similarity search (RAG support)
+    # pgvector/pgvector:pg17 includes PostgreSQL 17 + pgvector extension
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg16}
+    container_name: ${POSTGRES_CONTAINER_NAME:-tavkit-postgres}
+    profiles:
+      - postgres
+    env_file:
+      # Load auto-generated secure password from .postgres-secrets
+      # Run ./scripts/init-postgres-secrets.sh to generate this file
+      - path: ./.postgres-secrets
+        required: false
+    environment:
+      POSTGRES_DB: ${DB_NAME:-tavkit}
+      POSTGRES_USER: ${DB_USER:-tavkit}
+      # POSTGRES_PASSWORD comes from .postgres-secrets (preferred)
+      # or falls back to DB_PASSWORD from .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+      # Security: Disable trust authentication
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_BIND_IP:-127.0.0.1}:${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tavkit} -d ${DB_NAME:-tavkit}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - tavkit-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    security_opt:
+      - no-new-privileges:true
+    # Limit container resources
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Go Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      platforms:
+        - linux/${BUILD_ARCH:-arm64}
+    container_name: ${BACKEND_CONTAINER_NAME:-tavkit-backend}
+    # Wait for ai-service to be healthy (needed for campaign summary generation)
+    depends_on:
+      ai-service:
+        condition: service_healthy
+    env_file:
+      # Load PostgreSQL password from .postgres-secrets if available
+      - path: ./.postgres-secrets
+        required: false
+    environment:
+      # Database config (optional - backend can use SQLite via volume mount)
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-tavkit}
+      - DB_USER=${DB_USER:-tavkit}
+      # Use POSTGRES_PASSWORD from secrets, fall back to DB_PASSWORD from .env
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}
+      - DB_PATH=${DB_PATH:-./data/tavkit.db}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      # Python AI Service URL (used for campaign summary generation)
+      - PYTHON_AI_SERVICE_URL=${PYTHON_AI_SERVICE_URL:-http://ai-service:8001}
+      # AI Provider Configuration (Go backend handles content generation directly)
+      - ENABLE_AI=${ENABLE_AI:-true}
+      - AI_PROVIDER=${AI_PROVIDER:-ollama}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:3b}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4-turbo-preview}
+      # Server config
+      - JWT_SECRET=${JWT_SECRET:?JWT secret required}
+      - PORT=${BACKEND_INTERNAL_PORT:-8000}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENABLE_SWAGGER=${ENABLE_SWAGGER:-false}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8080}
+    ports:
+      - "${BACKEND_PORT:-8000}:${BACKEND_INTERNAL_PORT:-8000}"
+    volumes:
+      # Mount data directory for SQLite
+      - ./data:/app/data
+    networks:
+      - tavkit-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Ollama (Local LLM Server) - Optional
+  # Enable with: docker compose --profile ollama up
+  ollama:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
+    container_name: ${OLLAMA_CONTAINER_NAME:-tavkit-ollama}
+    profiles:
+      - ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - tavkit-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # GPU support - uncomment if using NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # Ollama Model Loader (pulls model on startup) - Optional
+  ollama-init:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
+    container_name: ${OLLAMA_INIT_CONTAINER_NAME:-tavkit-ollama-init}
+    profiles:
+      - ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - tavkit-network
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Waiting for Ollama to be ready..."
+        sleep 10
+        echo "Pulling model: ${OLLAMA_MODEL:-llama3.2:7b}"
+        ollama pull ${OLLAMA_MODEL:-llama3.2:7b}
+        echo "Model ready!"
+    restart: "no"
+
+  # Python AI Service - Used for Campaign Summary Generation
+  #
+  # This service handles campaign summary generation in the Campaign Ledger feature.
+  # It processes large amounts of campaign content (NPCs, locations, quests, etc.)
+  # and generates intelligent summaries using the configured AI provider.
+  #
+  # Content generation (NPCs, monsters, encounters, etc.) is handled directly
+  # by the Go backend for all providers (Ollama, Anthropic, OpenAI).
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+      platforms:
+        - linux/${BUILD_ARCH:-arm64}
+    container_name: ${AI_SERVICE_CONTAINER_NAME:-tavkit-ai-service}
+    env_file:
+      # Load PostgreSQL password from .postgres-secrets if available
+      - path: ./.postgres-secrets
+        required: false
+    environment:
+      - AI_PROVIDER=${AI_PROVIDER:-ollama}
+      # For containerized Ollama: http://ollama:11434
+      # For external Ollama: http://localhost:11434 or custom URL
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:7b}
+      - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-120}
+      - OLLAMA_MAX_TOKENS=${OLLAMA_MAX_TOKENS:-800}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MAX_TOKENS=${OPENAI_MAX_TOKENS:-800}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      - ANTHROPIC_MAX_TOKENS=${ANTHROPIC_MAX_TOKENS:-800}
+      - AI_TEMPERATURE=${AI_TEMPERATURE:-0.7}
+      - CORS_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=${AI_SERVICE_INTERNAL_PORT:-8001}
+      # Database config for RAG features
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-tavkit}
+      - DB_USER=${DB_USER:-tavkit}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}
+    ports:
+      - "${AI_SERVICE_PORT:-8001}:${AI_SERVICE_INTERNAL_PORT:-8001}"
+    # No hard dependency on Ollama - can use external or cloud providers
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - tavkit-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Frontend (Production Build)
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      platforms:
+        - linux/${BUILD_ARCH:-arm64}
+      target: production
+    container_name: ${WEB_CONTAINER_NAME:-tavkit-web}
+    ports:
+      - "${WEB_BIND_IP:-0.0.0.0}:${WEB_PORT:-3000}:${WEB_INTERNAL_PORT:-80}"
+    depends_on:
+      - backend
+    networks:
+      - tavkit-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+
+  # Caddy (Reverse Proxy + SSL)
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    container_name: ${CADDY_CONTAINER_NAME:-tavkit-caddy}
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+      - "${CADDY_HTTP3_PORT:-443}:443/udp"  # HTTP/3
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - EMAIL=${SSL_EMAIL:-}
+    depends_on:
+      - web
+      - backend
+    networks:
+      - tavkit-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    security_opt:
+      - no-new-privileges:true
+    profiles:
+      - proxy
+
+volumes:
+  postgres-data:
+    driver: local
+  ollama-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+
+networks:
+  tavkit-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
