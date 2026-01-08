@@ -54,8 +54,6 @@ Tools for viewing content and running live gameplay:
 
 - **Campaign Ledger** - Browse all your campaign content organized by type. View NPCs, Locations, Sessions, Lore, GM Notes, and everything else. Search, filter, and edit entries with full markdown support.
 
-![Campaign Sessions](https://github.com/firblab-blog/tavkit/releases/download/assets/campaign-sessions.gif)
-
 - **Guild Roster** - Import player characters from D&D Beyond. Link characters to campaigns and track party composition.
 
 ![Guild Roster](https://github.com/firblab-blog/tavkit/releases/download/assets/guild-roster.gif)
@@ -80,8 +78,6 @@ Embed your favorite D&D sites directly in the app:
 - Or any custom URL you want
 
 Sites stay loaded when you switch between them—no more losing your scroll position or having to log in again.
-
-![External Tools](https://github.com/firblab-blog/tavkit/releases/download/assets/tavkit-ext-tools.gif)
 
 **Note on D&D Beyond**: Due to browser security restrictions (X-Frame-Options, CORS, third-party script requirements), D&D Beyond cannot be embedded directly. It opens in a new tab instead. Full embedding with login support would require an Electron desktop app wrapper—that's on the future roadmap.
 
