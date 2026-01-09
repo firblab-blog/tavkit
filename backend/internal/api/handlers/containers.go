@@ -179,7 +179,7 @@ func (h *ContainerHandler) BulkUpdateContainers(c *gin.Context) {
 			URL      *string `json:"url"`
 			Position int     `json:"position"`
 			IsActive bool    `json:"is_active"`
-		} `json:"containers" binding:"required"`
+		} `json:"containers"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {

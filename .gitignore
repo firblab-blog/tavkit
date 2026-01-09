@@ -9,9 +9,6 @@
 *.key
 *.pem
 secrets/
-.claude/
-.gitlab/
-files/
 
 # PostgreSQL secrets (auto-generated, never commit)
 .postgres-secrets
@@ -131,7 +128,6 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 pnpm-debug.log*
-debug/
 
 # ================================
 # OS Files
@@ -170,7 +166,6 @@ deploy/terraform/**/*.tfstate
 deploy/terraform/**/*.tfstate.backup
 deploy/terraform/**/.terraform.lock.hcl
 deploy/terraform/**/crash.log
-deploy/
 
 # ================================
 # Kubernetes
@@ -200,8 +195,6 @@ temp/
 coverage*/
 test-results/
 *.xml
-.gitlab-ci.yml
-sonar-project.properties
 
 # ================================
 # Documentation Build
@@ -210,8 +203,6 @@ docs/_build/
 docs/.doctrees/
 docs/archive
 docs/archive/
-docs/plans/
-docs/architecture/
 
 # ================================
 # Ollama Data (if running locally)
@@ -225,19 +216,3 @@ ollama-data/
 *.backup
 *.old
 *.orig
-
-# ================================
-# Testing Files
-# ================================
-tests/
-
-# ================================
-# Matrix/Dendrite Data
-# ================================
-config/
-
-# ================================
-# Additional Ignored Files
-# ================================
-web/dist/
-backend/coverage.html
