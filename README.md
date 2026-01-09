@@ -6,6 +6,8 @@
 
 A web app I built to help me run D&D campaigns. It started as a way to keep my browser tabs organized, and turned into something that actually makes prep and session running easier.
 
+![TavKit Home](https://github.com/firblab-blog/tavkit/releases/download/assets/home.gif)
+
 ## What is this?
 
 I got tired of having 47 browser tabs open during game sessions, losing track of NPCs I made up on the spot, and forgetting which merchant the party already visited. TavKit is my solution to that mess.
@@ -23,6 +25,8 @@ The AI generation stuff is built to understand your campaign context. It reads t
 - AI-generated Campaign Summaries that provide context for all content generation
 - Control exactly what content gets included in the summary
 - Track which content belongs to which campaign
+
+![Campaign Summary](https://github.com/firblab-blog/tavkit/releases/download/assets/campaign-summary.gif)
 
 ### Artificer's Toolkit (Content Generation)
 
@@ -51,6 +55,8 @@ Tools for viewing content and running live gameplay:
 - **Campaign Ledger** - Browse all your campaign content organized by type. View NPCs, Locations, Sessions, Lore, GM Notes, and everything else. Search, filter, and edit entries with full markdown support.
 
 - **Guild Roster** - Import player characters from D&D Beyond. Link characters to campaigns and track party composition.
+
+![Guild Roster](https://github.com/firblab-blog/tavkit/releases/download/assets/guild-roster.gif)
 
 - **The Pursuit** - Run chase scenes with distance tracking, obstacle management, and participant tracking. Works with content from the Chase Generator.
 
@@ -82,10 +88,6 @@ The Campaign Summary is the magic that ties everything together. It reads throug
 When generating new content, you select which campaign to use as context. The AI then knows about your world's themes, existing NPCs, locations, and plot threads. Generate a new location and it might reference NPCs you created earlier or tie into existing places in your world.
 
 The summary regenerates automatically when you add significant new content, keeping everything in sync.
-
-## Screenshots & Demos
-
-See the [Demo Gallery](docs/DEMOS.md) for animated walkthroughs of all features.
 
 ## Themes
 
