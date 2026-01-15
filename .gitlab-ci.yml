@@ -645,18 +645,22 @@ build:
         echo "Logging into standard GitLab registry at $CI_REGISTRY"
         echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
       fi
-    # Configure buildx to allow insecure registry (if custom registry is used)
+    # Configure buildx to allow insecure registry (detect from CI_REGISTRY)
     - |
-      if [ -n "$GITLAB_REGISTRY_PORT" ]; then
-        echo "Configuring buildx for insecure registry at ${REGISTRY_HOST}:${REGISTRY_PORT}"
+      # Check if registry requires insecure configuration (HTTP instead of HTTPS)
+      if echo "$CI_REGISTRY" | grep -q "192.168.4.62:5050"; then
+        echo "Configuring buildx for insecure registry at $CI_REGISTRY"
         cat > /tmp/buildkitd.toml <<EOF
-      [registry."${REGISTRY_HOST}:${REGISTRY_PORT}"]
+      [registry."$CI_REGISTRY"]
         http = true
         insecure = true
       EOF
         docker buildx create --use --name multiarch-insecure --driver docker-container --driver-opt network=host --config /tmp/buildkitd.toml --buildkitd-flags '--allow-insecure-entitlement network.host' || docker buildx use multiarch-insecure
+        docker buildx inspect --bootstrap
+      else
+        echo "Using standard HTTPS registry"
+        docker buildx inspect --bootstrap
       fi
-    - docker buildx inspect --bootstrap
   script:
     - echo "Building Tavkit Docker images for multi-arch..."
     # Build backend service
