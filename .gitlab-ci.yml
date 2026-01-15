@@ -768,8 +768,23 @@ build:ollama-mirror:
   before_script:
     - sleep 5  # Give DinD time to start
     - docker info
+    # Configure Docker daemon to allow insecure registry
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json <<EOF
+      {
+        "insecure-registries": ["${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}"]
+      }
+      EOF
+    - cat /etc/docker/daemon.json
     # Login to Docker Hub
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - |
+      if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+        echo "Authenticating with Docker Hub..."
+        echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      else
+        echo "⚠️ Warning: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set."
+      fi
     # Login to GitLab registry
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
   script:
