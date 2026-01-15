@@ -768,15 +768,9 @@ build:ollama-mirror:
   before_script:
     - sleep 5  # Give DinD time to start
     - docker info
-    # Configure Docker daemon to allow insecure registry
-    - mkdir -p /etc/docker
-    - |
-      cat > /etc/docker/daemon.json <<EOF
-      {
-        "insecure-registries": ["${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}"]
-      }
-      EOF
-    - cat /etc/docker/daemon.json
+    # Enable Docker buildx for multi-architecture builds
+    - docker buildx create --use --name multiarch --driver docker-container --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement network.host'
+    - docker buildx inspect --bootstrap
     # Login to Docker Hub
     - |
       if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
@@ -785,15 +779,21 @@ build:ollama-mirror:
       else
         echo "⚠️ Warning: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set."
       fi
-    # Login to GitLab registry
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    # Configure buildx to allow insecure registry
+    - |
+      cat > /tmp/buildkitd.toml <<EOF
+      [registry."${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}"]
+        http = true
+        insecure = true
+      EOF
+    - docker buildx create --use --name multiarch-insecure --driver docker-container --driver-opt network=host --config /tmp/buildkitd.toml --buildkitd-flags '--allow-insecure-entitlement network.host' || docker buildx use multiarch-insecure
+    - docker buildx inspect --bootstrap
   script:
-    - echo "Pulling ollama:latest from Docker Hub..."
+    - echo "Mirroring ollama:latest from Docker Hub to GitLab registry..."
+    # Use buildx to pull and push (handles insecure registry properly)
     - docker pull ollama/ollama:latest
-    - echo "Tagging for GitLab registry..."
-    - docker tag ollama/ollama:latest $CI_REGISTRY_IMAGE/ollama:latest
-    - echo "Pushing to GitLab registry..."
-    - docker push $CI_REGISTRY_IMAGE/ollama:latest
+    - docker tag ollama/ollama:latest localhost:5000/ollama:latest
+    - docker buildx imagetools create --tag $CI_REGISTRY_IMAGE/ollama:latest ollama/ollama:latest
     - echo "✅ Ollama image mirrored to GitLab registry"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
