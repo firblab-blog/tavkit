@@ -14,7 +14,7 @@ interface SectionHeaderProps {
   onImportFromRoster?: () => void
   uploading: boolean
   showPCsImport: boolean
-  fileInputRef: React.RefObject<HTMLInputElement>
+  fileInputRef: React.RefObject<HTMLInputElement | null>
   acceptedFileTypes: string
 }
 
