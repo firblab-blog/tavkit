@@ -54,7 +54,7 @@ func (h *AuthHandler) setAuthCookies(c *gin.Context, token, csrfToken string) {
 	maxAge := 24 * 60 * 60 // Default 24 hours in seconds
 
 	// Determine SameSite mode
-	sameSite := http.SameSiteLaxMode
+	var sameSite http.SameSite
 	switch h.authConfig.CookieSameSite {
 	case "Strict":
 		sameSite = http.SameSiteStrictMode

@@ -195,9 +195,10 @@ func findMatchingBrace(content string, open, close rune) int {
 			continue
 		}
 
-		if char == open {
+		switch char {
+		case open:
 			depth++
-		} else if char == close {
+		case close:
 			depth--
 			if depth == 0 {
 				return i

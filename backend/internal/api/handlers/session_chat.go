@@ -207,7 +207,7 @@ func (h *SessionChatHandler) SendMessage(c *gin.Context) {
 
 	// Parse enabled wiki sources
 	var enabledWikiSources []string
-	if sourcePrefs.EnabledWikiSources != nil && len(sourcePrefs.EnabledWikiSources) > 0 {
+	if len(sourcePrefs.EnabledWikiSources) > 0 {
 		if err := json.Unmarshal(sourcePrefs.EnabledWikiSources, &enabledWikiSources); err != nil {
 			h.logger.Warn("Failed to parse enabled_wiki_sources", zap.Error(err))
 			enabledWikiSources = []string{}

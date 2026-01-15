@@ -108,7 +108,11 @@ func (c *Client) GenerateContent(ctx context.Context, req GenerateRequest) (*Gen
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Warn("failed to close response body", zap.Error(err))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		var errResp struct {

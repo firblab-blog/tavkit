@@ -97,7 +97,11 @@ func (c *Client) GenerateContent(ctx context.Context, generatorType string, req 
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request to Python AI service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Warn("failed to close response body", zap.Error(err))
+		}
+	}()
 
 	// Read response body
 	respBody, err := io.ReadAll(resp.Body)
@@ -110,7 +114,7 @@ func (c *Client) GenerateContent(ctx context.Context, generatorType string, req 
 		c.logger.Error("Python AI service returned error",
 			zap.Int("status_code", resp.StatusCode),
 			zap.String("response", string(respBody)))
-		return nil, fmt.Errorf("Python AI service error: %d - %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("python AI service error: %d - %s", resp.StatusCode, string(respBody))
 	}
 
 	// Parse response - Python service returns {generator_type: {...}}
@@ -161,12 +165,16 @@ func (c *Client) ValidateConnection(ctx context.Context) error {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("Python AI service is not reachable: %w", err)
+		return fmt.Errorf("python AI service is not reachable: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Warn("failed to close response body", zap.Error(err))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Python AI service health check failed: status %d", resp.StatusCode)
+		return fmt.Errorf("python AI service health check failed: status %d", resp.StatusCode)
 	}
 
 	return nil

@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"tavkit/internal/api/middleware"
+	"tavkit/internal/db"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
-	"tavkit/internal/api/middleware"
-	"tavkit/internal/db"
 )
 
 // WebSocket upgrader with permissive origin check for development
@@ -165,13 +166,19 @@ func (h *CombatHub) run() {
 func (c *CombatClient) readPump(handler *CombatWSHandler) {
 	defer func() {
 		c.Hub.unregister <- c
-		c.Conn.Close()
+		if err := c.Conn.Close(); err != nil {
+			handler.logger.Debug("error closing connection", zap.Error(err))
+		}
 	}()
 
 	c.Conn.SetReadLimit(65536)
-	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	if err := c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+		handler.logger.Warn("failed to set read deadline", zap.Error(err))
+	}
 	c.Conn.SetPongHandler(func(string) error {
-		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		if err := c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			handler.logger.Warn("failed to set read deadline", zap.Error(err))
+		}
 		return nil
 	})
 
@@ -194,15 +201,21 @@ func (c *CombatClient) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 	defer func() {
 		ticker.Stop()
-		c.Conn.Close()
+		if err := c.Conn.Close(); err != nil {
+			// Connection already closed or error closing, nothing to do
+		}
 	}()
 
 	for {
 		select {
 		case message, ok := <-c.Send:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				return
+			}
 			if !ok {
-				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.Conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					// Connection already closed
+				}
 				return
 			}
 
@@ -210,13 +223,19 @@ func (c *CombatClient) writePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			if _, err := w.Write(message); err != nil {
+				return
+			}
 
 			// Add queued messages to the current websocket message
 			n := len(c.Send)
 			for i := 0; i < n; i++ {
-				w.Write([]byte{'\n'})
-				w.Write(<-c.Send)
+				if _, err := w.Write([]byte{'\n'}); err != nil {
+					return
+				}
+				if _, err := w.Write(<-c.Send); err != nil {
+					return
+				}
 			}
 
 			if err := w.Close(); err != nil {
@@ -224,7 +243,9 @@ func (c *CombatClient) writePump() {
 			}
 
 		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				return
+			}
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

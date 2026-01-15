@@ -280,13 +280,17 @@ func (m *MigratorSQLite) Migrate() error {
 
 		// Execute migration
 		if _, err := tx.Exec(mig.UpSQL); err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				return fmt.Errorf("failed to rollback after migration error (migration %04d): %w, rollback error: %v", mig.Version, err, rbErr)
+			}
 			return fmt.Errorf("failed to apply migration %04d: %w", mig.Version, err)
 		}
 
 		// Record migration
 		if _, err := tx.Exec("INSERT INTO schema_migrations (version) VALUES (?)", mig.Version); err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				return fmt.Errorf("failed to rollback after recording error (migration %04d): %w, rollback error: %v", mig.Version, err, rbErr)
+			}
 			return fmt.Errorf("failed to record migration %04d: %w", mig.Version, err)
 		}
 
@@ -395,13 +399,17 @@ func (m *MigratorPostgres) Migrate() error {
 
 		// Execute migration
 		if _, err := tx.ExecContext(ctx, mig.UpSQL); err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				return fmt.Errorf("failed to rollback after migration error (migration %04d): %w, rollback error: %v", mig.Version, err, rbErr)
+			}
 			return fmt.Errorf("failed to apply migration %04d: %w", mig.Version, err)
 		}
 
 		// Record migration
 		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", mig.Version); err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				return fmt.Errorf("failed to rollback after recording error (migration %04d): %w, rollback error: %v", mig.Version, err, rbErr)
+			}
 			return fmt.Errorf("failed to record migration %04d: %w", mig.Version, err)
 		}
 

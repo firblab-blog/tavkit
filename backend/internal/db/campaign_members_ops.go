@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
 	"time"
 )
 
@@ -22,7 +23,10 @@ func NewCampaignMembersOperations(exec Executor, qb *QueryBuilder) *CampaignMemb
 // generateInviteCode creates a 12-character alphanumeric code
 func generateInviteCode() string {
 	bytes := make([]byte, 6)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to timestamp-based code if random fails
+		return hex.EncodeToString([]byte(fmt.Sprintf("%d", time.Now().UnixNano()))[:6])
+	}
 	return hex.EncodeToString(bytes)
 }
 
@@ -288,7 +292,11 @@ func (ops *CampaignMembersOperations) ListUserMemberships(ctx context.Context, u
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't override return value
+		}
+	}()
 
 	var members []*CampaignMember
 	for rows.Next() {
@@ -333,23 +341,12 @@ func (ops *CampaignMembersOperations) GetCampaignsWithMembership(ctx context.Con
 		FROM campaigns c
 		WHERE c.user_id = ` + p1
 
-	// Get joined campaigns (via campaign_members)
-	joinedQuery := `SELECT c.id, c.user_id, c.name, c.description, c.game_system, c.theme, c.tone,
-		c.setting, c.factions, c.history, c.magic_level, c.tech_level, c.notes, c.role,
-		c.is_active, c.created_at, c.updated_at,
-		'player_joined' as membership_type,
-		u.display_name as gm_name, m.character_id as member_character_id
-		FROM campaigns c
-		JOIN campaign_members m ON c.id = m.campaign_id
-		LEFT JOIN users u ON c.user_id = u.id
-		WHERE m.user_id = ` + p1
-
 	// Combine with UNION ALL
 	// Note: For SQLite, we use positional placeholders, so we need p2 for the second query
 	p2 := ops.qb.Placeholder(2)
 
-	// Update joined query to use p2
-	joinedQuery = `SELECT c.id, c.user_id, c.name, c.description, c.game_system, c.theme, c.tone,
+	// Get joined campaigns (via campaign_members)
+	joinedQuery := `SELECT c.id, c.user_id, c.name, c.description, c.game_system, c.theme, c.tone,
 		c.setting, c.factions, c.history, c.magic_level, c.tech_level, c.notes, c.role,
 		c.is_active, c.created_at, c.updated_at,
 		'player_joined' as membership_type,
@@ -388,9 +385,9 @@ func (ops *CampaignMembersOperations) scanCampaignWithMembershipFromRows(rows Ro
 	var gmName, memberCharacterID sql.NullString
 
 	err := rows.Scan(
-		&cwm.Campaign.ID,
-		&cwm.Campaign.UserID,
-		&cwm.Campaign.Name,
+		&cwm.ID,
+		&cwm.UserID,
+		&cwm.Name,
 		&description,
 		&cwm.Campaign.GameSystem,
 		&theme,

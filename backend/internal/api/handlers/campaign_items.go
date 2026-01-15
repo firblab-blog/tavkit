@@ -90,10 +90,8 @@ func (h *CampaignItemsHandler) LinkItem(c *gin.Context) {
 
 	// Parse request body (optional quantity and notes)
 	var req LinkItemRequest
-	req.Quantity = 1 // Default quantity
-	if err := c.ShouldBindJSON(&req); err != nil {
-		// Ignore bind error - use defaults
-	}
+	req.Quantity = 1           // Default quantity
+	_ = c.ShouldBindJSON(&req) // Ignore bind error - use defaults
 
 	// Verify campaign ownership
 	campaign, err := h.db.GetCampaignByIDAndUserID(c.Request.Context(), campaignID, userID.(string))

@@ -25,14 +25,6 @@ func NewCharacterHandler(database db.Database, logger *zap.Logger) *CharacterHan
 	}
 }
 
-// Text field size limits (in characters)
-const (
-	maxNameLength       = 100
-	maxShortTextLength  = 200
-	maxMediumTextLength = 2000
-	maxLongTextLength   = 10000
-)
-
 // CreateCharacterRequest represents the request to create a character
 // Only Name is required - all other fields are optional for manual character creation
 type CreateCharacterRequest struct {

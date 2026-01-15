@@ -37,9 +37,9 @@ export const AIProvider: React.FC<AIProviderProps> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [enabled, setEnabled] = useState(false);
   const [currentProvider, setCurrentProvider] = useState<string | null>(null);
-  const [availableProviders, setAvailableProviders] = useState<AIProviderConfig[]>(
-    [],
-  );
+  const [availableProviders, setAvailableProviders] = useState<
+    AIProviderConfig[]
+  >([]);
   const [models, setModels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
