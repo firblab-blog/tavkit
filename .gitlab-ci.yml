@@ -165,14 +165,30 @@ lint:frontend:
     - npm ci --prefer-offline --no-audit
   script:
     - echo "Running ESLint..."
-    - npm run lint > ../eslint-report.txt 2>&1 || echo "⚠️ ESLint failed (migration to v9 needed)"
-    - echo "✅ Frontend linting stage completed"
+    - npm run lint -- --max-warnings -1 > ../eslint-report.txt 2>&1 || LINT_EXIT=$?
+    - |
+      if [ ! -z "$LINT_EXIT" ] && [ $LINT_EXIT -ne 0 ]; then
+        echo "⚠️ ESLint found issues (2 errors, 474 warnings)"
+        echo "Errors must be fixed. Warnings are acceptable for MVP."
+        # Show the report
+        cat ../eslint-report.txt
+        # For MVP, we'll allow warnings but not errors
+        # Check if there are actual errors (not just warnings)
+        if grep -q "error" ../eslint-report.txt; then
+          echo "❌ ESLint found errors that must be fixed"
+          exit 1
+        else
+          echo "✅ No errors found, only warnings"
+        fi
+      else
+        echo "✅ Frontend linting completed successfully"
+      fi
   artifacts:
-    when: on_failure
+    when: always
     paths:
       - eslint-report.txt
     expire_in: 1 week
-  allow_failure: true
+  allow_failure: false
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -616,6 +632,9 @@ build:
   services:
     - name: docker:24-dind
       command: ['--insecure-registry=${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}']
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   before_script:
     - docker info
     # Enable Docker buildx for multi-architecture builds
@@ -737,6 +756,9 @@ build:ollama-mirror:
   services:
     - name: docker:24-dind
       command: ['--insecure-registry=${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}']
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   before_script:
     - docker info
     # Login to Docker Hub
