@@ -514,7 +514,12 @@ visualize:docker-services:
   image: docker:24
   services:
     - docker:24-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
   before_script:
+    - sleep 5  # Give DinD time to start
     - mkdir -p docs/architecture
   script:
     - echo "Generating Docker services diagram..."
@@ -630,12 +635,13 @@ build:
     - docker
   image: docker:24
   services:
-    - name: docker:24-dind
-      command: ['--insecure-registry=${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}']
+    - docker:24-dind
   variables:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
   before_script:
+    - sleep 5  # Give DinD time to start
     - docker info
     # Enable Docker buildx for multi-architecture builds
     - docker buildx create --use --name multiarch --driver docker-container --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement network.host'
@@ -754,12 +760,13 @@ build:ollama-mirror:
     - docker
   image: docker:24
   services:
-    - name: docker:24-dind
-      command: ['--insecure-registry=${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}']
+    - docker:24-dind
   variables:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
   before_script:
+    - sleep 5  # Give DinD time to start
     - docker info
     # Login to Docker Hub
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
