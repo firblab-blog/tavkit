@@ -7,10 +7,11 @@ variables:
   DOCKER_BUILDKIT: 1
   # Set to 'linux/arm64' to build only ARM64 (faster), or 'linux/amd64,linux/arm64' for both
   BUILD_PLATFORMS: 'linux/amd64,linux/arm64'
-  # GitLab configuration - set these in CI/CD variables:
-  # GITLAB_REGISTRY_PORT: Registry port (e.g., "5005")
-  CI_REGISTRY: "${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}"
-  CI_REGISTRY_IMAGE: "${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}/infrastructure/firb-lab/tavkit"
+  # GitLab configuration - override registry if custom host/port provided
+  # GITLAB_HOST: Custom GitLab host (optional, defaults to CI_SERVER_HOST)
+  # GITLAB_REGISTRY_PORT: Custom registry port (optional, defaults to standard port)
+  REGISTRY_HOST: "${GITLAB_HOST:-$CI_SERVER_HOST}"
+  REGISTRY_PORT: "${GITLAB_REGISTRY_PORT}"
 
 stages:
   - wiki-sync
@@ -630,15 +631,31 @@ build:
         echo "⚠️ Warning: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set. May hit rate limits."
       fi
     # Login to GitLab registry
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
-    # Configure buildx to allow insecure registry
     - |
-      cat > /tmp/buildkitd.toml <<EOF
-      [registry."192.168.4.62:5050"]
+      if [ -n "$GITLAB_REGISTRY_PORT" ]; then
+        # Custom registry with port
+        REGISTRY_URL="${REGISTRY_HOST}:${REGISTRY_PORT}"
+        echo "Logging into custom GitLab registry at $REGISTRY_URL"
+        echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY_URL"
+        # Override CI_REGISTRY variables for custom setup
+        export CI_REGISTRY="$REGISTRY_URL"
+        export CI_REGISTRY_IMAGE="$REGISTRY_URL/$CI_PROJECT_PATH"
+      else
+        # Standard GitLab registry
+        echo "Logging into standard GitLab registry at $CI_REGISTRY"
+        echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+      fi
+    # Configure buildx to allow insecure registry (if custom registry is used)
+    - |
+      if [ -n "$GITLAB_REGISTRY_PORT" ]; then
+        echo "Configuring buildx for insecure registry at ${REGISTRY_HOST}:${REGISTRY_PORT}"
+        cat > /tmp/buildkitd.toml <<EOF
+      [registry."${REGISTRY_HOST}:${REGISTRY_PORT}"]
         http = true
         insecure = true
       EOF
-    - docker buildx create --use --name multiarch-insecure --driver docker-container --driver-opt network=host --config /tmp/buildkitd.toml --buildkitd-flags '--allow-insecure-entitlement network.host' || docker buildx use multiarch-insecure
+        docker buildx create --use --name multiarch-insecure --driver docker-container --driver-opt network=host --config /tmp/buildkitd.toml --buildkitd-flags '--allow-insecure-entitlement network.host' || docker buildx use multiarch-insecure
+      fi
     - docker buildx inspect --bootstrap
   script:
     - echo "Building Tavkit Docker images for multi-arch..."
@@ -742,7 +759,20 @@ build:ollama-mirror:
     # Login to Docker Hub
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
     # Login to GitLab registry
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - |
+      if [ -n "$GITLAB_REGISTRY_PORT" ]; then
+        # Custom registry with port
+        REGISTRY_URL="${REGISTRY_HOST}:${REGISTRY_PORT}"
+        echo "Logging into custom GitLab registry at $REGISTRY_URL"
+        echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY_URL"
+        # Override CI_REGISTRY variables for custom setup
+        export CI_REGISTRY="$REGISTRY_URL"
+        export CI_REGISTRY_IMAGE="$REGISTRY_URL/$CI_PROJECT_PATH"
+      else
+        # Standard GitLab registry
+        echo "Logging into standard GitLab registry at $CI_REGISTRY"
+        echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+      fi
   script:
     - echo "Pulling ollama:latest from Docker Hub..."
     - docker pull ollama/ollama:latest
