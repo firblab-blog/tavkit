@@ -154,7 +154,7 @@ export default function PlayerHome({
   // Track loading timeout for better UX when loading takes too long
   // Loading state should be true when:
   // 1. Context is loading
-  // 2. Characters are actively loading  
+  // 2. Characters are actively loading
   // 3. Cache was invalidated (lastFetched is null) but we have context
   const isCurrentlyLoading =
     contextLoading || loading || (lastFetched === null && userContext !== null);

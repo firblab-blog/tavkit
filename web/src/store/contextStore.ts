@@ -145,7 +145,9 @@ export const useContextStore = create<ContextState>()(
           if (!state.userContext) {
             // If context doesn't exist yet, we can't update it
             // This shouldn't happen in normal flow, but log it for debugging
-            logger.warn("[contextStore] updateContextSync called with no existing context");
+            logger.warn(
+              "[contextStore] updateContextSync called with no existing context",
+            );
             return state;
           }
           return {
