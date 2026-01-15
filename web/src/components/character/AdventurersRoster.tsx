@@ -1,46 +1,55 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams, useLocation } from 'react-router-dom'
-import Icon from '../common/Icon'
-import CharacterSheet from './CharacterSheet'
-import ImportCharacter from './ImportCharacter'
-import ManualCharacterForm from './ManualCharacterForm'
-import { useCharacterStore, Character } from '../../store/characterStore'
-import { useCampaignStore } from '../../store/campaignStore'
-import { useMobileSidebar } from '../../hooks/useMobileSidebar'
-import { apiClient } from '@/api/client'
+import { useState, useEffect } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
+import Icon from "../common/Icon";
+import CharacterSheet from "./CharacterSheet";
+import ImportCharacter from "./ImportCharacter";
+import ManualCharacterForm from "./ManualCharacterForm";
+import { useCharacterStore, Character } from "../../store/characterStore";
+import { useCampaignStore } from "../../store/campaignStore";
+import { useMobileSidebar } from "../../hooks/useMobileSidebar";
+import { apiClient } from "@/api/client";
 
 export default function AdventurersRoster() {
-  const [searchParams] = useSearchParams()
-  const location = useLocation()
-  const { characters, loading, error, fetchCharacters, deleteCharacter } = useCharacterStore()
-  const { activeCampaignId, unlinkCharacterFromCampaign, getActiveCampaign } = useCampaignStore()
-  const activeCampaign = getActiveCampaign()
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const { characters, loading, error, fetchCharacters, deleteCharacter } =
+    useCharacterStore();
+  const { activeCampaignId, unlinkCharacterFromCampaign, getActiveCampaign } =
+    useCampaignStore();
+  const activeCampaign = getActiveCampaign();
 
   // Determine if we're in sandbox mode (no campaign context)
-  const isSandboxMode = location.pathname.includes('/sandbox')
-  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [createMethod, setCreateMethod] = useState<'choose' | 'manual' | 'import'>('choose')
+  const isSandboxMode = location.pathname.includes("/sandbox");
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
+    null,
+  );
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createMethod, setCreateMethod] = useState<
+    "choose" | "manual" | "import"
+  >("choose");
 
   // Use shared mobile sidebar hook
-  const { isMobile, isDrawerOpen, setIsDrawerOpen } = useMobileSidebar()
+  const { isMobile, isDrawerOpen, setIsDrawerOpen } = useMobileSidebar();
 
   useEffect(() => {
     // Fetch characters filtered by campaign (unless in sandbox mode)
     // Use activeCampaign?.id instead of activeCampaignId to handle stale IDs in localStorage
-    fetchCharacters(false, isSandboxMode ? undefined : (activeCampaign?.id ?? undefined))
-  }, [fetchCharacters, activeCampaign?.id, isSandboxMode])
+    fetchCharacters(
+      false,
+      isSandboxMode ? undefined : (activeCampaign?.id ?? undefined),
+    );
+  }, [fetchCharacters, activeCampaign?.id, isSandboxMode]);
 
   // Select character from URL query parameter
   useEffect(() => {
-    const characterId = searchParams.get('character')
+    const characterId = searchParams.get("character");
     if (characterId && characters.length > 0) {
-      const char = characters.find((c) => c.id === characterId)
+      const char = characters.find((c) => c.id === characterId);
       if (char) {
-        setSelectedCharacter(char)
+        setSelectedCharacter(char);
       }
     }
-  }, [searchParams, characters])
+  }, [searchParams, characters]);
 
   const handleDeleteCharacter = async (id: string) => {
     // Different behavior based on context
@@ -49,45 +58,51 @@ export default function AdventurersRoster() {
       // Sandbox mode or no valid campaign: permanently delete the character
       if (
         !confirm(
-          'Are you sure you want to permanently delete this character? This cannot be undone.'
+          "Are you sure you want to permanently delete this character? This cannot be undone.",
         )
       )
-        return
+        return;
 
       try {
-        await apiClient.delete(`/characters/${id}`)
-        deleteCharacter(id)
+        await apiClient.delete(`/characters/${id}`);
+        deleteCharacter(id);
 
         if (selectedCharacter?.id === id) {
-          setSelectedCharacter(null)
+          setSelectedCharacter(null);
         }
       } catch (err: any) {
-        alert(err.response?.data?.error || err.message || 'Failed to delete character')
+        alert(
+          err.response?.data?.error ||
+            err.message ||
+            "Failed to delete character",
+        );
       }
     } else {
       // Campaign mode: unlink from campaign (character remains in personal library)
       if (
         !confirm(
-          'Remove this character from the campaign? The character will still be available in your personal library.'
+          "Remove this character from the campaign? The character will still be available in your personal library.",
         )
       )
-        return
+        return;
 
       try {
-        await unlinkCharacterFromCampaign(activeCampaign.id, id)
+        await unlinkCharacterFromCampaign(activeCampaign.id, id);
         // Remove from local character list for this view
-        deleteCharacter(id)
+        deleteCharacter(id);
 
         if (selectedCharacter?.id === id) {
-          setSelectedCharacter(null)
+          setSelectedCharacter(null);
         }
       } catch (err: any) {
         alert(
-          err.response?.data?.error || err.message || 'Failed to remove character from campaign'
-        )
+          err.response?.data?.error ||
+            err.message ||
+            "Failed to remove character from campaign",
+        );
       }
     }
-  }
+  };
 
   return (
     <div className="h-full flex flex-col bg-background overflow-x-hidden">
@@ -152,8 +167,8 @@ export default function AdventurersRoster() {
         {/* Character List Sidebar */}
         <aside
           className={`
-            ${isMobile ? 'fixed top-0 left-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out' : 'w-64 flex-shrink-0'}
-            ${isMobile && !isDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
+            ${isMobile ? "fixed top-0 left-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out" : "w-64 flex-shrink-0"}
+            ${isMobile && !isDrawerOpen ? "-translate-x-full" : "translate-x-0"}
             border-r border-border bg-background-panel overflow-y-auto
           `}
           role="navigation"
@@ -174,7 +189,10 @@ export default function AdventurersRoster() {
 
             {loading && (
               <div className="flex items-center justify-center py-8">
-                <Icon name="Loader2" className="w-6 h-6 animate-spin text-primary" />
+                <Icon
+                  name="Loader2"
+                  className="w-6 h-6 animate-spin text-primary"
+                />
               </div>
             )}
 
@@ -187,8 +205,13 @@ export default function AdventurersRoster() {
             {!loading && characters.length === 0 && (
               <div className="text-center py-8 px-4">
                 <div className="bg-background-panel/50 border-2 border-dashed border-border rounded-xl p-6">
-                  <Icon name="Users" className="w-16 h-16 text-primary/40 mx-auto mb-3" />
-                  <h3 className="text-text font-semibold mb-1">No Characters Yet</h3>
+                  <Icon
+                    name="Users"
+                    className="w-16 h-16 text-primary/40 mx-auto mb-3"
+                  />
+                  <h3 className="text-text font-semibold mb-1">
+                    No Characters Yet
+                  </h3>
                   <p className="text-text-muted text-xs">
                     Create your first adventurer to start tracking your party!
                   </p>
@@ -209,28 +232,33 @@ export default function AdventurersRoster() {
                   key={character.id}
                   className={`p-4 rounded-lg border transition-all cursor-pointer ${
                     selectedCharacter?.id === character.id
-                      ? 'bg-primary/20 border-primary'
-                      : 'bg-background border-border hover:border-primary/50'
+                      ? "bg-primary/20 border-primary"
+                      : "bg-background border-border hover:border-primary/50"
                   }`}
                   onClick={() => {
-                    setSelectedCharacter(character)
-                    if (isMobile) setIsDrawerOpen(false)
+                    setSelectedCharacter(character);
+                    if (isMobile) setIsDrawerOpen(false);
                   }}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-text truncate">{character.name}</h3>
+                      <h3 className="font-semibold text-text truncate">
+                        {character.name}
+                      </h3>
                       <p className="text-sm text-text-muted">
-                        Level {character.level} {character.race} {character.class_info}
+                        Level {character.level} {character.race}{" "}
+                        {character.class_info}
                       </p>
                       {character.background && (
-                        <p className="text-xs text-text-muted mt-1">{character.background}</p>
+                        <p className="text-xs text-text-muted mt-1">
+                          {character.background}
+                        </p>
                       )}
                     </div>
                     <button
                       onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteCharacter(character.id)
+                        e.stopPropagation();
+                        handleDeleteCharacter(character.id);
                       }}
                       className="text-red-400 hover:text-red-300 transition-colors p-1"
                     >
@@ -249,7 +277,10 @@ export default function AdventurersRoster() {
             <CharacterSheet
               character={selectedCharacter}
               onUpdate={() =>
-                fetchCharacters(true, isSandboxMode ? undefined : (activeCampaignId ?? undefined))
+                fetchCharacters(
+                  true,
+                  isSandboxMode ? undefined : (activeCampaignId ?? undefined),
+                )
               }
               onClose={() => setSelectedCharacter(null)}
             />
@@ -258,15 +289,20 @@ export default function AdventurersRoster() {
               <div className="text-center max-w-md">
                 <div className="relative mb-6">
                   <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
-                  <Icon name="UserCircle" className="w-24 h-24 text-primary/30 mx-auto relative" />
+                  <Icon
+                    name="UserCircle"
+                    className="w-24 h-24 text-primary/30 mx-auto relative"
+                  />
                 </div>
                 <h2 className="text-2xl font-bold text-text mb-2">
-                  {characters.length > 0 ? 'Select a Character' : 'Create Your First Character'}
+                  {characters.length > 0
+                    ? "Select a Character"
+                    : "Create Your First Character"}
                 </h2>
                 <p className="text-text-muted mb-6">
                   {characters.length > 0
-                    ? 'Choose a character from the sidebar to view and edit their character sheet'
-                    : 'Get started by adding your first party member to the roster'}
+                    ? "Choose a character from the sidebar to view and edit their character sheet"
+                    : "Get started by adding your first party member to the roster"}
                 </p>
                 {characters.length === 0 && (
                   <button
@@ -287,14 +323,16 @@ export default function AdventurersRoster() {
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background-panel border border-border rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            {createMethod === 'choose' && (
+            {createMethod === "choose" && (
               <>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-text">Create New Character</h2>
+                  <h2 className="text-xl font-bold text-text">
+                    Create New Character
+                  </h2>
                   <button
                     onClick={() => {
-                      setShowCreateModal(false)
-                      setCreateMethod('choose')
+                      setShowCreateModal(false);
+                      setCreateMethod("choose");
                     }}
                     className="text-text-muted hover:text-text transition-colors"
                   >
@@ -302,26 +340,31 @@ export default function AdventurersRoster() {
                   </button>
                 </div>
 
-                <p className="text-text-muted mb-6">Choose how you'd like to add your character:</p>
+                <p className="text-text-muted mb-6">
+                  Choose how you'd like to add your character:
+                </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
-                    onClick={() => setCreateMethod('manual')}
+                    onClick={() => setCreateMethod("manual")}
                     className="flex flex-col items-center gap-4 p-6 border-2 border-border hover:border-primary rounded-lg transition-all group"
                   >
                     <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
                       <Icon name="FileEdit" className="w-8 h-8 text-primary" />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-lg font-semibold text-text mb-2">Create Manually</h3>
+                      <h3 className="text-lg font-semibold text-text mb-2">
+                        Create Manually
+                      </h3>
                       <p className="text-sm text-text-muted">
-                        Build your character from scratch with our step-by-step form
+                        Build your character from scratch with our step-by-step
+                        form
                       </p>
                     </div>
                   </button>
 
                   <button
-                    onClick={() => setCreateMethod('import')}
+                    onClick={() => setCreateMethod("import")}
                     className="flex flex-col items-center gap-4 p-6 border-2 border-border hover:border-primary rounded-lg transition-all group"
                   >
                     <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
@@ -332,7 +375,8 @@ export default function AdventurersRoster() {
                         Import from D&D Beyond
                       </h3>
                       <p className="text-sm text-text-muted">
-                        Import an existing character from your D&D Beyond account
+                        Import an existing character from your D&D Beyond
+                        account
                       </p>
                     </div>
                   </button>
@@ -340,21 +384,23 @@ export default function AdventurersRoster() {
               </>
             )}
 
-            {createMethod === 'manual' && (
+            {createMethod === "manual" && (
               <>
                 <div className="flex items-center justify-between mb-6">
                   <button
-                    onClick={() => setCreateMethod('choose')}
+                    onClick={() => setCreateMethod("choose")}
                     className="flex items-center gap-2 text-text-muted hover:text-text transition-colors"
                   >
                     <Icon name="ArrowLeft" className="w-4 h-4" />
                     Back
                   </button>
-                  <h2 className="text-xl font-bold text-text">Create Character Manually</h2>
+                  <h2 className="text-xl font-bold text-text">
+                    Create Character Manually
+                  </h2>
                   <button
                     onClick={() => {
-                      setShowCreateModal(false)
-                      setCreateMethod('choose')
+                      setShowCreateModal(false);
+                      setCreateMethod("choose");
                     }}
                     className="text-text-muted hover:text-text transition-colors"
                   >
@@ -364,34 +410,38 @@ export default function AdventurersRoster() {
 
                 <ManualCharacterForm
                   onSuccess={() => {
-                    setShowCreateModal(false)
-                    setCreateMethod('choose')
+                    setShowCreateModal(false);
+                    setCreateMethod("choose");
                     fetchCharacters(
                       true,
-                      isSandboxMode ? undefined : (activeCampaignId ?? undefined)
-                    )
+                      isSandboxMode
+                        ? undefined
+                        : (activeCampaignId ?? undefined),
+                    );
                   }}
-                  onCancel={() => setCreateMethod('choose')}
+                  onCancel={() => setCreateMethod("choose")}
                   campaignId={isSandboxMode ? undefined : activeCampaignId}
                 />
               </>
             )}
 
-            {createMethod === 'import' && (
+            {createMethod === "import" && (
               <>
                 <div className="flex items-center justify-between mb-6">
                   <button
-                    onClick={() => setCreateMethod('choose')}
+                    onClick={() => setCreateMethod("choose")}
                     className="flex items-center gap-2 text-text-muted hover:text-text transition-colors"
                   >
                     <Icon name="ArrowLeft" className="w-4 h-4" />
                     Back
                   </button>
-                  <h2 className="text-xl font-bold text-text">Import from D&D Beyond</h2>
+                  <h2 className="text-xl font-bold text-text">
+                    Import from D&D Beyond
+                  </h2>
                   <button
                     onClick={() => {
-                      setShowCreateModal(false)
-                      setCreateMethod('choose')
+                      setShowCreateModal(false);
+                      setCreateMethod("choose");
                     }}
                     className="text-text-muted hover:text-text transition-colors"
                   >
@@ -401,14 +451,16 @@ export default function AdventurersRoster() {
 
                 <ImportCharacter
                   onSuccess={() => {
-                    setShowCreateModal(false)
-                    setCreateMethod('choose')
+                    setShowCreateModal(false);
+                    setCreateMethod("choose");
                     fetchCharacters(
                       true,
-                      isSandboxMode ? undefined : (activeCampaignId ?? undefined)
-                    )
+                      isSandboxMode
+                        ? undefined
+                        : (activeCampaignId ?? undefined),
+                    );
                   }}
-                  onCancel={() => setCreateMethod('choose')}
+                  onCancel={() => setCreateMethod("choose")}
                   campaignId={isSandboxMode ? undefined : activeCampaignId}
                 />
               </>
@@ -417,5 +469,5 @@ export default function AdventurersRoster() {
         </div>
       )}
     </div>
-  )
+  );
 }

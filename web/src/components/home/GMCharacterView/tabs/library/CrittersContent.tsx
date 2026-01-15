@@ -1,49 +1,52 @@
-import ContentListLayout from '../../../../common/ContentListLayout'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
-import ContentCard from '../../../../common/ContentCard'
-import ContentDetailModal from '../../../../common/ContentDetailModal'
-import AssignCampaignModal from '../../../../common/AssignCampaignModal'
-import { useLibraryContent } from '../../../../../hooks/useLibraryContent'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useState } from 'react'
-import { logger } from '@/utils/logger'
+import ContentListLayout from "../../../../common/ContentListLayout";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import ContentCard from "../../../../common/ContentCard";
+import ContentDetailModal from "../../../../common/ContentDetailModal";
+import AssignCampaignModal from "../../../../common/AssignCampaignModal";
+import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface Critter {
-  id: string
-  name: string
-  campaign_id?: string | null
-  species?: string
-  critter_type: string
-  size: string
-  temperament?: string
-  habitat?: string
-  description?: string
-  behavior?: string
-  stats?: any
-  special_abilities?: any
-  uses?: any
-  training_difficulty?: string
-  diet?: string
-  lifespan?: string
-  interesting_facts?: any
-  encounter_notes?: string
-  ai_generated?: boolean
-  created_at: string
+  id: string;
+  name: string;
+  campaign_id?: string | null;
+  species?: string;
+  critter_type: string;
+  size: string;
+  temperament?: string;
+  habitat?: string;
+  description?: string;
+  behavior?: string;
+  stats?: any;
+  special_abilities?: any;
+  uses?: any;
+  training_difficulty?: string;
+  diet?: string;
+  lifespan?: string;
+  interesting_facts?: any;
+  encounter_notes?: string;
+  ai_generated?: boolean;
+  created_at: string;
 }
 
 interface CrittersContentProps {
-  campaignId?: string
-  showCampaignFilter?: boolean
+  campaignId?: string;
+  showCampaignFilter?: boolean;
 }
 
-export default function CrittersContent({ campaignId, showCampaignFilter }: CrittersContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const { campaigns } = useCampaignStore()
+export default function CrittersContent({
+  campaignId,
+  showCampaignFilter,
+}: CrittersContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const { campaigns } = useCampaignStore();
   const [assignModalItem, setAssignModalItem] = useState<{
-    id: string
-    name: string
-    currentCampaignId?: string | null
-  } | null>(null)
+    id: string;
+    name: string;
+    currentCampaignId?: string | null;
+  } | null>(null);
 
   const {
     filteredItems,
@@ -58,21 +61,21 @@ export default function CrittersContent({ campaignId, showCampaignFilter }: Crit
     deleteItem,
     refresh,
   } = useLibraryContent<Critter>({
-    contentType: 'critters',
+    contentType: "critters",
     campaignId,
     showCampaignFilter,
-    searchFields: ['name', 'species', 'critter_type', 'description'],
-  })
+    searchFields: ["name", "species", "critter_type", "description"],
+  });
 
   const handleDelete = async (critter: Critter) => {
     if (window.confirm(`Delete "${critter.name}"? This cannot be undone.`)) {
       try {
-        await deleteItem(critter.id)
+        await deleteItem(critter.id);
       } catch (err) {
-        logger.error('Failed to delete critter:', err)
+        logger.error("Failed to delete critter:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -99,7 +102,7 @@ export default function CrittersContent({ campaignId, showCampaignFilter }: Crit
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search critters..."
         addButtonLabel="Add Critter"
-        onAddClick={() => openGenerator('critter')}
+        onAddClick={() => openGenerator("critter")}
         addButtonColor="green"
         loading={loading}
         error={error}
@@ -107,7 +110,7 @@ export default function CrittersContent({ campaignId, showCampaignFilter }: Crit
         emptyTitle="No critters yet"
         emptyDescription="Create companion animals and wildlife."
         emptyCTALabel="Create Your First Critter"
-        onEmptyCTAClick={() => openGenerator('critter')}
+        onEmptyCTAClick={() => openGenerator("critter")}
         hasItems={filteredItems.length > 0}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -120,9 +123,21 @@ export default function CrittersContent({ campaignId, showCampaignFilter }: Crit
               iconColor="green"
               layout="grid"
               badges={[
-                { label: critter.critter_type.replace(/_/g, ' ') },
-                { label: critter.size, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
-                ...(critter.temperament ? [{ label: critter.temperament, color: 'text-purple-400', bgColor: 'bg-purple-500/10' }] : []),
+                { label: critter.critter_type.replace(/_/g, " ") },
+                {
+                  label: critter.size,
+                  color: "text-blue-400",
+                  bgColor: "bg-blue-500/10",
+                },
+                ...(critter.temperament
+                  ? [
+                      {
+                        label: critter.temperament,
+                        color: "text-purple-400",
+                        bgColor: "bg-purple-500/10",
+                      },
+                    ]
+                  : []),
               ]}
               onClick={() => setViewingItem(critter)}
               onDelete={() => handleDelete(critter)}
@@ -158,26 +173,42 @@ export default function CrittersContent({ campaignId, showCampaignFilter }: Crit
         />
       )}
     </div>
-  )
+  );
 }
 
 interface CritterDetailModalProps {
-  critter: Critter
-  onClose: () => void
-  onDelete: () => void
+  critter: Critter;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function CritterDetailModal({ critter, onClose, onDelete }: CritterDetailModalProps) {
-  let specialAbilities: any[] = []
-  let uses: any[] = []
-  let interestingFacts: any[] = []
+function CritterDetailModal({
+  critter,
+  onClose,
+  onDelete,
+}: CritterDetailModalProps) {
+  let specialAbilities: any[] = [];
+  let uses: any[] = [];
+  let interestingFacts: any[] = [];
 
   try {
-    specialAbilities = critter.special_abilities ? (typeof critter.special_abilities === 'string' ? JSON.parse(critter.special_abilities) : critter.special_abilities) : []
-    uses = critter.uses ? (typeof critter.uses === 'string' ? JSON.parse(critter.uses) : critter.uses) : []
-    interestingFacts = critter.interesting_facts ? (typeof critter.interesting_facts === 'string' ? JSON.parse(critter.interesting_facts) : critter.interesting_facts) : []
+    specialAbilities = critter.special_abilities
+      ? typeof critter.special_abilities === "string"
+        ? JSON.parse(critter.special_abilities)
+        : critter.special_abilities
+      : [];
+    uses = critter.uses
+      ? typeof critter.uses === "string"
+        ? JSON.parse(critter.uses)
+        : critter.uses
+      : [];
+    interestingFacts = critter.interesting_facts
+      ? typeof critter.interesting_facts === "string"
+        ? JSON.parse(critter.interesting_facts)
+        : critter.interesting_facts
+      : [];
   } catch (err) {
-    logger.error('Failed to parse critter data:', err)
+    logger.error("Failed to parse critter data:", err);
   }
 
   return (
@@ -187,25 +218,31 @@ function CritterDetailModal({ critter, onClose, onDelete }: CritterDetailModalPr
       icon="PawPrint"
       iconColor="green"
       title={critter.name}
-      subtitle={critter.species || critter.critter_type.replace(/_/g, ' ')}
+      subtitle={critter.species || critter.critter_type.replace(/_/g, " ")}
       onDelete={onDelete}
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-3">
           <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <p className="text-xs text-text-muted">Size</p>
-            <p className="text-lg font-semibold text-blue-400 capitalize">{critter.size}</p>
+            <p className="text-lg font-semibold text-blue-400 capitalize">
+              {critter.size}
+            </p>
           </div>
           {critter.temperament && (
             <div className="px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-lg">
               <p className="text-xs text-text-muted">Temperament</p>
-              <p className="text-lg font-semibold text-purple-400 capitalize">{critter.temperament}</p>
+              <p className="text-lg font-semibold text-purple-400 capitalize">
+                {critter.temperament}
+              </p>
             </div>
           )}
           {critter.habitat && (
             <div className="px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg">
               <p className="text-xs text-text-muted">Habitat</p>
-              <p className="text-lg font-semibold text-green-400 capitalize">{critter.habitat}</p>
+              <p className="text-lg font-semibold text-green-400 capitalize">
+                {critter.habitat}
+              </p>
             </div>
           )}
         </div>
@@ -235,7 +272,9 @@ function CritterDetailModal({ critter, onClose, onDelete }: CritterDetailModalPr
             </h4>
             <ul className="list-disc list-inside text-text space-y-1">
               {specialAbilities.map((a: any, i: number) => (
-                <li key={i}>{typeof a === 'string' ? a : a.name || a.description}</li>
+                <li key={i}>
+                  {typeof a === "string" ? a : a.name || a.description}
+                </li>
               ))}
             </ul>
           </div>
@@ -248,7 +287,7 @@ function CritterDetailModal({ critter, onClose, onDelete }: CritterDetailModalPr
             </h4>
             <ul className="list-disc list-inside text-text space-y-1">
               {uses.map((u: any, i: number) => (
-                <li key={i}>{typeof u === 'string' ? u : u.description}</li>
+                <li key={i}>{typeof u === "string" ? u : u.description}</li>
               ))}
             </ul>
           </div>
@@ -271,7 +310,9 @@ function CritterDetailModal({ critter, onClose, onDelete }: CritterDetailModalPr
             {critter.training_difficulty && (
               <div className="bg-background p-3 rounded-lg border border-border">
                 <p className="text-xs text-text-muted">Training</p>
-                <p className="text-text capitalize">{critter.training_difficulty}</p>
+                <p className="text-text capitalize">
+                  {critter.training_difficulty}
+                </p>
               </div>
             )}
           </div>
@@ -284,7 +325,7 @@ function CritterDetailModal({ critter, onClose, onDelete }: CritterDetailModalPr
             </h4>
             <ul className="list-disc list-inside text-text space-y-1">
               {interestingFacts.map((f: any, i: number) => (
-                <li key={i}>{typeof f === 'string' ? f : f}</li>
+                <li key={i}>{typeof f === "string" ? f : f}</li>
               ))}
             </ul>
           </div>
@@ -295,10 +336,12 @@ function CritterDetailModal({ critter, onClose, onDelete }: CritterDetailModalPr
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Encounter Notes
             </h4>
-            <p className="text-text leading-relaxed whitespace-pre-wrap">{critter.encounter_notes}</p>
+            <p className="text-text leading-relaxed whitespace-pre-wrap">
+              {critter.encounter_notes}
+            </p>
           </div>
         )}
       </div>
     </ContentDetailModal>
-  )
+  );
 }

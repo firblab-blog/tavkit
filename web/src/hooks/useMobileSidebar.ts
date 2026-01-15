@@ -1,25 +1,25 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from "react";
 
 interface UseMobileSidebarOptions {
   /** Breakpoint in pixels (default: 1024 for lg) */
-  breakpoint?: number
+  breakpoint?: number;
   /** Whether the hook is enabled (default: true) */
-  enabled?: boolean
+  enabled?: boolean;
 }
 
 interface UseMobileSidebarReturn {
   /** Whether viewport is considered mobile */
-  isMobile: boolean
+  isMobile: boolean;
   /** Whether the drawer is open */
-  isDrawerOpen: boolean
+  isDrawerOpen: boolean;
   /** Open the drawer */
-  openDrawer: () => void
+  openDrawer: () => void;
   /** Close the drawer */
-  closeDrawer: () => void
+  closeDrawer: () => void;
   /** Toggle the drawer */
-  toggleDrawer: () => void
+  toggleDrawer: () => void;
   /** Set drawer open state directly */
-  setIsDrawerOpen: (open: boolean) => void
+  setIsDrawerOpen: (open: boolean) => void;
 }
 
 /**
@@ -52,63 +52,63 @@ interface UseMobileSidebarReturn {
  * ```
  */
 export function useMobileSidebar(
-  options: UseMobileSidebarOptions = {}
+  options: UseMobileSidebarOptions = {},
 ): UseMobileSidebarReturn {
-  const { breakpoint = 1024, enabled = true } = options
+  const { breakpoint = 1024, enabled = true } = options;
 
-  const [isMobile, setIsMobile] = useState(false)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Detect mobile viewport
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return;
 
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < breakpoint)
-    }
+      setIsMobile(window.innerWidth < breakpoint);
+    };
 
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [breakpoint, enabled])
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, [breakpoint, enabled]);
 
   // Close drawer when switching to desktop
   useEffect(() => {
     if (!isMobile) {
-      setIsDrawerOpen(false)
+      setIsDrawerOpen(false);
     }
-  }, [isMobile])
+  }, [isMobile]);
 
   // Prevent body scroll when drawer open on mobile
   useEffect(() => {
     if (isMobile && isDrawerOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isMobile, isDrawerOpen])
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobile, isDrawerOpen]);
 
   // Handle Escape key to close drawer
   const handleEscape = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setIsDrawerOpen(false)
+    if (e.key === "Escape") {
+      setIsDrawerOpen(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (isDrawerOpen) {
-      document.addEventListener('keydown', handleEscape)
-      return () => document.removeEventListener('keydown', handleEscape)
+      document.addEventListener("keydown", handleEscape);
+      return () => document.removeEventListener("keydown", handleEscape);
     }
-  }, [isDrawerOpen, handleEscape])
+  }, [isDrawerOpen, handleEscape]);
 
-  const openDrawer = useCallback(() => setIsDrawerOpen(true), [])
-  const closeDrawer = useCallback(() => setIsDrawerOpen(false), [])
-  const toggleDrawer = useCallback(() => setIsDrawerOpen((prev) => !prev), [])
+  const openDrawer = useCallback(() => setIsDrawerOpen(true), []);
+  const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
+  const toggleDrawer = useCallback(() => setIsDrawerOpen((prev) => !prev), []);
 
   return {
     isMobile,
@@ -117,7 +117,7 @@ export function useMobileSidebar(
     closeDrawer,
     toggleDrawer,
     setIsDrawerOpen,
-  }
+  };
 }
 
-export default useMobileSidebar
+export default useMobileSidebar;

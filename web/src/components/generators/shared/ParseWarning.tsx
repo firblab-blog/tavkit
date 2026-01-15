@@ -1,7 +1,7 @@
-import Icon from '@/components/common/Icon'
+import Icon from "@/components/common/Icon";
 
 interface ParseWarningProps {
-  message: string
+  message: string;
 }
 
 /**
@@ -16,5 +16,5 @@ export function ParseWarning({ message }: ParseWarningProps) {
       </div>
       <p className="text-text-muted text-sm">{message}</p>
     </div>
-  )
+  );
 }

@@ -1,20 +1,20 @@
-import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../common/Icon'
-import { useSessionChat, type ChatMessage } from '../../hooks/useSessionChat'
-import ConversationList from './ConversationList'
-import ChatSourceModal from './ChatSourceModal'
+import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../common/Icon";
+import { useSessionChat, type ChatMessage } from "../../hooks/useSessionChat";
+import ConversationList from "./ConversationList";
+import ChatSourceModal from "./ChatSourceModal";
 
 interface SessionChatPanelProps {
-  isExpanded?: boolean
-  onToggleExpand?: () => void
-  maxHeight?: string
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+  maxHeight?: string;
 }
 
 export default function SessionChatPanel({
   isExpanded = true,
   onToggleExpand,
-  maxHeight = '500px',
+  maxHeight = "500px",
 }: SessionChatPanelProps) {
   const {
     activeCampaign,
@@ -37,19 +37,26 @@ export default function SessionChatPanel({
     renameConversation,
     savePreferences,
     selectConversation,
-  } = useSessionChat()
+  } = useSessionChat();
 
-  const [showConversations, setShowConversations] = useState(false)
-  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false)
+  const [showConversations, setShowConversations] = useState(false);
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
 
   if (!activeCampaign) {
     return (
       <div className="bg-background-panel rounded-xl border border-border p-6 text-center">
-        <Icon name="MessageSquare" className="w-10 h-10 text-text-muted mx-auto mb-3" />
-        <h3 className="text-lg font-semibold text-text mb-1">No Campaign Selected</h3>
-        <p className="text-sm text-text-muted">Select a campaign to start chatting.</p>
+        <Icon
+          name="MessageSquare"
+          className="w-10 h-10 text-text-muted mx-auto mb-3"
+        />
+        <h3 className="text-lg font-semibold text-text mb-1">
+          No Campaign Selected
+        </h3>
+        <p className="text-sm text-text-muted">
+          Select a campaign to start chatting.
+        </p>
       </div>
-    )
+    );
   }
 
   if (!isExpanded) {
@@ -65,13 +72,15 @@ export default function SessionChatPanel({
           <div className="text-left">
             <h3 className="font-semibold text-text">Session Chat</h3>
             <p className="text-xs text-text-muted">
-              {messages.length > 0 ? `${messages.length} messages` : 'Ask about your campaign'}
+              {messages.length > 0
+                ? `${messages.length} messages`
+                : "Ask about your campaign"}
             </p>
           </div>
         </div>
         <Icon name="ChevronDown" className="w-5 h-5 text-text-muted" />
       </button>
-    )
+    );
   }
 
   return (
@@ -96,8 +105,8 @@ export default function SessionChatPanel({
               onClick={() => setShowConversations(!showConversations)}
               className={`p-1.5 rounded transition-colors ${
                 showConversations
-                  ? 'bg-primary/20 text-primary'
-                  : 'hover:bg-tavern-dark text-text-muted hover:text-text'
+                  ? "bg-primary/20 text-primary"
+                  : "hover:bg-tavern-dark text-text-muted hover:text-text"
               }`}
               title="Conversation history"
             >
@@ -130,8 +139,8 @@ export default function SessionChatPanel({
             conversations={conversations}
             activeConversationId={activeConversationId}
             onSelectConversation={(id) => {
-              selectConversation(id)
-              setShowConversations(false)
+              selectConversation(id);
+              setShowConversations(false);
             }}
             onCreateConversation={createConversation}
             onDeleteConversation={deleteConversation}
@@ -146,13 +155,21 @@ export default function SessionChatPanel({
       <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[200px]">
         {isLoadingHistory ? (
           <div className="flex items-center justify-center h-full">
-            <Icon name="Loader2" className="w-6 h-6 text-primary animate-spin" />
+            <Icon
+              name="Loader2"
+              className="w-6 h-6 text-primary animate-spin"
+            />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-xs">
-              <Icon name="Sparkles" className="w-8 h-8 text-primary mx-auto mb-2" />
-              <h4 className="text-sm font-semibold text-text mb-1">Start a Conversation</h4>
+              <Icon
+                name="Sparkles"
+                className="w-8 h-8 text-primary mx-auto mb-2"
+              />
+              <h4 className="text-sm font-semibold text-text mb-1">
+                Start a Conversation
+              </h4>
               <p className="text-xs text-text-muted">
                 Ask questions about your campaign setting or brainstorm ideas.
               </p>
@@ -200,14 +217,14 @@ export default function SessionChatPanel({
             rows={1}
             disabled={isLoading}
             style={{
-              minHeight: '38px',
-              maxHeight: '100px',
-              height: 'auto',
+              minHeight: "38px",
+              maxHeight: "100px",
+              height: "auto",
             }}
             onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement
-              target.style.height = 'auto'
-              target.style.height = Math.min(target.scrollHeight, 100) + 'px'
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = "auto";
+              target.style.height = Math.min(target.scrollHeight, 100) + "px";
             }}
           />
           <button
@@ -229,23 +246,23 @@ export default function SessionChatPanel({
         onSave={savePreferences}
       />
     </div>
-  )
+  );
 }
 
 interface ChatMessageBubbleProps {
-  message: ChatMessage
+  message: ChatMessage;
 }
 
 function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
-  const isUser = message.role === 'user'
+  const isUser = message.role === "user";
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[85%] ${
           isUser
-            ? 'bg-primary text-primary-foreground rounded-xl rounded-br-sm'
-            : 'bg-background border border-border rounded-xl rounded-bl-sm'
+            ? "bg-primary text-primary-foreground rounded-xl rounded-br-sm"
+            : "bg-background border border-border rounded-xl rounded-bl-sm"
         } p-3`}
       >
         {isUser ? (
@@ -285,5 +302,5 @@ function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,17 +1,17 @@
 // Tavern Result Renderer
 // Displays generated Tavern data in a structured format
 
-import Icon from '@/components/common/Icon'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { RawDataViewer, ParseWarning } from '../components'
-import type { GeneratedTavernData } from '../normalizers/tavern'
+import Icon from "@/components/common/Icon";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { RawDataViewer, ParseWarning } from "../components";
+import type { GeneratedTavernData } from "../normalizers/tavern";
 
 interface TavernRendererProps {
-  tavern: GeneratedTavernData
-  showRawResponse: boolean
-  isSaved: boolean
-  onSave: () => void
-  onCopy: () => void
+  tavern: GeneratedTavernData;
+  showRawResponse: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onCopy: () => void;
 }
 
 export function TavernRenderer({
@@ -39,13 +39,17 @@ export function TavernRenderer({
             <Icon name="Package" className="w-5 h-5 text-primary" />
             Atmosphere
           </h3>
-          {tavern.atmosphere && <p className="text-text-muted italic mb-2">{tavern.atmosphere}</p>}
-          {tavern.description && <p className="text-text">{tavern.description}</p>}
+          {tavern.atmosphere && (
+            <p className="text-text-muted italic mb-2">{tavern.atmosphere}</p>
+          )}
+          {tavern.description && (
+            <p className="text-text">{tavern.description}</p>
+          )}
         </div>
       )}
 
       {/* Keeper */}
-      {tavern.keeper_name && tavern.keeper_name !== 'Unknown' && (
+      {tavern.keeper_name && tavern.keeper_name !== "Unknown" && (
         <div>
           <h3 className="text-lg font-semibold text-text mb-2 flex items-center gap-2">
             <Icon name="User" className="w-5 h-5 text-primary" />
@@ -53,9 +57,13 @@ export function TavernRenderer({
           </h3>
           <p className="text-text font-medium">{tavern.keeper_name}</p>
           {tavern.keeper_personality && (
-            <p className="text-text-muted italic mb-2">{tavern.keeper_personality}</p>
+            <p className="text-text-muted italic mb-2">
+              {tavern.keeper_personality}
+            </p>
           )}
-          {tavern.keeper_description && <p className="text-text">{tavern.keeper_description}</p>}
+          {tavern.keeper_description && (
+            <p className="text-text">{tavern.keeper_description}</p>
+          )}
         </div>
       )}
 
@@ -72,13 +80,22 @@ export function TavernRenderer({
                 <h4 className="font-medium text-text mb-2">Food</h4>
                 <div className="space-y-2">
                   {tavern.menu_food.map((item, idx) => (
-                    <div key={idx} className="bg-background p-3 rounded border border-border">
+                    <div
+                      key={idx}
+                      className="bg-background p-3 rounded border border-border"
+                    >
                       <div className="flex justify-between items-start mb-1">
-                        <span className="font-medium text-text">{item.name}</span>
-                        <span className="text-primary font-medium">{item.price}</span>
+                        <span className="font-medium text-text">
+                          {item.name}
+                        </span>
+                        <span className="text-primary font-medium">
+                          {item.price}
+                        </span>
                       </div>
                       {item.description && (
-                        <p className="text-sm text-text-muted">{item.description}</p>
+                        <p className="text-sm text-text-muted">
+                          {item.description}
+                        </p>
                       )}
                     </div>
                   ))}
@@ -91,13 +108,22 @@ export function TavernRenderer({
                 <h4 className="font-medium text-text mb-2">Drinks</h4>
                 <div className="space-y-2">
                   {tavern.menu_drinks.map((item, idx) => (
-                    <div key={idx} className="bg-background p-3 rounded border border-border">
+                    <div
+                      key={idx}
+                      className="bg-background p-3 rounded border border-border"
+                    >
                       <div className="flex justify-between items-start mb-1">
-                        <span className="font-medium text-text">{item.name}</span>
-                        <span className="text-primary font-medium">{item.price}</span>
+                        <span className="font-medium text-text">
+                          {item.name}
+                        </span>
+                        <span className="text-primary font-medium">
+                          {item.price}
+                        </span>
                       </div>
                       {item.description && (
-                        <p className="text-sm text-text-muted">{item.description}</p>
+                        <p className="text-sm text-text-muted">
+                          {item.description}
+                        </p>
                       )}
                     </div>
                   ))}
@@ -117,7 +143,10 @@ export function TavernRenderer({
           </h3>
           <div className="space-y-2">
             {tavern.rooms.map((room, idx) => (
-              <div key={idx} className="bg-background p-3 rounded border border-border">
+              <div
+                key={idx}
+                className="bg-background p-3 rounded border border-border"
+              >
                 <div className="flex justify-between items-start mb-1">
                   <div>
                     <span className="font-medium text-text">{room.type}</span>
@@ -127,7 +156,9 @@ export function TavernRenderer({
                   </div>
                   <span className="text-primary font-medium">{room.price}</span>
                 </div>
-                {room.description && <p className="text-sm text-text-muted">{room.description}</p>}
+                {room.description && (
+                  <p className="text-sm text-text-muted">{room.description}</p>
+                )}
               </div>
             ))}
           </div>
@@ -143,11 +174,20 @@ export function TavernRenderer({
           </h3>
           <div className="grid md:grid-cols-2 gap-3">
             {tavern.patrons.map((patron, idx) => (
-              <div key={idx} className="bg-background p-3 rounded border border-border">
+              <div
+                key={idx}
+                className="bg-background p-3 rounded border border-border"
+              >
                 <p className="font-medium text-text">{patron.name}</p>
-                <p className="text-sm text-text-muted italic mb-1">{patron.race}</p>
-                {patron.description && <p className="text-sm text-text">{patron.description}</p>}
-                {patron.hook && <p className="text-sm text-primary mt-2">{patron.hook}</p>}
+                <p className="text-sm text-text-muted italic mb-1">
+                  {patron.race}
+                </p>
+                {patron.description && (
+                  <p className="text-sm text-text">{patron.description}</p>
+                )}
+                {patron.hook && (
+                  <p className="text-sm text-primary mt-2">{patron.hook}</p>
+                )}
               </div>
             ))}
           </div>
@@ -202,7 +242,9 @@ export function TavernRenderer({
       )}
 
       {/* Raw/unexpected fields */}
-      {tavern._raw && <RawDataViewer data={tavern._raw} defaultExpanded={showRawResponse} />}
+      {tavern._raw && (
+        <RawDataViewer data={tavern._raw} defaultExpanded={showRawResponse} />
+      )}
 
       <ActionsBar
         onCopy={onCopy}
@@ -211,58 +253,58 @@ export function TavernRenderer({
         isSaved={isSaved}
       />
     </div>
-  )
+  );
 }
 
 // Helper to format Tavern for clipboard
 export function formatTavernForClipboard(tavern: GeneratedTavernData): string {
-  let text = `${tavern.name}\n${tavern.type}\n\n${tavern.atmosphere}\n${tavern.description}\n\nKeeper: ${tavern.keeper_name}\n${tavern.keeper_personality}\n${tavern.keeper_description || ''}`
+  let text = `${tavern.name}\n${tavern.type}\n\n${tavern.atmosphere}\n${tavern.description}\n\nKeeper: ${tavern.keeper_name}\n${tavern.keeper_personality}\n${tavern.keeper_description || ""}`;
 
   if (tavern.menu_food && tavern.menu_food.length > 0) {
-    text += '\n\nFood Menu:\n'
+    text += "\n\nFood Menu:\n";
     tavern.menu_food.forEach((item) => {
-      text += `${item.name} - ${item.price}\n${item.description}\n\n`
-    })
+      text += `${item.name} - ${item.price}\n${item.description}\n\n`;
+    });
   }
 
   if (tavern.menu_drinks && tavern.menu_drinks.length > 0) {
-    text += '\nDrink Menu:\n'
+    text += "\nDrink Menu:\n";
     tavern.menu_drinks.forEach((item) => {
-      text += `${item.name} - ${item.price}\n${item.description}\n\n`
-    })
+      text += `${item.name} - ${item.price}\n${item.description}\n\n`;
+    });
   }
 
   if (tavern.rooms && tavern.rooms.length > 0) {
-    text += '\nAccommodations:\n'
+    text += "\nAccommodations:\n";
     tavern.rooms.forEach((room) => {
-      text += `${room.type} - ${room.price} (${room.available} available)\n${room.description}\n\n`
-    })
+      text += `${room.type} - ${room.price} (${room.available} available)\n${room.description}\n\n`;
+    });
   }
 
   if (tavern.patrons && tavern.patrons.length > 0) {
-    text += '\nCurrent Patrons:\n'
+    text += "\nCurrent Patrons:\n";
     tavern.patrons.forEach((patron) => {
-      text += `${patron.name} (${patron.race})\n${patron.description}\n${patron.hook ? `Hook: ${patron.hook}\n` : ''}\n`
-    })
+      text += `${patron.name} (${patron.race})\n${patron.description}\n${patron.hook ? `Hook: ${patron.hook}\n` : ""}\n`;
+    });
   }
 
   if (tavern.events && tavern.events.length > 0) {
-    text += '\nCurrent Events:\n'
+    text += "\nCurrent Events:\n";
     tavern.events.forEach((event) => {
-      text += `- ${event}\n`
-    })
+      text += `- ${event}\n`;
+    });
   }
 
   if (tavern.rumors && tavern.rumors.length > 0) {
-    text += '\nRumors:\n'
+    text += "\nRumors:\n";
     tavern.rumors.forEach((rumor) => {
-      text += `- ${rumor}\n`
-    })
+      text += `- ${rumor}\n`;
+    });
   }
 
   if (tavern.special_notes) {
-    text += `\nSpecial Notes: ${tavern.special_notes}`
+    text += `\nSpecial Notes: ${tavern.special_notes}`;
   }
 
-  return text
+  return text;
 }

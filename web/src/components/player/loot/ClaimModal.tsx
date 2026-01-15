@@ -1,72 +1,86 @@
-import { useState, useEffect } from 'react'
-import Icon from '../../common/Icon'
-import { usePartyLootStore, PartyLootItem } from '../../../store/partyLootStore'
-import { useCharacterStore } from '../../../store/characterStore'
-import { useCampaignStore } from '../../../store/campaignStore'
+import { useState, useEffect } from "react";
+import Icon from "../../common/Icon";
+import {
+  usePartyLootStore,
+  PartyLootItem,
+} from "../../../store/partyLootStore";
+import { useCharacterStore } from "../../../store/characterStore";
+import { useCampaignStore } from "../../../store/campaignStore";
 
 interface ClaimModalProps {
-  item: PartyLootItem
-  campaignId: string
-  onClose: () => void
+  item: PartyLootItem;
+  campaignId: string;
+  onClose: () => void;
 }
 
-export default function ClaimModal({ item, campaignId, onClose }: ClaimModalProps) {
-  const { claimLoot, unclaimLoot, loading } = usePartyLootStore()
-  const { characters, fetchCharacters } = useCharacterStore()
-  const { fetchCampaignCharacters } = useCampaignStore()
+export default function ClaimModal({
+  item,
+  campaignId,
+  onClose,
+}: ClaimModalProps) {
+  const { claimLoot, unclaimLoot, loading } = usePartyLootStore();
+  const { characters, fetchCharacters } = useCharacterStore();
+  const { fetchCampaignCharacters } = useCampaignStore();
 
-  const [selectedCharacter, setSelectedCharacter] = useState<string>(item.claimed_by || '')
-  const [selectedName, setSelectedName] = useState<string>(item.claimed_by_name || '')
-  const [customName, setCustomName] = useState('')
-  const [useCustom, setUseCustom] = useState(false)
+  const [selectedCharacter, setSelectedCharacter] = useState<string>(
+    item.claimed_by || "",
+  );
+  const [selectedName, setSelectedName] = useState<string>(
+    item.claimed_by_name || "",
+  );
+  const [customName, setCustomName] = useState("");
+  const [useCustom, setUseCustom] = useState(false);
   const [campaignCharacters, setCampaignCharacters] = useState<
     Array<{ character_id: string; character_name?: string }>
-  >([])
+  >([]);
 
   useEffect(() => {
-    fetchCharacters()
+    fetchCharacters();
     // Also fetch campaign-linked characters
     fetchCampaignCharacters(campaignId)
       .then(setCampaignCharacters)
-      .catch(() => {})
-  }, [fetchCharacters, fetchCampaignCharacters, campaignId])
+      .catch(() => {});
+  }, [fetchCharacters, fetchCampaignCharacters, campaignId]);
 
   // Combine user's characters with campaign characters
   const availableCharacters = [
     ...characters.map((c) => ({ id: c.id, name: c.name })),
     ...campaignCharacters
       .filter((cc) => !characters.find((c) => c.id === cc.character_id))
-      .map((cc) => ({ id: cc.character_id, name: cc.character_name || 'Unknown Character' })),
-  ]
+      .map((cc) => ({
+        id: cc.character_id,
+        name: cc.character_name || "Unknown Character",
+      })),
+  ];
 
   const handleClaim = async () => {
     if (useCustom) {
-      if (!customName.trim()) return
+      if (!customName.trim()) return;
       await claimLoot(campaignId, item.id, {
-        claimed_by: 'custom',
+        claimed_by: "custom",
         claimed_by_name: customName.trim(),
-      })
+      });
     } else {
-      if (!selectedCharacter) return
+      if (!selectedCharacter) return;
       await claimLoot(campaignId, item.id, {
         claimed_by: selectedCharacter,
         claimed_by_name: selectedName,
-      })
+      });
     }
-    onClose()
-  }
+    onClose();
+  };
 
   const handleUnclaim = async () => {
-    await unclaimLoot(campaignId, item.id)
-    onClose()
-  }
+    await unclaimLoot(campaignId, item.id);
+    onClose();
+  };
 
   const handleCharacterSelect = (characterId: string) => {
-    setSelectedCharacter(characterId)
-    const char = availableCharacters.find((c) => c.id === characterId)
-    setSelectedName(char?.name || '')
-    setUseCustom(false)
-  }
+    setSelectedCharacter(characterId);
+    const char = availableCharacters.find((c) => c.id === characterId);
+    setSelectedName(char?.name || "");
+    setUseCustom(false);
+  };
 
   return (
     <div
@@ -95,7 +109,9 @@ export default function ClaimModal({ item, campaignId, onClose }: ClaimModalProp
               <Icon name="Gem" className="w-6 h-6 text-yellow-400" />
             </div>
             <h4 className="text-text font-medium">{item.name}</h4>
-            {item.quantity > 1 && <span className="text-text-muted text-sm">x{item.quantity}</span>}
+            {item.quantity > 1 && (
+              <span className="text-text-muted text-sm">x{item.quantity}</span>
+            )}
           </div>
 
           {/* Character Selection */}
@@ -114,8 +130,8 @@ export default function ClaimModal({ item, campaignId, onClose }: ClaimModalProp
                     onClick={() => handleCharacterSelect(char.id)}
                     className={`w-full px-4 py-3 rounded-lg border text-left transition-colors flex items-center gap-3 ${
                       selectedCharacter === char.id
-                        ? 'border-yellow-500 bg-yellow-500/10'
-                        : 'border-border hover:border-border-hover bg-background'
+                        ? "border-yellow-500 bg-yellow-500/10"
+                        : "border-border hover:border-border-hover bg-background"
                     }`}
                   >
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -123,7 +139,10 @@ export default function ClaimModal({ item, campaignId, onClose }: ClaimModalProp
                     </div>
                     <span className="text-text font-medium">{char.name}</span>
                     {selectedCharacter === char.id && (
-                      <Icon name="Check" className="w-4 h-4 text-yellow-400 ml-auto" />
+                      <Icon
+                        name="Check"
+                        className="w-4 h-4 text-yellow-400 ml-auto"
+                      />
                     )}
                   </button>
                 ))}
@@ -134,17 +153,17 @@ export default function ClaimModal({ item, campaignId, onClose }: ClaimModalProp
             <button
               type="button"
               onClick={() => {
-                setUseCustom(true)
-                setSelectedCharacter('')
+                setUseCustom(true);
+                setSelectedCharacter("");
               }}
               className={`w-full px-4 py-3 rounded-lg border text-left transition-colors ${
                 useCustom
-                  ? 'border-yellow-500 bg-yellow-500/10'
-                  : 'border-border hover:border-border-hover bg-background'
+                  ? "border-yellow-500 bg-yellow-500/10"
+                  : "border-border hover:border-border-hover bg-background"
               }`}
             >
               <span className="text-text-muted text-sm">
-                {useCustom ? 'Enter custom name:' : 'Or enter a custom name...'}
+                {useCustom ? "Enter custom name:" : "Or enter a custom name..."}
               </span>
             </button>
 
@@ -188,12 +207,14 @@ export default function ClaimModal({ item, campaignId, onClose }: ClaimModalProp
               disabled={loading || (!selectedCharacter && !customName.trim())}
               className="px-5 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              {loading && <Icon name="Loader2" className="w-4 h-4 animate-spin" />}
+              {loading && (
+                <Icon name="Loader2" className="w-4 h-4 animate-spin" />
+              )}
               Claim
             </button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

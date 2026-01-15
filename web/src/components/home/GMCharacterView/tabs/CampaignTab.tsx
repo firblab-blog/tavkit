@@ -1,7 +1,7 @@
-import { CampaignContentTab } from './campaign'
+import { CampaignContentTab } from "./campaign";
 
 interface CampaignTabProps {
-  campaignId: string
+  campaignId: string;
 }
 
 /**
@@ -13,5 +13,5 @@ interface CampaignTabProps {
  * Full Campaign Ledger remains available via button for advanced features.
  */
 export default function CampaignTab({ campaignId }: CampaignTabProps) {
-  return <CampaignContentTab campaignId={campaignId} />
+  return <CampaignContentTab campaignId={campaignId} />;
 }

@@ -1,54 +1,54 @@
 // Main SectionContent component
 
-import { useState } from 'react'
-import Icon from '@/components/common/Icon'
-import type { IconName } from '@/components/common/Icon'
-import type { CampaignContent } from '../../types'
-import { SectionHeader } from './SectionHeader'
-import { ContentList } from './ContentList'
-import { ContentEditor } from './ContentEditor'
-import { ContentDetailView } from './ContentDetailView'
-import { EmptyState } from './EmptyState'
-import { useSectionContent } from './useSectionContent'
+import { useState } from "react";
+import Icon from "@/components/common/Icon";
+import type { IconName } from "@/components/common/Icon";
+import type { CampaignContent } from "../../types";
+import { SectionHeader } from "./SectionHeader";
+import { ContentList } from "./ContentList";
+import { ContentEditor } from "./ContentEditor";
+import { ContentDetailView } from "./ContentDetailView";
+import { EmptyState } from "./EmptyState";
+import { useSectionContent } from "./useSectionContent";
 
 interface CampaignSection {
-  id: string
-  name: string
-  icon: IconName
-  description: string
-  subsections?: string[]
+  id: string;
+  name: string;
+  icon: IconName;
+  description: string;
+  subsections?: string[];
 }
 
 interface Campaign {
-  id: string
-  name: string
-  setting?: string
-  [key: string]: any
+  id: string;
+  name: string;
+  setting?: string;
+  [key: string]: any;
 }
 
 interface SectionContentProps {
-  campaign: Campaign
-  section: CampaignSection
-  subsection: string | null
-  selectedEntryId: string | null
-  onEntriesLoad: (entries: CampaignContent[]) => void
-  onSelectEntry: (entryId: string | null) => void
+  campaign: Campaign;
+  section: CampaignSection;
+  subsection: string | null;
+  selectedEntryId: string | null;
+  onEntriesLoad: (entries: CampaignContent[]) => void;
+  onSelectEntry: (entryId: string | null) => void;
 }
 
 // Get accepted file types based on section
 function getAcceptedFileTypes(sectionId: string): string {
   switch (sectionId) {
-    case 'pcs':
-      return '.txt,.md,.markdown,.json,image/*,.jpg,.jpeg,.png,.gif,.webp'
-    case 'maps':
-    case 'art':
-    case 'props':
-    case 'handouts':
-      return 'image/*,.jpg,.jpeg,.png,.gif,.webp,.svg'
-    case 'soundscapes':
-      return 'audio/*,.mp3,.wav,.ogg,.m4a,.flac'
+    case "pcs":
+      return ".txt,.md,.markdown,.json,image/*,.jpg,.jpeg,.png,.gif,.webp";
+    case "maps":
+    case "art":
+    case "props":
+    case "handouts":
+      return "image/*,.jpg,.jpeg,.png,.gif,.webp,.svg";
+    case "soundscapes":
+      return "audio/*,.mp3,.wav,.ogg,.m4a,.flac";
     default:
-      return '.txt,.md,.markdown,.pdf'
+      return ".txt,.md,.markdown,.pdf";
   }
 }
 
@@ -60,7 +60,8 @@ export function SectionContent({
   onEntriesLoad,
   onSelectEntry,
 }: SectionContentProps) {
-  const [_showImportCharacterModal, setShowImportCharacterModal] = useState(false)
+  const [_showImportCharacterModal, setShowImportCharacterModal] =
+    useState(false);
 
   const {
     entries,
@@ -86,15 +87,17 @@ export function SectionContent({
     sectionId: section.id,
     subsection,
     onEntriesLoad,
-  })
+  });
 
   // Handle import file click
   const handleImportFileClick = () => {
-    fileInputRef.current?.click()
-  }
+    fileInputRef.current?.click();
+  };
 
   // Find selected entry
-  const selectedEntry = selectedEntryId ? entries.find((e) => e.id === selectedEntryId) : null
+  const selectedEntry = selectedEntryId
+    ? entries.find((e) => e.id === selectedEntryId)
+    : null;
 
   // Loading state
   if (loading) {
@@ -102,13 +105,13 @@ export function SectionContent({
       <div className="flex items-center justify-center py-12">
         <Icon name="Loader2" className="w-8 h-8 text-primary animate-spin" />
       </div>
-    )
+    );
   }
 
   // Selected entry view
   if (selectedEntry) {
     // Special handling for PCs with character data
-    if (selectedEntry.section === 'pcs' && selectedEntry.characterData) {
+    if (selectedEntry.section === "pcs" && selectedEntry.characterData) {
       // TODO: Render CharacterSheet component
       return (
         <ContentDetailView
@@ -118,7 +121,7 @@ export function SectionContent({
           onEdit={() => handleEditEntry(selectedEntry)}
           onDelete={() => handleDeleteEntry(selectedEntry.id)}
         />
-      )
+      );
     }
 
     return (
@@ -129,7 +132,7 @@ export function SectionContent({
         onEdit={() => handleEditEntry(selectedEntry)}
         onDelete={() => handleDeleteEntry(selectedEntry.id)}
       />
-    )
+    );
   }
 
   return (
@@ -145,10 +148,12 @@ export function SectionContent({
         onCreateNew={handleCreateNew}
         onImportFile={handleImportFileClick}
         onImportFromRoster={
-          section.id === 'pcs' ? () => setShowImportCharacterModal(true) : undefined
+          section.id === "pcs"
+            ? () => setShowImportCharacterModal(true)
+            : undefined
         }
         uploading={uploading}
-        showPCsImport={section.id === 'pcs'}
+        showPCsImport={section.id === "pcs"}
         fileInputRef={fileInputRef}
         acceptedFileTypes={getAcceptedFileTypes(section.id)}
       />
@@ -181,13 +186,15 @@ export function SectionContent({
           entries={entries}
           searchQuery={searchQuery}
           onSelectEntry={onSelectEntry}
-          onClearSearch={() => setSearchQuery('')}
+          onClearSearch={() => setSearchQuery("")}
         />
       ) : (
         <EmptyState
           sectionId={section.id}
           onImportFromRoster={
-            section.id === 'pcs' ? () => setShowImportCharacterModal(true) : undefined
+            section.id === "pcs"
+              ? () => setShowImportCharacterModal(true)
+              : undefined
           }
         />
       )}
@@ -205,7 +212,7 @@ export function SectionContent({
         />
       )} */}
     </div>
-  )
+  );
 }
 
-export default SectionContent
+export default SectionContent;

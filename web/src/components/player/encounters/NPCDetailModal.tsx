@@ -1,28 +1,43 @@
-import Icon from '../../common/Icon'
-import { NPCEncounter, RelationshipType } from '../../../store/playerEncountersStore'
+import Icon from "../../common/Icon";
+import {
+  NPCEncounter,
+  RelationshipType,
+} from "../../../store/playerEncountersStore";
 
 interface NPCDetailModalProps {
-  npc: NPCEncounter
-  onClose: () => void
-  onEdit: () => void
-  onDelete: () => void
+  npc: NPCEncounter;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
-const relationshipColors: Record<RelationshipType, { bg: string; text: string; icon: string }> = {
-  friendly: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', icon: 'Heart' },
-  neutral: { bg: 'bg-blue-500/10', text: 'text-blue-300', icon: 'Minus' },
-  hostile: { bg: 'bg-red-500/10', text: 'text-red-300', icon: 'Sword' },
-  unknown: { bg: 'bg-gray-500/10', text: 'text-gray-300', icon: 'HelpCircle' },
-}
+const relationshipColors: Record<
+  RelationshipType,
+  { bg: string; text: string; icon: string }
+> = {
+  friendly: {
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-300",
+    icon: "Heart",
+  },
+  neutral: { bg: "bg-blue-500/10", text: "text-blue-300", icon: "Minus" },
+  hostile: { bg: "bg-red-500/10", text: "text-red-300", icon: "Sword" },
+  unknown: { bg: "bg-gray-500/10", text: "text-gray-300", icon: "HelpCircle" },
+};
 
-export default function NPCDetailModal({ npc, onClose, onEdit, onDelete }: NPCDetailModalProps) {
-  const colors = relationshipColors[npc.relationship]
+export default function NPCDetailModal({
+  npc,
+  onClose,
+  onEdit,
+  onDelete,
+}: NPCDetailModalProps) {
+  const colors = relationshipColors[npc.relationship];
 
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 p-4 overflow-y-auto"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="bg-background-panel border border-border rounded-xl w-full max-w-2xl my-8">
@@ -75,21 +90,29 @@ export default function NPCDetailModal({ npc, onClose, onEdit, onDelete }: NPCDe
           {npc.is_gm_revealed && (
             <div className="flex items-center gap-2 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
               <Icon name="Eye" className="w-5 h-5 text-purple-400" />
-              <p className="text-purple-300 text-sm font-medium">Revealed by GM</p>
+              <p className="text-purple-300 text-sm font-medium">
+                Revealed by GM
+              </p>
             </div>
           )}
 
           {npc.description && (
             <div>
-              <h3 className="text-sm font-medium text-text-muted uppercase mb-2">Description</h3>
-              <p className="text-text leading-relaxed whitespace-pre-wrap">{npc.description}</p>
+              <h3 className="text-sm font-medium text-text-muted uppercase mb-2">
+                Description
+              </h3>
+              <p className="text-text leading-relaxed whitespace-pre-wrap">
+                {npc.description}
+              </p>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             {npc.first_met_session && (
               <div>
-                <h4 className="text-xs font-medium text-text-muted uppercase mb-1">First Met</h4>
+                <h4 className="text-xs font-medium text-text-muted uppercase mb-1">
+                  First Met
+                </h4>
                 <p className="text-text flex items-center gap-1.5">
                   <Icon name="Calendar" className="w-4 h-4 text-blue-400" />
                   Session {npc.first_met_session}
@@ -98,7 +121,9 @@ export default function NPCDetailModal({ npc, onClose, onEdit, onDelete }: NPCDe
             )}
             {npc.first_met_location && (
               <div>
-                <h4 className="text-xs font-medium text-text-muted uppercase mb-1">Location</h4>
+                <h4 className="text-xs font-medium text-text-muted uppercase mb-1">
+                  Location
+                </h4>
                 <p className="text-text flex items-center gap-1.5">
                   <Icon name="MapPin" className="w-4 h-4 text-emerald-400" />
                   {npc.first_met_location}
@@ -109,7 +134,9 @@ export default function NPCDetailModal({ npc, onClose, onEdit, onDelete }: NPCDe
 
           {npc.notes && (
             <div>
-              <h3 className="text-sm font-medium text-text-muted uppercase mb-2">Notes</h3>
+              <h3 className="text-sm font-medium text-text-muted uppercase mb-2">
+                Notes
+              </h3>
               <p className="text-text-muted text-sm leading-relaxed whitespace-pre-wrap">
                 {npc.notes}
               </p>
@@ -118,5 +145,5 @@ export default function NPCDetailModal({ npc, onClose, onEdit, onDelete }: NPCDe
         </div>
       </div>
     </div>
-  )
+  );
 }

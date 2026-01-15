@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../common/Icon'
-import { useSessionChat, type ChatMessage } from '../../hooks/useSessionChat'
-import ConversationList from './ConversationList'
-import ChatSourceModal from './ChatSourceModal'
+import { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../common/Icon";
+import { useSessionChat, type ChatMessage } from "../../hooks/useSessionChat";
+import ConversationList from "./ConversationList";
+import ChatSourceModal from "./ChatSourceModal";
 
-type SidebarTab = 'history' | 'options'
+type SidebarTab = "history" | "options";
 
 export default function SessionChat() {
   const {
@@ -29,71 +29,78 @@ export default function SessionChat() {
     renameConversation,
     savePreferences,
     selectConversation,
-  } = useSessionChat()
+  } = useSessionChat();
 
   // Mobile drawer state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Sidebar tab state
-  const [activeTab, setActiveTab] = useState<SidebarTab>('history')
+  const [activeTab, setActiveTab] = useState<SidebarTab>("history");
 
   // Source preferences modal state
-  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false)
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
 
   // Detect mobile viewport
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
-    }
+      setIsMobile(window.innerWidth < 1024);
+    };
 
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Close drawer when switching to desktop
   useEffect(() => {
     if (!isMobile) {
-      setIsDrawerOpen(false)
+      setIsDrawerOpen(false);
     }
-  }, [isMobile])
+  }, [isMobile]);
 
   // Prevent body scroll when drawer open on mobile
   useEffect(() => {
     if (isMobile && isDrawerOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isMobile, isDrawerOpen])
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobile, isDrawerOpen]);
 
   // Handle Escape key to close drawer
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isDrawerOpen) {
-        setIsDrawerOpen(false)
+      if (e.key === "Escape" && isDrawerOpen) {
+        setIsDrawerOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [isDrawerOpen])
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isDrawerOpen]);
 
   if (!activeCampaign) {
     return (
       <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center p-8">
-          <Icon name="MessageSquare" className="w-16 h-16 text-text-muted mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-text mb-2">No Campaign Selected</h2>
-          <p className="text-text-muted">Select or create a campaign to start chatting.</p>
+          <Icon
+            name="MessageSquare"
+            className="w-16 h-16 text-text-muted mx-auto mb-4"
+          />
+          <h2 className="text-xl font-bold text-text mb-2">
+            No Campaign Selected
+          </h2>
+          <p className="text-text-muted">
+            Select or create a campaign to start chatting.
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -130,7 +137,9 @@ export default function SessionChat() {
                 <Icon name="MessageSquare" className="w-8 h-8 text-primary" />
                 Session Chat
               </h1>
-              <p className="text-sm text-text-muted mt-1">{activeCampaign.name}</p>
+              <p className="text-sm text-text-muted mt-1">
+                {activeCampaign.name}
+              </p>
             </div>
           </div>
           <button
@@ -157,8 +166,8 @@ export default function SessionChat() {
         {/* Sidebar */}
         <aside
           className={`
-            ${isMobile ? 'fixed top-0 left-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out' : 'w-64 flex-shrink-0'}
-            ${isMobile && !isDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
+            ${isMobile ? "fixed top-0 left-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out" : "w-64 flex-shrink-0"}
+            ${isMobile && !isDrawerOpen ? "-translate-x-full" : "translate-x-0"}
             border-r border-border bg-background-panel overflow-hidden flex flex-col
           `}
           role="navigation"
@@ -167,22 +176,22 @@ export default function SessionChat() {
           {/* Tab bar */}
           <div className="flex border-b border-border">
             <button
-              onClick={() => setActiveTab('history')}
+              onClick={() => setActiveTab("history")}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'history'
-                  ? 'text-primary border-b-2 border-primary bg-primary/5'
-                  : 'text-text-muted hover:text-text hover:bg-tavern-dark'
+                activeTab === "history"
+                  ? "text-primary border-b-2 border-primary bg-primary/5"
+                  : "text-text-muted hover:text-text hover:bg-tavern-dark"
               }`}
             >
               <Icon name="History" className="w-4 h-4 inline mr-1.5" />
               History
             </button>
             <button
-              onClick={() => setActiveTab('options')}
+              onClick={() => setActiveTab("options")}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'options'
-                  ? 'text-primary border-b-2 border-primary bg-primary/5'
-                  : 'text-text-muted hover:text-text hover:bg-tavern-dark'
+                activeTab === "options"
+                  ? "text-primary border-b-2 border-primary bg-primary/5"
+                  : "text-text-muted hover:text-text hover:bg-tavern-dark"
               }`}
             >
               <Icon name="Info" className="w-4 h-4 inline mr-1.5" />
@@ -192,7 +201,7 @@ export default function SessionChat() {
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto p-4">
-            {activeTab === 'history' ? (
+            {activeTab === "history" ? (
               <ConversationList
                 conversations={conversations}
                 activeConversationId={activeConversationId}
@@ -211,19 +220,24 @@ export default function SessionChat() {
                     About Session Chat
                   </h3>
                   <p className="text-xs text-text-muted">
-                    Ask questions about your campaign setting, get suggestions for encounters, or
-                    brainstorm plot ideas. The AI uses knowledge from your campaign context.
+                    Ask questions about your campaign setting, get suggestions
+                    for encounters, or brainstorm plot ideas. The AI uses
+                    knowledge from your campaign context.
                   </p>
                 </div>
 
                 {/* Message count */}
                 <div className="bg-background rounded-lg p-4 border border-border">
                   <h3 className="text-sm font-semibold text-text mb-2 flex items-center gap-2">
-                    <Icon name="MessageCircle" className="w-4 h-4 text-primary" />
+                    <Icon
+                      name="MessageCircle"
+                      className="w-4 h-4 text-primary"
+                    />
                     Conversation
                   </h3>
                   <p className="text-xs text-text-muted">
-                    {messages.length} message{messages.length !== 1 ? 's' : ''} in this session
+                    {messages.length} message{messages.length !== 1 ? "s" : ""}{" "}
+                    in this session
                   </p>
                 </div>
 
@@ -259,16 +273,25 @@ export default function SessionChat() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {isLoadingHistory ? (
               <div className="flex items-center justify-center h-full">
-                <Icon name="Loader2" className="w-8 h-8 text-primary animate-spin" />
+                <Icon
+                  name="Loader2"
+                  className="w-8 h-8 text-primary animate-spin"
+                />
               </div>
             ) : messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
-                  <Icon name="Sparkles" className="w-12 h-12 text-primary mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-text mb-2">Start a Conversation</h3>
+                  <Icon
+                    name="Sparkles"
+                    className="w-12 h-12 text-primary mx-auto mb-4"
+                  />
+                  <h3 className="text-lg font-semibold text-text mb-2">
+                    Start a Conversation
+                  </h3>
                   <p className="text-text-muted text-sm">
-                    Ask questions about your campaign setting, get suggestions for encounters, or
-                    brainstorm plot ideas. The AI will use knowledge from your campaign context.
+                    Ask questions about your campaign setting, get suggestions
+                    for encounters, or brainstorm plot ideas. The AI will use
+                    knowledge from your campaign context.
                   </p>
                 </div>
               </div>
@@ -314,14 +337,15 @@ export default function SessionChat() {
                 rows={1}
                 disabled={isLoading}
                 style={{
-                  minHeight: '48px',
-                  maxHeight: '200px',
-                  height: 'auto',
+                  minHeight: "48px",
+                  maxHeight: "200px",
+                  height: "auto",
                 }}
                 onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement
-                  target.style.height = 'auto'
-                  target.style.height = Math.min(target.scrollHeight, 200) + 'px'
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = "auto";
+                  target.style.height =
+                    Math.min(target.scrollHeight, 200) + "px";
                 }}
               />
               <button
@@ -348,23 +372,23 @@ export default function SessionChat() {
         onSave={savePreferences}
       />
     </div>
-  )
+  );
 }
 
 interface MessageBubbleProps {
-  message: ChatMessage
+  message: ChatMessage;
 }
 
 function MessageBubble({ message }: MessageBubbleProps) {
-  const isUser = message.role === 'user'
+  const isUser = message.role === "user";
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[80%] ${
           isUser
-            ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
-            : 'bg-background-panel border border-border rounded-2xl rounded-bl-md'
+            ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md"
+            : "bg-background-panel border border-border rounded-2xl rounded-bl-md"
         } p-4`}
       >
         {isUser ? (
@@ -399,5 +423,5 @@ function MessageBubble({ message }: MessageBubbleProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

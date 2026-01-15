@@ -1,44 +1,47 @@
-import ContentListLayout from '../../../../common/ContentListLayout'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
-import ContentCard from '../../../../common/ContentCard'
-import ContentDetailModal from '../../../../common/ContentDetailModal'
-import AssignCampaignModal from '../../../../common/AssignCampaignModal'
-import { useLibraryContent } from '../../../../../hooks/useLibraryContent'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useState } from 'react'
-import { logger } from '@/utils/logger'
+import ContentListLayout from "../../../../common/ContentListLayout";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import ContentCard from "../../../../common/ContentCard";
+import ContentDetailModal from "../../../../common/ContentDetailModal";
+import AssignCampaignModal from "../../../../common/AssignCampaignModal";
+import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface Tavern {
-  id: string
-  name: string
-  campaign_id?: string | null
-  type: string
-  quality?: string
-  size?: string
-  atmosphere?: string
-  menu?: any
-  rooms?: any
-  services?: any
-  staff?: any
-  patrons?: any
-  special_notes?: string
-  ai_generated?: boolean
-  created_at: string
+  id: string;
+  name: string;
+  campaign_id?: string | null;
+  type: string;
+  quality?: string;
+  size?: string;
+  atmosphere?: string;
+  menu?: any;
+  rooms?: any;
+  services?: any;
+  staff?: any;
+  patrons?: any;
+  special_notes?: string;
+  ai_generated?: boolean;
+  created_at: string;
 }
 
 interface TavernsContentProps {
-  campaignId?: string
-  showCampaignFilter?: boolean
+  campaignId?: string;
+  showCampaignFilter?: boolean;
 }
 
-export default function TavernsContent({ campaignId, showCampaignFilter }: TavernsContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const { campaigns } = useCampaignStore()
+export default function TavernsContent({
+  campaignId,
+  showCampaignFilter,
+}: TavernsContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const { campaigns } = useCampaignStore();
   const [assignModalItem, setAssignModalItem] = useState<{
-    id: string
-    name: string
-    currentCampaignId?: string | null
-  } | null>(null)
+    id: string;
+    name: string;
+    currentCampaignId?: string | null;
+  } | null>(null);
 
   const {
     filteredItems,
@@ -53,21 +56,21 @@ export default function TavernsContent({ campaignId, showCampaignFilter }: Taver
     deleteItem,
     refresh,
   } = useLibraryContent<Tavern>({
-    contentType: 'taverns',
+    contentType: "taverns",
     campaignId,
     showCampaignFilter,
-    searchFields: ['name', 'type', 'atmosphere'],
-  })
+    searchFields: ["name", "type", "atmosphere"],
+  });
 
   const handleDelete = async (tavern: Tavern) => {
     if (window.confirm(`Delete "${tavern.name}"? This cannot be undone.`)) {
       try {
-        await deleteItem(tavern.id)
+        await deleteItem(tavern.id);
       } catch (err) {
-        logger.error('Failed to delete tavern:', err)
+        logger.error("Failed to delete tavern:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -94,7 +97,7 @@ export default function TavernsContent({ campaignId, showCampaignFilter }: Taver
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search taverns..."
         addButtonLabel="Add Tavern"
-        onAddClick={() => openGenerator('tavern')}
+        onAddClick={() => openGenerator("tavern")}
         addButtonColor="yellow"
         loading={loading}
         error={error}
@@ -102,7 +105,7 @@ export default function TavernsContent({ campaignId, showCampaignFilter }: Taver
         emptyTitle="No taverns yet"
         emptyDescription="Create inns, pubs, and gathering places."
         emptyCTALabel="Create Your First Tavern"
-        onEmptyCTAClick={() => openGenerator('tavern')}
+        onEmptyCTAClick={() => openGenerator("tavern")}
         hasItems={filteredItems.length > 0}
       >
         <div className="space-y-3">
@@ -153,26 +156,42 @@ export default function TavernsContent({ campaignId, showCampaignFilter }: Taver
         />
       )}
     </div>
-  )
+  );
 }
 
 interface TavernDetailModalProps {
-  tavern: Tavern
-  onClose: () => void
-  onDelete: () => void
+  tavern: Tavern;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function TavernDetailModal({ tavern, onClose, onDelete }: TavernDetailModalProps) {
-  let menu: any[] = []
-  let staff: any[] = []
-  let services: any[] = []
+function TavernDetailModal({
+  tavern,
+  onClose,
+  onDelete,
+}: TavernDetailModalProps) {
+  let menu: any[] = [];
+  let staff: any[] = [];
+  let services: any[] = [];
 
   try {
-    menu = tavern.menu ? (typeof tavern.menu === 'string' ? JSON.parse(tavern.menu) : tavern.menu) : []
-    staff = tavern.staff ? (typeof tavern.staff === 'string' ? JSON.parse(tavern.staff) : tavern.staff) : []
-    services = tavern.services ? (typeof tavern.services === 'string' ? JSON.parse(tavern.services) : tavern.services) : []
+    menu = tavern.menu
+      ? typeof tavern.menu === "string"
+        ? JSON.parse(tavern.menu)
+        : tavern.menu
+      : [];
+    staff = tavern.staff
+      ? typeof tavern.staff === "string"
+        ? JSON.parse(tavern.staff)
+        : tavern.staff
+      : [];
+    services = tavern.services
+      ? typeof tavern.services === "string"
+        ? JSON.parse(tavern.services)
+        : tavern.services
+      : [];
   } catch (err) {
-    logger.error('Failed to parse tavern data:', err)
+    logger.error("Failed to parse tavern data:", err);
   }
 
   return (
@@ -182,7 +201,9 @@ function TavernDetailModal({ tavern, onClose, onDelete }: TavernDetailModalProps
       icon="Beer"
       iconColor="yellow"
       title={tavern.name}
-      subtitle={[tavern.type, tavern.quality, tavern.size].filter(Boolean).join(' • ')}
+      subtitle={[tavern.type, tavern.quality, tavern.size]
+        .filter(Boolean)
+        .join(" • ")}
       onDelete={onDelete}
     >
       <div className="space-y-6">
@@ -202,9 +223,16 @@ function TavernDetailModal({ tavern, onClose, onDelete }: TavernDetailModalProps
             </h4>
             <div className="space-y-2">
               {staff.map((person: any, i: number) => (
-                <div key={i} className="bg-background p-3 rounded-lg border border-border">
-                  <p className="text-text font-medium">{person.name || person}</p>
-                  {person.role && <p className="text-text-muted text-sm">{person.role}</p>}
+                <div
+                  key={i}
+                  className="bg-background p-3 rounded-lg border border-border"
+                >
+                  <p className="text-text font-medium">
+                    {person.name || person}
+                  </p>
+                  {person.role && (
+                    <p className="text-text-muted text-sm">{person.role}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -221,7 +249,9 @@ function TavernDetailModal({ tavern, onClose, onDelete }: TavernDetailModalProps
                 {menu.map((item: any, i: number) => (
                   <li key={i} className="flex justify-between">
                     <span className="text-text">{item.name || item}</span>
-                    {item.price && <span className="text-amber-400">{item.price}</span>}
+                    {item.price && (
+                      <span className="text-amber-400">{item.price}</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -236,7 +266,9 @@ function TavernDetailModal({ tavern, onClose, onDelete }: TavernDetailModalProps
             </h4>
             <ul className="list-disc list-inside text-text space-y-1">
               {services.map((service: any, i: number) => (
-                <li key={i}>{typeof service === 'string' ? service : service.name}</li>
+                <li key={i}>
+                  {typeof service === "string" ? service : service.name}
+                </li>
               ))}
             </ul>
           </div>
@@ -247,10 +279,12 @@ function TavernDetailModal({ tavern, onClose, onDelete }: TavernDetailModalProps
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Special Notes
             </h4>
-            <p className="text-text leading-relaxed whitespace-pre-wrap">{tavern.special_notes}</p>
+            <p className="text-text leading-relaxed whitespace-pre-wrap">
+              {tavern.special_notes}
+            </p>
           </div>
         )}
       </div>
     </ContentDetailModal>
-  )
+  );
 }

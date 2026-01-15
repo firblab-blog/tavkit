@@ -1,17 +1,17 @@
 interface StatPillProps {
-  count: number
-  label: string
-  onClick?: () => void
+  count: number;
+  label: string;
+  onClick?: () => void;
 }
 
 export default function StatPill({ count, label, onClick }: StatPillProps) {
-  const Component = onClick ? 'button' : 'div'
+  const Component = onClick ? "button" : "div";
 
   return (
     <Component
       onClick={onClick}
       className={`flex items-center justify-between px-2 py-1.5 transition-all group ${
-        onClick ? 'hover:text-primary cursor-pointer' : ''
+        onClick ? "hover:text-primary cursor-pointer" : ""
       }`}
     >
       <span className="text-sm text-text-muted group-hover:text-text transition-colors">
@@ -21,5 +21,5 @@ export default function StatPill({ count, label, onClick }: StatPillProps) {
         {count}
       </span>
     </Component>
-  )
+  );
 }

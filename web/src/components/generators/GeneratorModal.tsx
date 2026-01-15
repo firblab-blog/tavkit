@@ -4,76 +4,119 @@
  * This component allows generators to be opened as modals from anywhere in the app
  * (Library tab, CategoryModal, etc.) without requiring navigation.
  */
-import { useEffect } from 'react'
-import { useGeneratorModalStore, GeneratorType } from '../../store/generatorModalStore'
-import Icon, { IconName } from '../common/Icon'
+import { useEffect } from "react";
+import {
+  useGeneratorModalStore,
+  GeneratorType,
+} from "../../store/generatorModalStore";
+import Icon, { IconName } from "../common/Icon";
 
 // Lazy import generators to avoid circular dependencies
-import NPCGenerator from './NPCGenerator'
-import MonsterGenerator from './MonsterGenerator'
-import EncounterBuilder from './EncounterBuilder'
-import DialogueBuilder from './DialogueBuilder'
-import LocationGenerator from './LocationGenerator'
-import QuestGenerator from './QuestGenerator'
-import ItemGenerator from './ItemGenerator'
-import RumorGenerator from './RumorGenerator'
-import TavernGenerator from './TavernGenerator'
-import MerchantGenerator from './MerchantGenerator'
-import TrapGenerator from './TrapGenerator'
-import CritterGenerator from './CritterGenerator'
-import ChaseGenerator from './ChaseGenerator'
+import NPCGenerator from "./NPCGenerator";
+import MonsterGenerator from "./MonsterGenerator";
+import EncounterBuilder from "./EncounterBuilder";
+import DialogueBuilder from "./DialogueBuilder";
+import LocationGenerator from "./LocationGenerator";
+import QuestGenerator from "./QuestGenerator";
+import ItemGenerator from "./ItemGenerator";
+import RumorGenerator from "./RumorGenerator";
+import TavernGenerator from "./TavernGenerator";
+import MerchantGenerator from "./MerchantGenerator";
+import TrapGenerator from "./TrapGenerator";
+import CritterGenerator from "./CritterGenerator";
+import ChaseGenerator from "./ChaseGenerator";
 
 interface GeneratorConfig {
-  component: React.ComponentType
-  title: string
-  icon: IconName
+  component: React.ComponentType;
+  title: string;
+  icon: IconName;
 }
 
 const GENERATOR_CONFIGS: Record<GeneratorType, GeneratorConfig> = {
-  npc: { component: NPCGenerator, title: 'NPC Generator', icon: 'Users' },
-  monster: { component: MonsterGenerator, title: 'Monster Generator', icon: 'Skull' },
-  encounter: { component: EncounterBuilder, title: 'Encounter Builder', icon: 'Swords' },
-  dialogue: { component: DialogueBuilder, title: 'Dialogue Builder', icon: 'MessageSquare' },
-  location: { component: LocationGenerator, title: 'Location Generator', icon: 'MapPin' },
-  quest: { component: QuestGenerator, title: 'Quest Generator', icon: 'Scroll' },
-  item: { component: ItemGenerator, title: 'Item Generator', icon: 'Package' },
-  rumor: { component: RumorGenerator, title: 'Rumor Generator', icon: 'MessageCircle' },
-  tavern: { component: TavernGenerator, title: 'Tavern Generator', icon: 'Beer' },
-  merchant: { component: MerchantGenerator, title: 'Merchant Generator', icon: 'Store' },
-  trap: { component: TrapGenerator, title: 'Trap Generator', icon: 'AlertTriangle' },
-  critter: { component: CritterGenerator, title: 'Critter Generator', icon: 'PawPrint' },
-  chase: { component: ChaseGenerator, title: 'Chase Generator', icon: 'Route' },
-}
+  npc: { component: NPCGenerator, title: "NPC Generator", icon: "Users" },
+  monster: {
+    component: MonsterGenerator,
+    title: "Monster Generator",
+    icon: "Skull",
+  },
+  encounter: {
+    component: EncounterBuilder,
+    title: "Encounter Builder",
+    icon: "Swords",
+  },
+  dialogue: {
+    component: DialogueBuilder,
+    title: "Dialogue Builder",
+    icon: "MessageSquare",
+  },
+  location: {
+    component: LocationGenerator,
+    title: "Location Generator",
+    icon: "MapPin",
+  },
+  quest: {
+    component: QuestGenerator,
+    title: "Quest Generator",
+    icon: "Scroll",
+  },
+  item: { component: ItemGenerator, title: "Item Generator", icon: "Package" },
+  rumor: {
+    component: RumorGenerator,
+    title: "Rumor Generator",
+    icon: "MessageCircle",
+  },
+  tavern: {
+    component: TavernGenerator,
+    title: "Tavern Generator",
+    icon: "Beer",
+  },
+  merchant: {
+    component: MerchantGenerator,
+    title: "Merchant Generator",
+    icon: "Store",
+  },
+  trap: {
+    component: TrapGenerator,
+    title: "Trap Generator",
+    icon: "AlertTriangle",
+  },
+  critter: {
+    component: CritterGenerator,
+    title: "Critter Generator",
+    icon: "PawPrint",
+  },
+  chase: { component: ChaseGenerator, title: "Chase Generator", icon: "Route" },
+};
 
 export default function GeneratorModal() {
-  const { isOpen, generatorType, closeGenerator } = useGeneratorModalStore()
+  const { isOpen, generatorType, closeGenerator } = useGeneratorModalStore();
 
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        closeGenerator()
+      if (e.key === "Escape" && isOpen) {
+        closeGenerator();
       }
-    }
+    };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape)
+      document.addEventListener("keydown", handleEscape);
       // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden";
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = ''
-    }
-  }, [isOpen, closeGenerator])
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, closeGenerator]);
 
   if (!isOpen || !generatorType) {
-    return null
+    return null;
   }
 
-  const config = GENERATOR_CONFIGS[generatorType]
-  const GeneratorComponent = config.component
+  const config = GENERATOR_CONFIGS[generatorType];
+  const GeneratorComponent = config.component;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -106,5 +149,5 @@ export default function GeneratorModal() {
         </div>
       </div>
     </div>
-  )
+  );
 }

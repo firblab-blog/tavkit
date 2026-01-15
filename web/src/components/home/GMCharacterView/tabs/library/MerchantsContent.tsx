@@ -1,46 +1,49 @@
-import ContentListLayout from '../../../../common/ContentListLayout'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
-import ContentCard from '../../../../common/ContentCard'
-import ContentDetailModal from '../../../../common/ContentDetailModal'
-import AssignCampaignModal from '../../../../common/AssignCampaignModal'
-import { useLibraryContent } from '../../../../../hooks/useLibraryContent'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useState } from 'react'
-import { logger } from '@/utils/logger'
+import ContentListLayout from "../../../../common/ContentListLayout";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import ContentCard from "../../../../common/ContentCard";
+import ContentDetailModal from "../../../../common/ContentDetailModal";
+import AssignCampaignModal from "../../../../common/AssignCampaignModal";
+import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface Merchant {
-  id: string
-  name: string
-  campaign_id?: string | null
-  shop_type: string
-  quality?: string
-  size?: string
-  atmosphere?: string
-  description?: string
-  location?: string
-  owner_name?: string
-  owner_personality?: string
-  inventory?: any
-  services?: any
-  special_items?: any
-  special_notes?: string
-  ai_generated?: boolean
-  created_at: string
+  id: string;
+  name: string;
+  campaign_id?: string | null;
+  shop_type: string;
+  quality?: string;
+  size?: string;
+  atmosphere?: string;
+  description?: string;
+  location?: string;
+  owner_name?: string;
+  owner_personality?: string;
+  inventory?: any;
+  services?: any;
+  special_items?: any;
+  special_notes?: string;
+  ai_generated?: boolean;
+  created_at: string;
 }
 
 interface MerchantsContentProps {
-  campaignId?: string
-  showCampaignFilter?: boolean
+  campaignId?: string;
+  showCampaignFilter?: boolean;
 }
 
-export default function MerchantsContent({ campaignId, showCampaignFilter }: MerchantsContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const { campaigns } = useCampaignStore()
+export default function MerchantsContent({
+  campaignId,
+  showCampaignFilter,
+}: MerchantsContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const { campaigns } = useCampaignStore();
   const [assignModalItem, setAssignModalItem] = useState<{
-    id: string
-    name: string
-    currentCampaignId?: string | null
-  } | null>(null)
+    id: string;
+    name: string;
+    currentCampaignId?: string | null;
+  } | null>(null);
 
   const {
     filteredItems,
@@ -55,21 +58,21 @@ export default function MerchantsContent({ campaignId, showCampaignFilter }: Mer
     deleteItem,
     refresh,
   } = useLibraryContent<Merchant>({
-    contentType: 'merchants',
+    contentType: "merchants",
     campaignId,
     showCampaignFilter,
-    searchFields: ['name', 'shop_type', 'location', 'atmosphere'],
-  })
+    searchFields: ["name", "shop_type", "location", "atmosphere"],
+  });
 
   const handleDelete = async (merchant: Merchant) => {
     if (window.confirm(`Delete "${merchant.name}"? This cannot be undone.`)) {
       try {
-        await deleteItem(merchant.id)
+        await deleteItem(merchant.id);
       } catch (err) {
-        logger.error('Failed to delete merchant:', err)
+        logger.error("Failed to delete merchant:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -96,7 +99,7 @@ export default function MerchantsContent({ campaignId, showCampaignFilter }: Mer
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search merchants..."
         addButtonLabel="Add Merchant"
-        onAddClick={() => openGenerator('merchant')}
+        onAddClick={() => openGenerator("merchant")}
         addButtonColor="teal"
         loading={loading}
         error={error}
@@ -104,7 +107,7 @@ export default function MerchantsContent({ campaignId, showCampaignFilter }: Mer
         emptyTitle="No merchants yet"
         emptyDescription="Create shops, vendors, and traders."
         emptyCTALabel="Create Your First Merchant"
-        onEmptyCTAClick={() => openGenerator('merchant')}
+        onEmptyCTAClick={() => openGenerator("merchant")}
         hasItems={filteredItems.length > 0}
       >
         <div className="space-y-3">
@@ -117,7 +120,7 @@ export default function MerchantsContent({ campaignId, showCampaignFilter }: Mer
               iconColor="teal"
               date={merchant.created_at}
               badges={[
-                { label: merchant.shop_type.replace(/_/g, ' ') },
+                { label: merchant.shop_type.replace(/_/g, " ") },
                 ...(merchant.quality ? [{ label: merchant.quality }] : []),
                 ...(merchant.size ? [{ label: merchant.size }] : []),
               ]}
@@ -155,24 +158,36 @@ export default function MerchantsContent({ campaignId, showCampaignFilter }: Mer
         />
       )}
     </div>
-  )
+  );
 }
 
 interface MerchantDetailModalProps {
-  merchant: Merchant
-  onClose: () => void
-  onDelete: () => void
+  merchant: Merchant;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function MerchantDetailModal({ merchant, onClose, onDelete }: MerchantDetailModalProps) {
-  let inventory: any[] = []
-  let specialItems: any[] = []
+function MerchantDetailModal({
+  merchant,
+  onClose,
+  onDelete,
+}: MerchantDetailModalProps) {
+  let inventory: any[] = [];
+  let specialItems: any[] = [];
 
   try {
-    inventory = merchant.inventory ? (typeof merchant.inventory === 'string' ? JSON.parse(merchant.inventory) : merchant.inventory) : []
-    specialItems = merchant.special_items ? (typeof merchant.special_items === 'string' ? JSON.parse(merchant.special_items) : merchant.special_items) : []
+    inventory = merchant.inventory
+      ? typeof merchant.inventory === "string"
+        ? JSON.parse(merchant.inventory)
+        : merchant.inventory
+      : [];
+    specialItems = merchant.special_items
+      ? typeof merchant.special_items === "string"
+        ? JSON.parse(merchant.special_items)
+        : merchant.special_items
+      : [];
   } catch (err) {
-    logger.error('Failed to parse merchant data:', err)
+    logger.error("Failed to parse merchant data:", err);
   }
 
   return (
@@ -182,7 +197,7 @@ function MerchantDetailModal({ merchant, onClose, onDelete }: MerchantDetailModa
       icon="Store"
       iconColor="teal"
       title={merchant.name}
-      subtitle={merchant.shop_type.replace(/_/g, ' ')}
+      subtitle={merchant.shop_type.replace(/_/g, " ")}
       onDelete={onDelete}
     >
       <div className="space-y-6">
@@ -205,8 +220,14 @@ function MerchantDetailModal({ merchant, onClose, onDelete }: MerchantDetailModa
               Owner
             </h4>
             <div className="bg-background p-4 rounded-lg border border-border">
-              {merchant.owner_name && <p className="text-text font-medium">{merchant.owner_name}</p>}
-              {merchant.owner_personality && <p className="text-text-muted mt-1">{merchant.owner_personality}</p>}
+              {merchant.owner_name && (
+                <p className="text-text font-medium">{merchant.owner_name}</p>
+              )}
+              {merchant.owner_personality && (
+                <p className="text-text-muted mt-1">
+                  {merchant.owner_personality}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -221,7 +242,9 @@ function MerchantDetailModal({ merchant, onClose, onDelete }: MerchantDetailModa
                 {inventory.map((item: any, i: number) => (
                   <li key={i} className="flex justify-between">
                     <span className="text-text">{item.name || item}</span>
-                    {item.price && <span className="text-amber-400">{item.price}</span>}
+                    {item.price && (
+                      <span className="text-amber-400">{item.price}</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -236,9 +259,18 @@ function MerchantDetailModal({ merchant, onClose, onDelete }: MerchantDetailModa
             </h4>
             <div className="space-y-2">
               {specialItems.map((item: any, i: number) => (
-                <div key={i} className="bg-purple-500/10 p-3 rounded-lg border border-purple-500/30">
-                  <p className="text-purple-400 font-medium">{item.name || item}</p>
-                  {item.description && <p className="text-text-muted text-sm mt-1">{item.description}</p>}
+                <div
+                  key={i}
+                  className="bg-purple-500/10 p-3 rounded-lg border border-purple-500/30"
+                >
+                  <p className="text-purple-400 font-medium">
+                    {item.name || item}
+                  </p>
+                  {item.description && (
+                    <p className="text-text-muted text-sm mt-1">
+                      {item.description}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -250,10 +282,12 @@ function MerchantDetailModal({ merchant, onClose, onDelete }: MerchantDetailModa
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Special Notes
             </h4>
-            <p className="text-text leading-relaxed whitespace-pre-wrap">{merchant.special_notes}</p>
+            <p className="text-text leading-relaxed whitespace-pre-wrap">
+              {merchant.special_notes}
+            </p>
           </div>
         )}
       </div>
     </ContentDetailModal>
-  )
+  );
 }

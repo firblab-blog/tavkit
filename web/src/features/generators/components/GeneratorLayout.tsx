@@ -1,84 +1,84 @@
-import { useState, useRef, useEffect } from 'react'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import { ResultsSkeleton } from '@/components/ui/SkeletonLoader'
-import Icon, { type IconName } from '@/components/common/Icon'
+import { useState, useRef, useEffect } from "react";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { ResultsSkeleton } from "@/components/ui/SkeletonLoader";
+import Icon, { type IconName } from "@/components/common/Icon";
 
 interface GeneratorLayoutProps {
-  title: string
-  description: string
-  icon: IconName
-  formTitle?: string
-  formIcon?: IconName
-  resultsTitle?: string
-  formContent: React.ReactNode
-  generatedContent: React.ReactNode | null
-  isGenerating: boolean
-  onGenerate: () => void
-  generateButtonText?: string
-  generateButtonIcon?: IconName
-  error?: string
-  className?: string
-  showActionsInResults?: boolean
-  hideGenerateButton?: boolean
+  title: string;
+  description: string;
+  icon: IconName;
+  formTitle?: string;
+  formIcon?: IconName;
+  resultsTitle?: string;
+  formContent: React.ReactNode;
+  generatedContent: React.ReactNode | null;
+  isGenerating: boolean;
+  onGenerate: () => void;
+  generateButtonText?: string;
+  generateButtonIcon?: IconName;
+  error?: string;
+  className?: string;
+  showActionsInResults?: boolean;
+  hideGenerateButton?: boolean;
 }
 
 export const GeneratorLayout = ({
   title,
   description,
   icon,
-  formTitle = 'Input Parameters',
-  formIcon = 'Settings',
-  resultsTitle = 'Generated Results',
+  formTitle = "Input Parameters",
+  formIcon = "Settings",
+  resultsTitle = "Generated Results",
   formContent,
   generatedContent,
   isGenerating,
   onGenerate,
-  generateButtonText = 'Generate',
-  generateButtonIcon = 'Sparkles',
+  generateButtonText = "Generate",
+  generateButtonIcon = "Sparkles",
   error,
-  className = '',
+  className = "",
   hideGenerateButton = false,
 }: GeneratorLayoutProps) => {
-  const [isMobile, setIsMobile] = useState(false)
-  const [formExpanded, setFormExpanded] = useState(true)
-  const [resultsExpanded, setResultsExpanded] = useState(false)
-  const resultsRef = useRef<HTMLDivElement>(null)
+  const [isMobile, setIsMobile] = useState(false);
+  const [formExpanded, setFormExpanded] = useState(true);
+  const [resultsExpanded, setResultsExpanded] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Detect mobile viewport
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // When generation completes, collapse form and expand results on mobile
   useEffect(() => {
     if (generatedContent && !isGenerating && isMobile) {
       // Collapse form
-      setFormExpanded(false)
+      setFormExpanded(false);
 
       // Expand results
-      setResultsExpanded(true)
+      setResultsExpanded(true);
 
       // Scroll to results after a brief delay (for animation)
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        })
-      }, 350)
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 350);
     }
-  }, [generatedContent, isGenerating, isMobile])
+  }, [generatedContent, isGenerating, isMobile]);
 
   // Reset when starting new generation
   const handleGenerate = () => {
     if (isMobile) {
-      setFormExpanded(true)
-      setResultsExpanded(false)
+      setFormExpanded(true);
+      setResultsExpanded(false);
     }
-    onGenerate()
-  }
+    onGenerate();
+  };
 
   return (
     <div className={`h-full flex flex-col bg-background ${className}`}>
@@ -158,7 +158,10 @@ export const GeneratorLayout = ({
                 <div className="animate-fadeIn">{generatedContent}</div>
               ) : (
                 <div className="text-center py-12 text-text-muted">
-                  <Icon name="Sparkles" className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <Icon
+                    name="Sparkles"
+                    className="w-12 h-12 mx-auto mb-3 opacity-50"
+                  />
                   <p>No results yet. Fill out the form and click generate!</p>
                 </div>
               )}
@@ -167,5 +170,5 @@ export const GeneratorLayout = ({
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

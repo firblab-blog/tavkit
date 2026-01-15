@@ -1,10 +1,10 @@
-import Icon from '../common/Icon'
-import { ShoppingEncounter, RELATIONSHIP_LEVELS } from './ShoppingSession'
+import Icon from "../common/Icon";
+import { ShoppingEncounter, RELATIONSHIP_LEVELS } from "./ShoppingSession";
 
 interface MerchantPanelProps {
-  encounter: ShoppingEncounter
-  onUpdate: (updates: Partial<ShoppingEncounter>) => void
-  disabled?: boolean
+  encounter: ShoppingEncounter;
+  onUpdate: (updates: Partial<ShoppingEncounter>) => void;
+  disabled?: boolean;
 }
 
 export default function MerchantPanel({
@@ -13,41 +13,45 @@ export default function MerchantPanel({
   disabled = false,
 }: MerchantPanelProps) {
   const getMoodLabel = (mood: number) => {
-    if (mood <= -4) return 'Hostile'
-    if (mood <= -2) return 'Irritated'
-    if (mood <= 0) return 'Neutral'
-    if (mood <= 2) return 'Pleasant'
-    return 'Delighted'
-  }
+    if (mood <= -4) return "Hostile";
+    if (mood <= -2) return "Irritated";
+    if (mood <= 0) return "Neutral";
+    if (mood <= 2) return "Pleasant";
+    return "Delighted";
+  };
 
   const getMoodColor = (mood: number) => {
-    if (mood <= -4) return 'text-red-500'
-    if (mood <= -2) return 'text-orange-500'
-    if (mood <= 0) return 'text-gray-400'
-    if (mood <= 2) return 'text-emerald-500'
-    return 'text-blue-500'
-  }
+    if (mood <= -4) return "text-red-500";
+    if (mood <= -2) return "text-orange-500";
+    if (mood <= 0) return "text-gray-400";
+    if (mood <= 2) return "text-emerald-500";
+    return "text-blue-500";
+  };
 
   const getMoodEmoji = (mood: number) => {
-    if (mood <= -4) return '😠'
-    if (mood <= -2) return '😒'
-    if (mood <= 0) return '😐'
-    if (mood <= 2) return '🙂'
-    return '😊'
-  }
+    if (mood <= -4) return "😠";
+    if (mood <= -2) return "😒";
+    if (mood <= 0) return "😐";
+    if (mood <= 2) return "🙂";
+    return "😊";
+  };
 
-  const moodPosition = ((encounter.merchant_mood + 5) / 10) * 100
+  const moodPosition = ((encounter.merchant_mood + 5) / 10) * 100;
 
   return (
     <div className="bg-background-panel border border-border rounded-xl p-4 space-y-4">
       {/* Mood Display */}
       <div className="text-center">
-        <div className="text-4xl mb-2">{getMoodEmoji(encounter.merchant_mood)}</div>
-        <h3 className={`text-xl font-bold ${getMoodColor(encounter.merchant_mood)}`}>
+        <div className="text-4xl mb-2">
+          {getMoodEmoji(encounter.merchant_mood)}
+        </div>
+        <h3
+          className={`text-xl font-bold ${getMoodColor(encounter.merchant_mood)}`}
+        >
           {getMoodLabel(encounter.merchant_mood)}
         </h3>
         <p className="text-sm text-text-muted">
-          Merchant Mood: {encounter.merchant_mood > 0 ? '+' : ''}
+          Merchant Mood: {encounter.merchant_mood > 0 ? "+" : ""}
           {encounter.merchant_mood}
         </p>
       </div>
@@ -70,7 +74,11 @@ export default function MerchantPanel({
       {!disabled && (
         <div className="flex items-center justify-center gap-2">
           <button
-            onClick={() => onUpdate({ merchant_mood: Math.max(-5, encounter.merchant_mood - 1) })}
+            onClick={() =>
+              onUpdate({
+                merchant_mood: Math.max(-5, encounter.merchant_mood - 1),
+              })
+            }
             disabled={encounter.merchant_mood <= -5}
             className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors disabled:opacity-50"
             title="Decrease Mood"
@@ -79,7 +87,11 @@ export default function MerchantPanel({
           </button>
           <span className="text-sm text-text-muted">Adjust Mood</span>
           <button
-            onClick={() => onUpdate({ merchant_mood: Math.min(5, encounter.merchant_mood + 1) })}
+            onClick={() =>
+              onUpdate({
+                merchant_mood: Math.min(5, encounter.merchant_mood + 1),
+              })
+            }
             disabled={encounter.merchant_mood >= 5}
             className="p-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg transition-colors disabled:opacity-50"
             title="Increase Mood"
@@ -104,15 +116,15 @@ export default function MerchantPanel({
                   onUpdate({
                     relationship_level: rel.value,
                     discount_percentage: rel.discount,
-                  })
+                  });
                 }
               }}
               disabled={disabled}
               className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                 encounter.relationship_level === rel.value
                   ? rel.color
-                  : 'bg-background text-text-muted border border-border hover:border-primary/40'
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  : "bg-background text-text-muted border border-border hover:border-primary/40"
+              } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {rel.label}
             </button>
@@ -127,22 +139,26 @@ export default function MerchantPanel({
           <span
             className={`text-lg font-bold ${
               encounter.discount_percentage > 0
-                ? 'text-emerald-400'
+                ? "text-emerald-400"
                 : encounter.discount_percentage < 0
-                  ? 'text-red-400'
-                  : 'text-text-muted'
+                  ? "text-red-400"
+                  : "text-text-muted"
             }`}
           >
-            {encounter.discount_percentage > 0 ? '-' : encounter.discount_percentage < 0 ? '+' : ''}
+            {encounter.discount_percentage > 0
+              ? "-"
+              : encounter.discount_percentage < 0
+                ? "+"
+                : ""}
             {Math.abs(encounter.discount_percentage)}%
           </span>
         </div>
         <p className="text-xs text-text-muted mt-1">
           {encounter.discount_percentage > 0
-            ? 'Discount applied to all purchases'
+            ? "Discount applied to all purchases"
             : encounter.discount_percentage < 0
-              ? 'Markup applied to all purchases'
-              : 'Standard prices apply'}
+              ? "Markup applied to all purchases"
+              : "Standard prices apply"}
         </p>
       </div>
 
@@ -153,7 +169,7 @@ export default function MerchantPanel({
           Notes
         </h4>
         <textarea
-          value={encounter.notes || ''}
+          value={encounter.notes || ""}
           onChange={(e) => onUpdate({ notes: e.target.value })}
           placeholder="Session notes..."
           className="w-full h-24 px-3 py-2 bg-background border border-border rounded-lg text-text placeholder:text-text-muted resize-none focus:border-primary focus:outline-none text-sm"
@@ -162,12 +178,14 @@ export default function MerchantPanel({
       </div>
 
       {/* Total Purchased (when completed) */}
-      {encounter.status === 'completed' && encounter.total_purchased && (
+      {encounter.status === "completed" && encounter.total_purchased && (
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 text-center">
           <p className="text-sm text-text-muted">Total Purchased</p>
-          <p className="text-2xl font-bold text-emerald-400">{encounter.total_purchased}</p>
+          <p className="text-2xl font-bold text-emerald-400">
+            {encounter.total_purchased}
+          </p>
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,45 +1,45 @@
-import { useState } from 'react'
-import Icon from '@/components/common/Icon'
+import { useState } from "react";
+import Icon from "@/components/common/Icon";
 
 interface ArrayFieldEditorProps {
-  label: string
-  values: string[]
-  onChange: (values: string[]) => void
-  placeholder?: string
-  description?: string
-  maxItems?: number
+  label: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+  placeholder?: string;
+  description?: string;
+  maxItems?: number;
 }
 
 export function ArrayFieldEditor({
   label,
   values,
   onChange,
-  placeholder = 'Add item...',
+  placeholder = "Add item...",
   description,
   maxItems,
 }: ArrayFieldEditorProps) {
-  const [inputValue, setInputValue] = useState('')
+  const [inputValue, setInputValue] = useState("");
 
   const handleAdd = () => {
-    const trimmed = inputValue.trim()
+    const trimmed = inputValue.trim();
     if (trimmed && (!maxItems || values.length < maxItems)) {
-      onChange([...values, trimmed])
-      setInputValue('')
+      onChange([...values, trimmed]);
+      setInputValue("");
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleAdd()
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAdd();
     }
-  }
+  };
 
   const handleRemove = (index: number) => {
-    onChange(values.filter((_, i) => i !== index))
-  }
+    onChange(values.filter((_, i) => i !== index));
+  };
 
-  const canAdd = !maxItems || values.length < maxItems
+  const canAdd = !maxItems || values.length < maxItems;
 
   return (
     <div className="space-y-2">
@@ -95,5 +95,5 @@ export function ArrayFieldEditor({
         </p>
       )}
     </div>
-  )
+  );
 }

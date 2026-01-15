@@ -3,7 +3,7 @@
 @theme {
   /* Animations */
   --animate-fade-in: fadeIn 0.3s ease-out;
-  
+
   /* Custom colors using CSS variables */
   --color-tavern-darkest: var(--color-darkest);
   --color-tavern-dark: var(--color-dark);
@@ -16,24 +16,24 @@
   --color-tavern-cyan: var(--color-primary-light);
   --color-tavern-green: var(--color-primary);
   --color-tavern-red: #ff6b6b;
-  
+
   /* Semantic color assignments */
   --color-primary: var(--color-primary);
   --color-primary-dark: var(--color-primary-dark);
   --color-primary-light: var(--color-primary-light);
-  
+
   --color-secondary: var(--color-accent);
   --color-secondary-dark: var(--color-border);
   --color-secondary-light: var(--color-primary-light);
-  
+
   --color-background: var(--color-darkest);
   --color-background-panel: var(--color-panel);
   --color-background-card: var(--color-border);
-  
+
   --color-text: var(--color-text);
   --color-text-muted: var(--color-text-muted);
   --color-text-bright: var(--color-text);
-  
+
   --color-border: var(--color-border);
   --color-border-light: var(--color-text-muted);
 }

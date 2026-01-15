@@ -1,11 +1,11 @@
-import Icon from '../../common/Icon'
-import { LocationVisit } from '../../../store/playerEncountersStore'
+import Icon from "../../common/Icon";
+import { LocationVisit } from "../../../store/playerEncountersStore";
 
 interface LocationDetailModalProps {
-  location: LocationVisit
-  onClose: () => void
-  onEdit: () => void
-  onDelete: () => void
+  location: LocationVisit;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 export default function LocationDetailModal({
@@ -18,7 +18,7 @@ export default function LocationDetailModal({
     <div
       className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 p-4 overflow-y-auto"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="bg-background-panel border border-border rounded-xl w-full max-w-2xl my-8">
@@ -63,13 +63,17 @@ export default function LocationDetailModal({
           {location.is_gm_revealed && (
             <div className="flex items-center gap-2 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
               <Icon name="Eye" className="w-5 h-5 text-purple-400" />
-              <p className="text-purple-300 text-sm font-medium">Revealed by GM</p>
+              <p className="text-purple-300 text-sm font-medium">
+                Revealed by GM
+              </p>
             </div>
           )}
 
           {location.description && (
             <div>
-              <h3 className="text-sm font-medium text-text-muted uppercase mb-2">Description</h3>
+              <h3 className="text-sm font-medium text-text-muted uppercase mb-2">
+                Description
+              </h3>
               <p className="text-text leading-relaxed whitespace-pre-wrap">
                 {location.description}
               </p>
@@ -78,7 +82,9 @@ export default function LocationDetailModal({
 
           {location.first_visit_session && (
             <div>
-              <h4 className="text-sm font-medium text-text-muted uppercase mb-2">First Visited</h4>
+              <h4 className="text-sm font-medium text-text-muted uppercase mb-2">
+                First Visited
+              </h4>
               <p className="text-text flex items-center gap-1.5">
                 <Icon name="Calendar" className="w-4 h-4 text-blue-400" />
                 Session {location.first_visit_session}
@@ -88,7 +94,9 @@ export default function LocationDetailModal({
 
           {location.notes && (
             <div>
-              <h3 className="text-sm font-medium text-text-muted uppercase mb-2">Notes</h3>
+              <h3 className="text-sm font-medium text-text-muted uppercase mb-2">
+                Notes
+              </h3>
               <p className="text-text-muted text-sm leading-relaxed whitespace-pre-wrap">
                 {location.notes}
               </p>
@@ -97,5 +105,5 @@ export default function LocationDetailModal({
         </div>
       </div>
     </div>
-  )
+  );
 }

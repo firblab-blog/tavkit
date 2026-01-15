@@ -1,16 +1,16 @@
 // Renderer for Chase generator results
 
-import Icon from '@/components/common/Icon'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { ParseWarning, RawDataViewer } from '../components'
-import type { GeneratedChaseData } from '../normalizers/chase'
+import Icon from "@/components/common/Icon";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { ParseWarning, RawDataViewer } from "../components";
+import type { GeneratedChaseData } from "../normalizers/chase";
 
 interface ChaseRendererProps {
-  chase: GeneratedChaseData
-  showRawResponse?: boolean
-  isSaved: boolean
-  onSave: () => void
-  onCopy: () => void
+  chase: GeneratedChaseData;
+  showRawResponse?: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onCopy: () => void;
 }
 
 export function ChaseRenderer({
@@ -29,8 +29,8 @@ export function ChaseRenderer({
       <div>
         <h2 className="text-2xl font-bold text-primary">{chase.name}</h2>
         <p className="text-sm text-text-muted capitalize">
-          {chase.chase_type.replace(/_/g, ' ')} • {chase.terrain.replace(/_/g, ' ')} •{' '}
-          {chase.difficulty}
+          {chase.chase_type.replace(/_/g, " ")} •{" "}
+          {chase.terrain.replace(/_/g, " ")} • {chase.difficulty}
         </p>
       </div>
 
@@ -100,10 +100,17 @@ export function ChaseRenderer({
           </h3>
           <div className="space-y-3">
             {chase.obstacles.map((obstacle, idx) => (
-              <div key={idx} className="bg-background p-4 rounded border border-border">
-                <h4 className="font-semibold text-primary mb-2">{obstacle.name}</h4>
+              <div
+                key={idx}
+                className="bg-background p-4 rounded border border-border"
+              >
+                <h4 className="font-semibold text-primary mb-2">
+                  {obstacle.name}
+                </h4>
                 {obstacle.description && (
-                  <p className="text-text-muted text-sm mb-3">{obstacle.description}</p>
+                  <p className="text-text-muted text-sm mb-3">
+                    {obstacle.description}
+                  </p>
                 )}
                 <div className="grid md:grid-cols-2 gap-2 text-sm">
                   {obstacle.check && (
@@ -152,13 +159,22 @@ export function ChaseRenderer({
           </h3>
           <div className="space-y-2">
             {chase.shortcuts.map((shortcut, idx) => (
-              <div key={idx} className="bg-background p-3 rounded border-2 border-primary/30">
-                <h4 className="font-semibold text-text mb-1">{shortcut.name}</h4>
+              <div
+                key={idx}
+                className="bg-background p-3 rounded border-2 border-primary/30"
+              >
+                <h4 className="font-semibold text-text mb-1">
+                  {shortcut.name}
+                </h4>
                 {shortcut.description && (
-                  <p className="text-text-muted text-sm mb-1">{shortcut.description}</p>
+                  <p className="text-text-muted text-sm mb-1">
+                    {shortcut.description}
+                  </p>
                 )}
                 {shortcut.benefit && (
-                  <p className="text-primary text-sm font-medium">✓ {shortcut.benefit}</p>
+                  <p className="text-primary text-sm font-medium">
+                    ✓ {shortcut.benefit}
+                  </p>
                 )}
               </div>
             ))}
@@ -175,9 +191,14 @@ export function ChaseRenderer({
           </h3>
           <div className="space-y-2">
             {chase.chase_phases.map((phase, idx) => (
-              <div key={idx} className="bg-background p-3 rounded border border-border">
+              <div
+                key={idx}
+                className="bg-background p-3 rounded border border-border"
+              >
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-medium text-primary">Round {phase.round}</span>
+                  <span className="font-medium text-primary">
+                    Round {phase.round}
+                  </span>
                   <span className="text-sm px-2 py-0.5 bg-primary/20 text-primary rounded">
                     {phase.difficulty}
                   </span>
@@ -229,19 +250,25 @@ export function ChaseRenderer({
             {chase.ending_conditions.success && (
               <div className="bg-green-500/10 p-3 rounded border border-green-500/30">
                 <span className="font-medium text-green-400">Success:</span>
-                <p className="text-text mt-1">{chase.ending_conditions.success}</p>
+                <p className="text-text mt-1">
+                  {chase.ending_conditions.success}
+                </p>
               </div>
             )}
             {chase.ending_conditions.failure && (
               <div className="bg-red-500/10 p-3 rounded border border-red-500/30">
                 <span className="font-medium text-red-400">Failure:</span>
-                <p className="text-text mt-1">{chase.ending_conditions.failure}</p>
+                <p className="text-text mt-1">
+                  {chase.ending_conditions.failure}
+                </p>
               </div>
             )}
             {chase.ending_conditions.alternative && (
               <div className="bg-primary/10 p-3 rounded border border-primary/30">
                 <span className="font-medium text-primary">Alternative:</span>
-                <p className="text-text mt-1">{chase.ending_conditions.alternative}</p>
+                <p className="text-text mt-1">
+                  {chase.ending_conditions.alternative}
+                </p>
               </div>
             )}
           </div>
@@ -262,7 +289,9 @@ export function ChaseRenderer({
             </div>
             {chase.rewards.partial && (
               <div className="bg-background p-3 rounded border border-border">
-                <span className="font-medium text-primary">Partial Success:</span>
+                <span className="font-medium text-primary">
+                  Partial Success:
+                </span>
                 <p className="text-text mt-1">{chase.rewards.partial}</p>
               </div>
             )}
@@ -286,7 +315,7 @@ export function ChaseRenderer({
         isSaved={isSaved}
       />
     </div>
-  )
+  );
 }
 
 // ============================================================================
@@ -294,78 +323,87 @@ export function ChaseRenderer({
 // ============================================================================
 
 export function formatChaseForClipboard(chase: GeneratedChaseData): string {
-  const chaseTypeLabel = chase.chase_type ? chase.chase_type.replace(/_/g, ' ') : 'Chase'
-  const terrainLabel = chase.terrain ? chase.terrain.replace(/_/g, ' ') : 'Unknown'
-  let text = `${chase.name || 'Unnamed Chase'}\n${chaseTypeLabel} • ${terrainLabel} • ${chase.difficulty || 'Medium'}\n\n${chase.description || ''}`
+  const chaseTypeLabel = chase.chase_type
+    ? chase.chase_type.replace(/_/g, " ")
+    : "Chase";
+  const terrainLabel = chase.terrain
+    ? chase.terrain.replace(/_/g, " ")
+    : "Unknown";
+  let text = `${chase.name || "Unnamed Chase"}\n${chaseTypeLabel} • ${terrainLabel} • ${chase.difficulty || "Medium"}\n\n${chase.description || ""}`;
 
   if (chase.setting) {
-    text += `\n\nSetting: ${chase.setting}`
+    text += `\n\nSetting: ${chase.setting}`;
   }
 
-  if (chase.participants && (chase.participants.quarry || chase.participants.pursuers)) {
-    text += `\n\nParticipants:\nQuarry: ${chase.participants.quarry}\nPursuers: ${chase.participants.pursuers}`
+  if (
+    chase.participants &&
+    (chase.participants.quarry || chase.participants.pursuers)
+  ) {
+    text += `\n\nParticipants:\nQuarry: ${chase.participants.quarry}\nPursuers: ${chase.participants.pursuers}`;
   }
 
   if (chase.starting_conditions) {
-    text += `\n\nStarting Conditions: ${chase.starting_conditions}`
+    text += `\n\nStarting Conditions: ${chase.starting_conditions}`;
   }
 
   if (chase.obstacles.length > 0) {
-    text += '\n\nObstacles:\n'
+    text += "\n\nObstacles:\n";
     chase.obstacles.forEach((obstacle) => {
-      text += `${obstacle.name}\n${obstacle.description}\nCheck: ${obstacle.check}\nFailure: ${obstacle.failure}\n\n`
-    })
+      text += `${obstacle.name}\n${obstacle.description}\nCheck: ${obstacle.check}\nFailure: ${obstacle.failure}\n\n`;
+    });
   }
 
   if (chase.complications.length > 0) {
-    text += '\nComplications:\n'
+    text += "\nComplications:\n";
     chase.complications.forEach((comp) => {
-      text += `- ${comp}\n`
-    })
+      text += `- ${comp}\n`;
+    });
   }
 
   if (chase.shortcuts.length > 0) {
-    text += '\nShortcuts:\n'
+    text += "\nShortcuts:\n";
     chase.shortcuts.forEach((sc) => {
-      text += `${sc.name}: ${sc.description} (${sc.benefit})\n`
-    })
+      text += `${sc.name}: ${sc.description} (${sc.benefit})\n`;
+    });
   }
 
   if (chase.chase_phases.length > 0) {
-    text += '\nChase Phases:\n'
+    text += "\nChase Phases:\n";
     chase.chase_phases.forEach((phase) => {
-      text += `Round ${phase.round} (${phase.difficulty}): ${phase.description}\n`
-    })
+      text += `Round ${phase.round} (${phase.difficulty}): ${phase.description}\n`;
+    });
   }
 
   if (chase.environmental_factors.length > 0) {
-    text += '\nEnvironmental Factors:\n'
+    text += "\nEnvironmental Factors:\n";
     chase.environmental_factors.forEach((factor) => {
-      text += `- ${factor}\n`
-    })
+      text += `- ${factor}\n`;
+    });
   }
 
   if (chase.special_rules) {
-    text += `\nSpecial Rules: ${chase.special_rules}`
+    text += `\nSpecial Rules: ${chase.special_rules}`;
   }
 
   if (
     chase.ending_conditions &&
     (chase.ending_conditions.success || chase.ending_conditions.failure)
   ) {
-    text += '\n\nEnding Conditions:'
-    if (chase.ending_conditions.success) text += `\nSuccess: ${chase.ending_conditions.success}`
-    if (chase.ending_conditions.failure) text += `\nFailure: ${chase.ending_conditions.failure}`
+    text += "\n\nEnding Conditions:";
+    if (chase.ending_conditions.success)
+      text += `\nSuccess: ${chase.ending_conditions.success}`;
+    if (chase.ending_conditions.failure)
+      text += `\nFailure: ${chase.ending_conditions.failure}`;
     if (chase.ending_conditions.alternative)
-      text += `\nAlternative: ${chase.ending_conditions.alternative}`
+      text += `\nAlternative: ${chase.ending_conditions.alternative}`;
   }
 
   if (chase.rewards && chase.rewards.success) {
-    text += '\n\nRewards:'
-    if (chase.rewards.success) text += `\nSuccess: ${chase.rewards.success}`
-    if (chase.rewards.partial) text += `\nPartial: ${chase.rewards.partial}`
-    if (chase.rewards.failure) text += `\nFailure: ${chase.rewards.failure}`
+    text += "\n\nRewards:";
+    if (chase.rewards.success) text += `\nSuccess: ${chase.rewards.success}`;
+    if (chase.rewards.partial) text += `\nPartial: ${chase.rewards.partial}`;
+    if (chase.rewards.failure) text += `\nFailure: ${chase.rewards.failure}`;
   }
 
-  return text
+  return text;
 }

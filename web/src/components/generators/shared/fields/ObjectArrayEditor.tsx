@@ -1,68 +1,75 @@
-import { useState } from 'react'
-import Icon from '@/components/common/Icon'
+import { useState } from "react";
+import Icon from "@/components/common/Icon";
 
 interface ObjectItem {
-  name: string
-  description: string
-  [key: string]: unknown
+  name: string;
+  description: string;
+  [key: string]: unknown;
 }
 
 interface ObjectArrayEditorProps {
-  label: string
-  values: ObjectItem[]
-  onChange: (values: ObjectItem[]) => void
-  nameLabel?: string
-  descriptionLabel?: string
-  namePlaceholder?: string
-  descriptionPlaceholder?: string
-  description?: string
-  maxItems?: number
+  label: string;
+  values: ObjectItem[];
+  onChange: (values: ObjectItem[]) => void;
+  nameLabel?: string;
+  descriptionLabel?: string;
+  namePlaceholder?: string;
+  descriptionPlaceholder?: string;
+  description?: string;
+  maxItems?: number;
   extraFields?: {
-    key: string
-    label: string
-    type: 'text' | 'number' | 'select'
-    placeholder?: string
-    options?: { value: string; label: string }[]
-  }[]
+    key: string;
+    label: string;
+    type: "text" | "number" | "select";
+    placeholder?: string;
+    options?: { value: string; label: string }[];
+  }[];
 }
 
 export function ObjectArrayEditor({
   label,
   values,
   onChange,
-  nameLabel = 'Name',
-  descriptionLabel = 'Description',
-  namePlaceholder = 'Name...',
-  descriptionPlaceholder = 'Description...',
+  nameLabel = "Name",
+  descriptionLabel = "Description",
+  namePlaceholder = "Name...",
+  descriptionPlaceholder = "Description...",
   description,
   maxItems,
   extraFields = [],
 }: ObjectArrayEditorProps) {
-  const [newItem, setNewItem] = useState<ObjectItem>({ name: '', description: '' })
-  const [isAdding, setIsAdding] = useState(false)
+  const [newItem, setNewItem] = useState<ObjectItem>({
+    name: "",
+    description: "",
+  });
+  const [isAdding, setIsAdding] = useState(false);
 
   const handleAdd = () => {
     if (newItem.name.trim()) {
       onChange([
         ...values,
-        { ...newItem, name: newItem.name.trim(), description: newItem.description.trim() },
-      ])
-      setNewItem({ name: '', description: '' })
-      setIsAdding(false)
+        {
+          ...newItem,
+          name: newItem.name.trim(),
+          description: newItem.description.trim(),
+        },
+      ]);
+      setNewItem({ name: "", description: "" });
+      setIsAdding(false);
     }
-  }
+  };
 
   const handleRemove = (index: number) => {
-    onChange(values.filter((_, i) => i !== index))
-  }
+    onChange(values.filter((_, i) => i !== index));
+  };
 
   const handleUpdate = (index: number, field: string, value: unknown) => {
-    const updated = [...values]
-    updated[index] = { ...updated[index], [field]: value }
-    onChange(updated)
-  }
+    const updated = [...values];
+    updated[index] = { ...updated[index], [field]: value };
+    onChange(updated);
+  };
 
-  const canAdd = !maxItems || values.length < maxItems
+  const canAdd = !maxItems || values.length < maxItems;
 
   return (
     <div className="space-y-3">
@@ -93,7 +100,7 @@ export function ObjectArrayEditor({
                 <input
                   type="text"
                   value={item.name}
-                  onChange={(e) => handleUpdate(index, 'name', e.target.value)}
+                  onChange={(e) => handleUpdate(index, "name", e.target.value)}
                   placeholder={namePlaceholder}
                   className="flex-1 px-2 py-1 bg-background border border-border rounded text-sm text-text placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
                 />
@@ -107,18 +114,24 @@ export function ObjectArrayEditor({
               </div>
               <textarea
                 value={item.description}
-                onChange={(e) => handleUpdate(index, 'description', e.target.value)}
+                onChange={(e) =>
+                  handleUpdate(index, "description", e.target.value)
+                }
                 placeholder={descriptionPlaceholder}
                 rows={2}
                 className="w-full px-2 py-1 bg-background border border-border rounded text-sm text-text placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
               />
               {extraFields.map((field) => (
                 <div key={field.key} className="flex items-center gap-2">
-                  <span className="text-xs text-text-muted w-20">{field.label}:</span>
-                  {field.type === 'select' ? (
+                  <span className="text-xs text-text-muted w-20">
+                    {field.label}:
+                  </span>
+                  {field.type === "select" ? (
                     <select
-                      value={String(item[field.key] || '')}
-                      onChange={(e) => handleUpdate(index, field.key, e.target.value)}
+                      value={String(item[field.key] || "")}
+                      onChange={(e) =>
+                        handleUpdate(index, field.key, e.target.value)
+                      }
                       className="flex-1 px-2 py-1 bg-background border border-border rounded text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                       <option value="">Select...</option>
@@ -131,12 +144,14 @@ export function ObjectArrayEditor({
                   ) : (
                     <input
                       type={field.type}
-                      value={String(item[field.key] || '')}
+                      value={String(item[field.key] || "")}
                       onChange={(e) =>
                         handleUpdate(
                           index,
                           field.key,
-                          field.type === 'number' ? Number(e.target.value) : e.target.value
+                          field.type === "number"
+                            ? Number(e.target.value)
+                            : e.target.value,
                         )
                       }
                       placeholder={field.placeholder}
@@ -165,10 +180,14 @@ export function ObjectArrayEditor({
             />
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-xs text-text-muted w-20 pt-1">{descriptionLabel}:</span>
+            <span className="text-xs text-text-muted w-20 pt-1">
+              {descriptionLabel}:
+            </span>
             <textarea
               value={newItem.description}
-              onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+              onChange={(e) =>
+                setNewItem({ ...newItem, description: e.target.value })
+              }
               placeholder={descriptionPlaceholder}
               rows={2}
               className="flex-1 px-2 py-1 bg-background border border-border rounded text-sm text-text placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
@@ -178,8 +197,8 @@ export function ObjectArrayEditor({
             <button
               type="button"
               onClick={() => {
-                setIsAdding(false)
-                setNewItem({ name: '', description: '' })
+                setIsAdding(false);
+                setNewItem({ name: "", description: "" });
               }}
               className="px-3 py-1 text-sm text-text-muted hover:text-text"
             >
@@ -208,5 +227,5 @@ export function ObjectArrayEditor({
         </p>
       )}
     </div>
-  )
+  );
 }

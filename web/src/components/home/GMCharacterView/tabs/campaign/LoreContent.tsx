@@ -1,75 +1,79 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../../../../common/Icon'
-import { useCampaignStore, type CampaignContent } from '../../../../../store/campaignStore'
-import { logger } from '../../../../../utils/logger'
-import CampaignContentEditorModal from '../../../../campaign/CampaignContentEditorModal'
+import { useEffect, useState, useMemo, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../../../../common/Icon";
+import {
+  useCampaignStore,
+  type CampaignContent,
+} from "../../../../../store/campaignStore";
+import { logger } from "../../../../../utils/logger";
+import CampaignContentEditorModal from "../../../../campaign/CampaignContentEditorModal";
 
 interface LoreContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
 /**
  * LoreContent - Display lore entries from the campaign.
  */
 export default function LoreContent({ campaignId }: LoreContentProps) {
-  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore()
+  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore();
 
-  const [lore, setLore] = useState<CampaignContent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewingLore, setViewingLore] = useState<CampaignContent | null>(null)
-  const [showEditorModal, setShowEditorModal] = useState(false)
+  const [lore, setLore] = useState<CampaignContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewingLore, setViewingLore] = useState<CampaignContent | null>(null);
+  const [showEditorModal, setShowEditorModal] = useState(false);
 
   useEffect(() => {
     const loadLore = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const content = await fetchCampaignContent(campaignId, 'lore')
-        setLore(content)
+        const content = await fetchCampaignContent(campaignId, "lore");
+        setLore(content);
       } catch (err) {
-        setError('Failed to load lore')
-        logger.error('Failed to load lore:', err)
+        setError("Failed to load lore");
+        logger.error("Failed to load lore:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    loadLore()
-  }, [campaignId, fetchCampaignContent])
+    };
+    loadLore();
+  }, [campaignId, fetchCampaignContent]);
 
   const refreshContent = useCallback(async () => {
     try {
-      const content = await fetchCampaignContent(campaignId, 'lore')
-      setLore(content)
+      const content = await fetchCampaignContent(campaignId, "lore");
+      setLore(content);
     } catch (err) {
-      logger.error('Failed to refresh content:', err)
+      logger.error("Failed to refresh content:", err);
     }
-  }, [campaignId, fetchCampaignContent])
+  }, [campaignId, fetchCampaignContent]);
 
   const filteredLore = useMemo(() => {
-    if (!searchQuery) return lore
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return lore;
+    const query = searchQuery.toLowerCase();
     return lore.filter(
       (entry) =>
-        entry.title.toLowerCase().includes(query) || entry.content?.toLowerCase().includes(query)
-    )
-  }, [lore, searchQuery])
+        entry.title.toLowerCase().includes(query) ||
+        entry.content?.toLowerCase().includes(query),
+    );
+  }, [lore, searchQuery]);
 
   const handleDelete = async (entry: CampaignContent) => {
     if (window.confirm(`Delete "${entry.title}"? This cannot be undone.`)) {
       try {
-        await deleteCampaignContent(campaignId, entry.id)
-        setLore((prev) => prev.filter((l) => l.id !== entry.id))
+        await deleteCampaignContent(campaignId, entry.id);
+        setLore((prev) => prev.filter((l) => l.id !== entry.id));
         if (viewingLore?.id === entry.id) {
-          setViewingLore(null)
+          setViewingLore(null);
         }
       } catch (err) {
-        logger.error('Failed to delete lore:', err)
+        logger.error("Failed to delete lore:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -114,14 +118,17 @@ export default function LoreContent({ campaignId }: LoreContentProps) {
       {/* Empty State */}
       {!loading && filteredLore.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="BookOpen" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="BookOpen"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching lore' : 'No lore yet'}
+            {searchQuery ? "No matching lore" : "No lore yet"}
           </h3>
           <p className="text-text-muted text-sm mb-4">
             {searchQuery
-              ? 'Try adjusting your search.'
-              : 'Add world history, legends, and background information.'}
+              ? "Try adjusting your search."
+              : "Add world history, legends, and background information."}
           </p>
           {!searchQuery && (
             <button
@@ -160,8 +167,8 @@ export default function LoreContent({ campaignId }: LoreContentProps) {
                 </div>
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(entry)
+                    e.stopPropagation();
+                    handleDelete(entry);
                   }}
                   className="p-1.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400 flex-shrink-0"
                 >
@@ -190,14 +197,14 @@ export default function LoreContent({ campaignId }: LoreContentProps) {
         onSaved={refreshContent}
       />
     </div>
-  )
+  );
 }
 
 // Lore Detail Modal
 interface LoreDetailModalProps {
-  entry: CampaignContent
-  onClose: () => void
-  onDelete: () => void
+  entry: CampaignContent;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
 function LoreDetailModal({ entry, onClose, onDelete }: LoreDetailModalProps) {
@@ -214,7 +221,9 @@ function LoreDetailModal({ entry, onClose, onDelete }: LoreDetailModalProps) {
               <Icon name="BookOpen" className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-text">{entry.title}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {entry.title}
+              </h3>
             </div>
           </div>
           <button
@@ -229,7 +238,9 @@ function LoreDetailModal({ entry, onClose, onDelete }: LoreDetailModalProps) {
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {entry.content ? (
             <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>{entry.content.replace(/\\n/g, '\n')}</ReactMarkdown>
+              <ReactMarkdown>
+                {entry.content.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
           ) : (
             <p className="text-text-muted italic">No content</p>
@@ -254,5 +265,5 @@ function LoreDetailModal({ entry, onClose, onDelete }: LoreDetailModalProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

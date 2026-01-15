@@ -1,55 +1,58 @@
-import ContentListLayout from '../../../../common/ContentListLayout'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
-import ContentCard from '../../../../common/ContentCard'
-import ContentDetailModal from '../../../../common/ContentDetailModal'
-import AssignCampaignModal from '../../../../common/AssignCampaignModal'
-import { useLibraryContent } from '../../../../../hooks/useLibraryContent'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useState } from 'react'
-import { logger } from '@/utils/logger'
+import ContentListLayout from "../../../../common/ContentListLayout";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import ContentCard from "../../../../common/ContentCard";
+import ContentDetailModal from "../../../../common/ContentDetailModal";
+import AssignCampaignModal from "../../../../common/AssignCampaignModal";
+import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface Quest {
-  id: string
-  title: string
-  campaign_id?: string | null
-  type: string
-  category?: string
-  description?: string
-  objectives?: any
-  rewards?: any
-  complications?: any
-  npcs_involved?: any
-  locations_involved?: any
-  faction_alignment?: string
-  party_level?: number
-  status: string
-  moral_ambiguity?: boolean
-  combat_intensity?: string
-  time_limit?: string
-  ai_generated?: boolean
-  created_at: string
+  id: string;
+  title: string;
+  campaign_id?: string | null;
+  type: string;
+  category?: string;
+  description?: string;
+  objectives?: any;
+  rewards?: any;
+  complications?: any;
+  npcs_involved?: any;
+  locations_involved?: any;
+  faction_alignment?: string;
+  party_level?: number;
+  status: string;
+  moral_ambiguity?: boolean;
+  combat_intensity?: string;
+  time_limit?: string;
+  ai_generated?: boolean;
+  created_at: string;
 }
 
 interface QuestsContentProps {
-  campaignId?: string
-  showCampaignFilter?: boolean
+  campaignId?: string;
+  showCampaignFilter?: boolean;
 }
 
 const statusColors: Record<string, { bg: string; text: string }> = {
-  available: { bg: 'bg-green-500/10', text: 'text-green-400' },
-  active: { bg: 'bg-blue-500/10', text: 'text-blue-400' },
-  completed: { bg: 'bg-purple-500/10', text: 'text-purple-400' },
-  failed: { bg: 'bg-red-500/10', text: 'text-red-400' },
-}
+  available: { bg: "bg-green-500/10", text: "text-green-400" },
+  active: { bg: "bg-blue-500/10", text: "text-blue-400" },
+  completed: { bg: "bg-purple-500/10", text: "text-purple-400" },
+  failed: { bg: "bg-red-500/10", text: "text-red-400" },
+};
 
-export default function QuestsContent({ campaignId, showCampaignFilter }: QuestsContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const { campaigns } = useCampaignStore()
+export default function QuestsContent({
+  campaignId,
+  showCampaignFilter,
+}: QuestsContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const { campaigns } = useCampaignStore();
   const [assignModalItem, setAssignModalItem] = useState<{
-    id: string
-    name: string
-    currentCampaignId?: string | null
-  } | null>(null)
+    id: string;
+    name: string;
+    currentCampaignId?: string | null;
+  } | null>(null);
 
   const {
     filteredItems,
@@ -64,21 +67,21 @@ export default function QuestsContent({ campaignId, showCampaignFilter }: Quests
     deleteItem,
     refresh,
   } = useLibraryContent<Quest>({
-    contentType: 'quests',
+    contentType: "quests",
     campaignId,
     showCampaignFilter,
-    searchFields: ['title', 'type', 'description'],
-  })
+    searchFields: ["title", "type", "description"],
+  });
 
   const handleDelete = async (quest: Quest) => {
     if (window.confirm(`Delete "${quest.title}"? This cannot be undone.`)) {
       try {
-        await deleteItem(quest.id)
+        await deleteItem(quest.id);
       } catch (err) {
-        logger.error('Failed to delete quest:', err)
+        logger.error("Failed to delete quest:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -105,7 +108,7 @@ export default function QuestsContent({ campaignId, showCampaignFilter }: Quests
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search quests..."
         addButtonLabel="Add Quest"
-        onAddClick={() => openGenerator('quest')}
+        onAddClick={() => openGenerator("quest")}
         addButtonColor="amber"
         loading={loading}
         error={error}
@@ -113,12 +116,13 @@ export default function QuestsContent({ campaignId, showCampaignFilter }: Quests
         emptyTitle="No quests yet"
         emptyDescription="Create adventures and story hooks."
         emptyCTALabel="Create Your First Quest"
-        onEmptyCTAClick={() => openGenerator('quest')}
+        onEmptyCTAClick={() => openGenerator("quest")}
         hasItems={filteredItems.length > 0}
       >
         <div className="space-y-3">
           {filteredItems.map((quest) => {
-            const statusColor = statusColors[quest.status] || statusColors.available
+            const statusColor =
+              statusColors[quest.status] || statusColors.available;
             return (
               <ContentCard
                 key={quest.id}
@@ -129,7 +133,11 @@ export default function QuestsContent({ campaignId, showCampaignFilter }: Quests
                 date={quest.created_at}
                 badges={[
                   { label: quest.type },
-                  { label: quest.status, color: statusColor.text, bgColor: statusColor.bg },
+                  {
+                    label: quest.status,
+                    color: statusColor.text,
+                    bgColor: statusColor.bg,
+                  },
                 ]}
                 onClick={() => setViewingItem(quest)}
                 onDelete={() => handleDelete(quest)}
@@ -141,7 +149,7 @@ export default function QuestsContent({ campaignId, showCampaignFilter }: Quests
                   })
                 }
               />
-            )
+            );
           })}
         </div>
       </ContentListLayout>
@@ -166,41 +174,41 @@ export default function QuestsContent({ campaignId, showCampaignFilter }: Quests
         />
       )}
     </div>
-  )
+  );
 }
 
 interface QuestDetailModalProps {
-  quest: Quest
-  onClose: () => void
-  onDelete: () => void
+  quest: Quest;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
 function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
-  let objectives: any[] = []
-  let rewards: any = null
-  let complications: any[] = []
+  let objectives: any[] = [];
+  let rewards: any = null;
+  let complications: any[] = [];
 
   try {
     objectives = quest.objectives
-      ? typeof quest.objectives === 'string'
+      ? typeof quest.objectives === "string"
         ? JSON.parse(quest.objectives)
         : quest.objectives
-      : []
+      : [];
     rewards = quest.rewards
-      ? typeof quest.rewards === 'string'
+      ? typeof quest.rewards === "string"
         ? JSON.parse(quest.rewards)
         : quest.rewards
-      : null
+      : null;
     complications = quest.complications
-      ? typeof quest.complications === 'string'
+      ? typeof quest.complications === "string"
         ? JSON.parse(quest.complications)
         : quest.complications
-      : []
+      : [];
   } catch (err) {
-    logger.error('Failed to parse quest data:', err)
+    logger.error("Failed to parse quest data:", err);
   }
 
-  const statusColor = statusColors[quest.status] || statusColors.available
+  const statusColor = statusColors[quest.status] || statusColors.available;
 
   return (
     <ContentDetailModal
@@ -215,20 +223,30 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
       <div className="space-y-6">
         {/* Status and Info Row */}
         <div className="flex flex-wrap gap-3">
-          <div className={`px-4 py-2 ${statusColor.bg} border border-amber-500/30 rounded-lg`}>
+          <div
+            className={`px-4 py-2 ${statusColor.bg} border border-amber-500/30 rounded-lg`}
+          >
             <p className="text-xs text-text-muted">Status</p>
-            <p className={`text-lg font-semibold ${statusColor.text} capitalize`}>{quest.status}</p>
+            <p
+              className={`text-lg font-semibold ${statusColor.text} capitalize`}
+            >
+              {quest.status}
+            </p>
           </div>
           {quest.party_level && (
             <div className="px-4 py-2 bg-background border border-border rounded-lg">
               <p className="text-xs text-text-muted">Party Level</p>
-              <p className="text-lg font-semibold text-text">{quest.party_level}</p>
+              <p className="text-lg font-semibold text-text">
+                {quest.party_level}
+              </p>
             </div>
           )}
           {quest.combat_intensity && (
             <div className="px-4 py-2 bg-background border border-border rounded-lg">
               <p className="text-xs text-text-muted">Combat</p>
-              <p className="text-lg font-semibold text-text capitalize">{quest.combat_intensity}</p>
+              <p className="text-lg font-semibold text-text capitalize">
+                {quest.combat_intensity}
+              </p>
             </div>
           )}
         </div>
@@ -238,7 +256,9 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Description
             </h4>
-            <p className="text-text leading-relaxed whitespace-pre-wrap">{quest.description}</p>
+            <p className="text-text leading-relaxed whitespace-pre-wrap">
+              {quest.description}
+            </p>
           </div>
         )}
 
@@ -253,7 +273,9 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
                   <span className="w-6 h-6 bg-amber-500/10 text-amber-400 rounded flex items-center justify-center text-sm flex-shrink-0">
                     {i + 1}
                   </span>
-                  <span className="text-text">{typeof obj === 'string' ? obj : obj.description}</span>
+                  <span className="text-text">
+                    {typeof obj === "string" ? obj : obj.description}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -267,7 +289,9 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
             </h4>
             <div className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/30">
               {rewards.gold && (
-                <p className="text-amber-400 font-semibold">{rewards.gold} gold pieces</p>
+                <p className="text-amber-400 font-semibold">
+                  {rewards.gold} gold pieces
+                </p>
               )}
               {rewards.xp && <p className="text-amber-400">XP: {rewards.xp}</p>}
               {rewards.items && rewards.items.length > 0 && (
@@ -277,7 +301,9 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
                   ))}
                 </ul>
               )}
-              {typeof rewards === 'string' && <p className="text-amber-400">{rewards}</p>}
+              {typeof rewards === "string" && (
+                <p className="text-amber-400">{rewards}</p>
+              )}
             </div>
           </div>
         )}
@@ -289,7 +315,7 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
             </h4>
             <ul className="list-disc list-inside text-text space-y-1">
               {complications.map((c: any, i: number) => (
-                <li key={i}>{typeof c === 'string' ? c : c.description}</li>
+                <li key={i}>{typeof c === "string" ? c : c.description}</li>
               ))}
             </ul>
           </div>
@@ -297,10 +323,12 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
 
         {quest.time_limit && (
           <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/30">
-            <p className="text-red-400 font-medium">Time Limit: {quest.time_limit}</p>
+            <p className="text-red-400 font-medium">
+              Time Limit: {quest.time_limit}
+            </p>
           </div>
         )}
       </div>
     </ContentDetailModal>
-  )
+  );
 }

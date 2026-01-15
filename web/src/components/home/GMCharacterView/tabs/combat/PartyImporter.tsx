@@ -1,144 +1,164 @@
-import { useState, useEffect } from 'react'
-import Icon from '../../../../common/Icon'
-import { apiClient } from '../../../../../api/client'
-import { logger } from '../../../../../utils/logger'
+import { useState, useEffect } from "react";
+import Icon from "../../../../common/Icon";
+import { apiClient } from "../../../../../api/client";
+import { logger } from "../../../../../utils/logger";
 
 interface CampaignMember {
-  id: string
-  user_id: string
-  character_id?: string
-  role: string
+  id: string;
+  user_id: string;
+  character_id?: string;
+  role: string;
 }
 
 interface Character {
-  id: string
-  name: string
-  level: number
-  class_info: string
-  max_hp: number
-  current_hp: number
-  armor_class: number
-  initiative: number
-  passive_perception: number
+  id: string;
+  name: string;
+  level: number;
+  class_info: string;
+  max_hp: number;
+  current_hp: number;
+  armor_class: number;
+  initiative: number;
+  passive_perception: number;
 }
 
 interface PartyImporterProps {
-  readonly campaignId: string
-  readonly onImport: (participants: ImportedParticipant[]) => Promise<void>
-  readonly onClose: () => void
+  readonly campaignId: string;
+  readonly onImport: (participants: ImportedParticipant[]) => Promise<void>;
+  readonly onClose: () => void;
 }
 
 export interface ImportedParticipant {
-  participant_type: 'pc'
-  character_id: string
-  name: string
-  max_hp: number
-  ac: number
-  initiative: number
-  initiative_bonus: number
-  passive_perception: number
+  participant_type: "pc";
+  character_id: string;
+  name: string;
+  max_hp: number;
+  ac: number;
+  initiative: number;
+  initiative_bonus: number;
+  passive_perception: number;
 }
 
-export default function PartyImporter({ campaignId, onImport, onClose }: PartyImporterProps) {
-  const [members, setMembers] = useState<CampaignMember[]>([])
-  const [characters, setCharacters] = useState<Map<string, Character>>(new Map())
-  const [selectedCharacterIds, setSelectedCharacterIds] = useState<Set<string>>(new Set())
-  const [initiativeRolls, setInitiativeRolls] = useState<Map<string, number>>(new Map())
-  const [autoRoll, setAutoRoll] = useState(true)
-  const [loading, setLoading] = useState(true)
-  const [importing, setImporting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export default function PartyImporter({
+  campaignId,
+  onImport,
+  onClose,
+}: PartyImporterProps) {
+  const [members, setMembers] = useState<CampaignMember[]>([]);
+  const [characters, setCharacters] = useState<Map<string, Character>>(
+    new Map(),
+  );
+  const [selectedCharacterIds, setSelectedCharacterIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [initiativeRolls, setInitiativeRolls] = useState<Map<string, number>>(
+    new Map(),
+  );
+  const [autoRoll, setAutoRoll] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPartyMembers()
-  }, [campaignId])
+    fetchPartyMembers();
+  }, [campaignId]);
 
   const fetchPartyMembers = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       // Fetch campaign members
-      const membersResponse = await apiClient.get(`/campaigns/${campaignId}/members`)
-      const membersList: CampaignMember[] = membersResponse.data.members || []
+      const membersResponse = await apiClient.get(
+        `/campaigns/${campaignId}/members`,
+      );
+      const membersList: CampaignMember[] = membersResponse.data.members || [];
 
       // Filter to only members with characters
-      const membersWithCharacters = membersList.filter((m) => m.character_id)
+      const membersWithCharacters = membersList.filter((m) => m.character_id);
 
-      setMembers(membersWithCharacters)
+      setMembers(membersWithCharacters);
 
       // Fetch character data for each member
-      const characterMap = new Map<string, Character>()
+      const characterMap = new Map<string, Character>();
       await Promise.all(
         membersWithCharacters.map(async (member) => {
           if (member.character_id) {
             try {
-              const charResponse = await apiClient.get(`/characters/${member.character_id}`)
-              characterMap.set(member.character_id, charResponse.data.character)
+              const charResponse = await apiClient.get(
+                `/characters/${member.character_id}`,
+              );
+              characterMap.set(
+                member.character_id,
+                charResponse.data.character,
+              );
             } catch (err) {
-              logger.error(`Failed to fetch character ${member.character_id}:`, err)
+              logger.error(
+                `Failed to fetch character ${member.character_id}:`,
+                err,
+              );
             }
           }
-        })
-      )
+        }),
+      );
 
-      setCharacters(characterMap)
+      setCharacters(characterMap);
 
       // Auto-select all by default
-      setSelectedCharacterIds(new Set(Array.from(characterMap.keys())))
+      setSelectedCharacterIds(new Set(Array.from(characterMap.keys())));
 
       // Auto-roll initiative for all
       if (autoRoll) {
-        const rolls = new Map<string, number>()
+        const rolls = new Map<string, number>();
         characterMap.forEach((_char, id) => {
-          rolls.set(id, rollD20())
-        })
-        setInitiativeRolls(rolls)
+          rolls.set(id, rollD20());
+        });
+        setInitiativeRolls(rolls);
       }
     } catch (err) {
-      setError('Failed to load party members')
-      logger.error(err)
+      setError("Failed to load party members");
+      logger.error(err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const rollD20 = () => Math.floor(Math.random() * 20) + 1
+  const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 
   const handleToggleCharacter = (characterId: string) => {
-    const newSelected = new Set(selectedCharacterIds)
+    const newSelected = new Set(selectedCharacterIds);
     if (newSelected.has(characterId)) {
-      newSelected.delete(characterId)
+      newSelected.delete(characterId);
     } else {
-      newSelected.add(characterId)
+      newSelected.add(characterId);
       // Auto-roll if enabled and no roll exists
       if (autoRoll && !initiativeRolls.has(characterId)) {
-        setInitiativeRolls((prev) => new Map(prev).set(characterId, rollD20()))
+        setInitiativeRolls((prev) => new Map(prev).set(characterId, rollD20()));
       }
     }
-    setSelectedCharacterIds(newSelected)
-  }
+    setSelectedCharacterIds(newSelected);
+  };
 
   const handleRollInitiative = (characterId: string) => {
-    setInitiativeRolls((prev) => new Map(prev).set(characterId, rollD20()))
-  }
+    setInitiativeRolls((prev) => new Map(prev).set(characterId, rollD20()));
+  };
 
   const handleSetInitiative = (characterId: string, roll: number) => {
-    setInitiativeRolls((prev) => new Map(prev).set(characterId, roll))
-  }
+    setInitiativeRolls((prev) => new Map(prev).set(characterId, roll));
+  };
 
   const handleImport = async () => {
-    const participants: ImportedParticipant[] = []
+    const participants: ImportedParticipant[] = [];
 
     selectedCharacterIds.forEach((charId) => {
-      const char = characters.get(charId)
-      if (!char) return
+      const char = characters.get(charId);
+      if (!char) return;
 
-      const roll = initiativeRolls.get(charId) || 10
-      const totalInitiative = roll + char.initiative
+      const roll = initiativeRolls.get(charId) || 10;
+      const totalInitiative = roll + char.initiative;
 
       participants.push({
-        participant_type: 'pc',
+        participant_type: "pc",
         character_id: charId,
         name: char.name,
         max_hp: char.max_hp,
@@ -146,24 +166,24 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
         initiative: totalInitiative,
         initiative_bonus: char.initiative,
         passive_perception: char.passive_perception,
-      })
-    })
+      });
+    });
 
     if (participants.length === 0) {
-      setError('Please select at least one character')
-      return
+      setError("Please select at least one character");
+      return;
     }
 
-    setImporting(true)
+    setImporting(true);
     try {
-      await onImport(participants)
-      onClose()
+      await onImport(participants);
+      onClose();
     } catch (err) {
-      setError('Failed to import party members')
+      setError("Failed to import party members");
     } finally {
-      setImporting(false)
+      setImporting(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -174,7 +194,7 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -183,8 +203,12 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
-            <h3 className="text-lg font-semibold text-text">Import Party Members</h3>
-            <p className="text-sm text-text-muted mt-0.5">Add player characters to combat</p>
+            <h3 className="text-lg font-semibold text-text">
+              Import Party Members
+            </h3>
+            <p className="text-sm text-text-muted mt-0.5">
+              Add player characters to combat
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -210,7 +234,9 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
               onChange={(e) => setAutoRoll(e.target.checked)}
               className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/50"
             />
-            <span className="text-text-muted text-sm">Auto-roll initiative (d20 + modifier)</span>
+            <span className="text-text-muted text-sm">
+              Auto-roll initiative (d20 + modifier)
+            </span>
           </label>
         </div>
 
@@ -218,25 +244,30 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {members.length === 0 ? (
             <div className="text-center py-8 text-text-muted">
-              <Icon name="Users" className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <Icon
+                name="Users"
+                className="w-12 h-12 mx-auto mb-2 opacity-50"
+              />
               <p>No party members found in this campaign</p>
             </div>
           ) : (
             members.map((member) => {
-              const char = member.character_id ? characters.get(member.character_id) : null
-              if (!char || !member.character_id) return null
+              const char = member.character_id
+                ? characters.get(member.character_id)
+                : null;
+              if (!char || !member.character_id) return null;
 
-              const isSelected = selectedCharacterIds.has(member.character_id)
-              const roll = initiativeRolls.get(member.character_id) || 0
-              const totalInitiative = roll + char.initiative
+              const isSelected = selectedCharacterIds.has(member.character_id);
+              const roll = initiativeRolls.get(member.character_id) || 0;
+              const totalInitiative = roll + char.initiative;
 
               return (
                 <div
                   key={member.id}
                   className={`border rounded-lg p-3 transition-all ${
                     isSelected
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-text-muted'
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-text-muted"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -244,7 +275,9 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => handleToggleCharacter(member.character_id!)}
+                      onChange={() =>
+                        handleToggleCharacter(member.character_id!)
+                      }
                       className="w-5 h-5 rounded border-border text-primary focus:ring-2 focus:ring-primary/50"
                     />
 
@@ -279,18 +312,20 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
                             type="number"
                             min="1"
                             max="20"
-                            value={roll || ''}
+                            value={roll || ""}
                             onChange={(e) =>
                               handleSetInitiative(
                                 member.character_id!,
-                                Number.parseInt(e.target.value) || 0
+                                Number.parseInt(e.target.value) || 0,
                               )
                             }
                             className="w-16 px-2 py-1 bg-background border border-border rounded text-text text-center text-sm focus:border-primary focus:outline-none"
                             placeholder="d20"
                           />
                           <button
-                            onClick={() => handleRollInitiative(member.character_id!)}
+                            onClick={() =>
+                              handleRollInitiative(member.character_id!)
+                            }
                             className="w-7 h-7 rounded bg-primary/20 hover:bg-primary/30 text-primary transition-colors flex items-center justify-center"
                             title="Roll d20"
                           >
@@ -304,7 +339,7 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
                     )}
                   </div>
                 </div>
-              )
+              );
             })
           )}
         </div>
@@ -312,8 +347,8 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-border">
           <div className="text-sm text-text-muted">
-            {selectedCharacterIds.size} character{selectedCharacterIds.size !== 1 ? 's' : ''}{' '}
-            selected
+            {selectedCharacterIds.size} character
+            {selectedCharacterIds.size !== 1 ? "s" : ""} selected
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -336,7 +371,7 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
                 <>
                   <Icon name="UserPlus" className="w-4 h-4" />
                   Import {selectedCharacterIds.size} Character
-                  {selectedCharacterIds.size !== 1 ? 's' : ''}
+                  {selectedCharacterIds.size !== 1 ? "s" : ""}
                 </>
               )}
             </button>
@@ -344,5 +379,5 @@ export default function PartyImporter({ campaignId, onImport, onClose }: PartyIm
         </div>
       </div>
     </div>
-  )
+  );
 }

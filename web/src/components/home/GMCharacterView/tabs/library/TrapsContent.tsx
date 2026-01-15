@@ -1,54 +1,57 @@
-import ContentListLayout from '../../../../common/ContentListLayout'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
-import ContentCard from '../../../../common/ContentCard'
-import ContentDetailModal from '../../../../common/ContentDetailModal'
-import AssignCampaignModal from '../../../../common/AssignCampaignModal'
-import { useLibraryContent } from '../../../../../hooks/useLibraryContent'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useState } from 'react'
-import { logger } from '@/utils/logger'
+import ContentListLayout from "../../../../common/ContentListLayout";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import ContentCard from "../../../../common/ContentCard";
+import ContentDetailModal from "../../../../common/ContentDetailModal";
+import AssignCampaignModal from "../../../../common/AssignCampaignModal";
+import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface Trap {
-  id: string
-  name: string
-  campaign_id?: string | null
-  trap_type: string
-  difficulty?: string
-  party_level?: number
-  environment?: string
-  description?: string
-  trigger?: string
-  effect?: string
-  damage?: string
-  detection?: any
-  solution_paths?: any
-  complications?: any
-  rewards?: any
-  dm_notes?: string
-  ai_generated?: boolean
-  created_at: string
+  id: string;
+  name: string;
+  campaign_id?: string | null;
+  trap_type: string;
+  difficulty?: string;
+  party_level?: number;
+  environment?: string;
+  description?: string;
+  trigger?: string;
+  effect?: string;
+  damage?: string;
+  detection?: any;
+  solution_paths?: any;
+  complications?: any;
+  rewards?: any;
+  dm_notes?: string;
+  ai_generated?: boolean;
+  created_at: string;
 }
 
 interface TrapsContentProps {
-  campaignId?: string
-  showCampaignFilter?: boolean
+  campaignId?: string;
+  showCampaignFilter?: boolean;
 }
 
 const difficultyColors: Record<string, { bg: string; text: string }> = {
-  easy: { bg: 'bg-green-500/10', text: 'text-green-400' },
-  medium: { bg: 'bg-yellow-500/10', text: 'text-yellow-400' },
-  hard: { bg: 'bg-orange-500/10', text: 'text-orange-400' },
-  deadly: { bg: 'bg-red-500/10', text: 'text-red-400' },
-}
+  easy: { bg: "bg-green-500/10", text: "text-green-400" },
+  medium: { bg: "bg-yellow-500/10", text: "text-yellow-400" },
+  hard: { bg: "bg-orange-500/10", text: "text-orange-400" },
+  deadly: { bg: "bg-red-500/10", text: "text-red-400" },
+};
 
-export default function TrapsContent({ campaignId, showCampaignFilter }: TrapsContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const { campaigns } = useCampaignStore()
+export default function TrapsContent({
+  campaignId,
+  showCampaignFilter,
+}: TrapsContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const { campaigns } = useCampaignStore();
   const [assignModalItem, setAssignModalItem] = useState<{
-    id: string
-    name: string
-    currentCampaignId?: string | null
-  } | null>(null)
+    id: string;
+    name: string;
+    currentCampaignId?: string | null;
+  } | null>(null);
 
   const {
     filteredItems,
@@ -63,21 +66,21 @@ export default function TrapsContent({ campaignId, showCampaignFilter }: TrapsCo
     deleteItem,
     refresh,
   } = useLibraryContent<Trap>({
-    contentType: 'traps',
+    contentType: "traps",
     campaignId,
     showCampaignFilter,
-    searchFields: ['name', 'trap_type', 'description', 'environment'],
-  })
+    searchFields: ["name", "trap_type", "description", "environment"],
+  });
 
   const handleDelete = async (trap: Trap) => {
     if (window.confirm(`Delete "${trap.name}"? This cannot be undone.`)) {
       try {
-        await deleteItem(trap.id)
+        await deleteItem(trap.id);
       } catch (err) {
-        logger.error('Failed to delete trap:', err)
+        logger.error("Failed to delete trap:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -104,7 +107,7 @@ export default function TrapsContent({ campaignId, showCampaignFilter }: TrapsCo
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search traps..."
         addButtonLabel="Add Trap"
-        onAddClick={() => openGenerator('trap')}
+        onAddClick={() => openGenerator("trap")}
         addButtonColor="red"
         loading={loading}
         error={error}
@@ -112,12 +115,14 @@ export default function TrapsContent({ campaignId, showCampaignFilter }: TrapsCo
         emptyTitle="No traps yet"
         emptyDescription="Create dangerous hazards and puzzles."
         emptyCTALabel="Create Your First Trap"
-        onEmptyCTAClick={() => openGenerator('trap')}
+        onEmptyCTAClick={() => openGenerator("trap")}
         hasItems={filteredItems.length > 0}
       >
         <div className="space-y-3">
           {filteredItems.map((trap) => {
-            const diffColor = difficultyColors[trap.difficulty || 'medium'] || difficultyColors.medium
+            const diffColor =
+              difficultyColors[trap.difficulty || "medium"] ||
+              difficultyColors.medium;
             return (
               <ContentCard
                 key={trap.id}
@@ -127,8 +132,16 @@ export default function TrapsContent({ campaignId, showCampaignFilter }: TrapsCo
                 iconColor="red"
                 date={trap.created_at}
                 badges={[
-                  { label: trap.trap_type.replace(/_/g, ' ') },
-                  ...(trap.difficulty ? [{ label: trap.difficulty, color: diffColor.text, bgColor: diffColor.bg }] : []),
+                  { label: trap.trap_type.replace(/_/g, " ") },
+                  ...(trap.difficulty
+                    ? [
+                        {
+                          label: trap.difficulty,
+                          color: diffColor.text,
+                          bgColor: diffColor.bg,
+                        },
+                      ]
+                    : []),
                   ...(trap.environment ? [{ label: trap.environment }] : []),
                 ]}
                 onClick={() => setViewingItem(trap)}
@@ -141,7 +154,7 @@ export default function TrapsContent({ campaignId, showCampaignFilter }: TrapsCo
                   })
                 }
               />
-            )
+            );
           })}
         </div>
       </ContentListLayout>
@@ -166,27 +179,36 @@ export default function TrapsContent({ campaignId, showCampaignFilter }: TrapsCo
         />
       )}
     </div>
-  )
+  );
 }
 
 interface TrapDetailModalProps {
-  trap: Trap
-  onClose: () => void
-  onDelete: () => void
+  trap: Trap;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
 function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
-  let detection: any = null
-  let solutionPaths: any[] = []
+  let detection: any = null;
+  let solutionPaths: any[] = [];
 
   try {
-    detection = trap.detection ? (typeof trap.detection === 'string' ? JSON.parse(trap.detection) : trap.detection) : null
-    solutionPaths = trap.solution_paths ? (typeof trap.solution_paths === 'string' ? JSON.parse(trap.solution_paths) : trap.solution_paths) : []
+    detection = trap.detection
+      ? typeof trap.detection === "string"
+        ? JSON.parse(trap.detection)
+        : trap.detection
+      : null;
+    solutionPaths = trap.solution_paths
+      ? typeof trap.solution_paths === "string"
+        ? JSON.parse(trap.solution_paths)
+        : trap.solution_paths
+      : [];
   } catch (err) {
-    logger.error('Failed to parse trap data:', err)
+    logger.error("Failed to parse trap data:", err);
   }
 
-  const diffColor = difficultyColors[trap.difficulty || 'medium'] || difficultyColors.medium
+  const diffColor =
+    difficultyColors[trap.difficulty || "medium"] || difficultyColors.medium;
 
   return (
     <ContentDetailModal
@@ -195,21 +217,29 @@ function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
       icon="AlertTriangle"
       iconColor="red"
       title={trap.name}
-      subtitle={trap.trap_type.replace(/_/g, ' ')}
+      subtitle={trap.trap_type.replace(/_/g, " ")}
       onDelete={onDelete}
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-3">
           {trap.difficulty && (
-            <div className={`px-4 py-2 ${diffColor.bg} border border-red-500/30 rounded-lg`}>
+            <div
+              className={`px-4 py-2 ${diffColor.bg} border border-red-500/30 rounded-lg`}
+            >
               <p className="text-xs text-text-muted">Difficulty</p>
-              <p className={`text-lg font-semibold ${diffColor.text} capitalize`}>{trap.difficulty}</p>
+              <p
+                className={`text-lg font-semibold ${diffColor.text} capitalize`}
+              >
+                {trap.difficulty}
+              </p>
             </div>
           )}
           {trap.party_level && (
             <div className="px-4 py-2 bg-background border border-border rounded-lg">
               <p className="text-xs text-text-muted">Party Level</p>
-              <p className="text-lg font-semibold text-text">{trap.party_level}</p>
+              <p className="text-lg font-semibold text-text">
+                {trap.party_level}
+              </p>
             </div>
           )}
         </div>
@@ -257,8 +287,12 @@ function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
             </h4>
             <div className="bg-background p-4 rounded-lg border border-border">
               {detection.dc && <p className="text-text">DC: {detection.dc}</p>}
-              {detection.skill && <p className="text-text-muted">Skill: {detection.skill}</p>}
-              {typeof detection === 'string' && <p className="text-text">{detection}</p>}
+              {detection.skill && (
+                <p className="text-text-muted">Skill: {detection.skill}</p>
+              )}
+              {typeof detection === "string" && (
+                <p className="text-text">{detection}</p>
+              )}
             </div>
           </div>
         )}
@@ -270,7 +304,9 @@ function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
             </h4>
             <ul className="list-disc list-inside text-text space-y-1">
               {solutionPaths.map((s: any, i: number) => (
-                <li key={i}>{typeof s === 'string' ? s : s.description || s.method}</li>
+                <li key={i}>
+                  {typeof s === "string" ? s : s.description || s.method}
+                </li>
               ))}
             </ul>
           </div>
@@ -281,10 +317,12 @@ function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               DM Notes
             </h4>
-            <p className="text-text leading-relaxed whitespace-pre-wrap">{trap.dm_notes}</p>
+            <p className="text-text leading-relaxed whitespace-pre-wrap">
+              {trap.dm_notes}
+            </p>
           </div>
         )}
       </div>
     </ContentDetailModal>
-  )
+  );
 }

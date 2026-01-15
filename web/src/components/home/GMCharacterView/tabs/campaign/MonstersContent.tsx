@@ -1,96 +1,98 @@
-import { useEffect, useState, useMemo } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../../../../common/Icon'
-import { authFetch } from '../../../../../utils/authFetch'
-import { getApiUrl } from '../../../../../config/api'
-import { logger } from '../../../../../utils/logger'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
+import { useEffect, useState, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../../../../common/Icon";
+import { authFetch } from "../../../../../utils/authFetch";
+import { getApiUrl } from "../../../../../config/api";
+import { logger } from "../../../../../utils/logger";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
 
 interface MonstersContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
 interface Monster {
-  id: string
-  name: string
-  cr: number | string
-  type?: string
-  size?: string
-  alignment?: string
-  hp?: number
-  ac?: number
-  lore?: string
-  abilities?: string
-  tactics?: string
-  created_at: string
-  updated_at: string
+  id: string;
+  name: string;
+  cr: number | string;
+  type?: string;
+  size?: string;
+  alignment?: string;
+  hp?: number;
+  ac?: number;
+  lore?: string;
+  abilities?: string;
+  tactics?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
  * MonstersContent - Display monsters from the campaign.
  */
 export default function MonstersContent({ campaignId }: MonstersContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const [monsters, setMonsters] = useState<Monster[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewingMonster, setViewingMonster] = useState<Monster | null>(null)
+  const { openGenerator } = useGeneratorModalStore();
+  const [monsters, setMonsters] = useState<Monster[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewingMonster, setViewingMonster] = useState<Monster | null>(null);
 
   useEffect(() => {
     const loadMonsters = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const response = await authFetch(getApiUrl(`/monsters?campaign_id=${campaignId}`))
-        if (!response.ok) throw new Error('Failed to fetch monsters')
-        const data = await response.json()
-        setMonsters(Array.isArray(data) ? data : [])
+        const response = await authFetch(
+          getApiUrl(`/monsters?campaign_id=${campaignId}`),
+        );
+        if (!response.ok) throw new Error("Failed to fetch monsters");
+        const data = await response.json();
+        setMonsters(Array.isArray(data) ? data : []);
       } catch (err) {
-        setError('Failed to load monsters')
-        logger.error('Failed to load monsters:', err)
+        setError("Failed to load monsters");
+        logger.error("Failed to load monsters:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    loadMonsters()
-  }, [campaignId])
+    };
+    loadMonsters();
+  }, [campaignId]);
 
   const filteredMonsters = useMemo(() => {
-    if (!searchQuery) return monsters
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return monsters;
+    const query = searchQuery.toLowerCase();
     return monsters.filter(
       (monster) =>
         monster.name.toLowerCase().includes(query) ||
         monster.type?.toLowerCase().includes(query) ||
-        monster.lore?.toLowerCase().includes(query)
-    )
-  }, [monsters, searchQuery])
+        monster.lore?.toLowerCase().includes(query),
+    );
+  }, [monsters, searchQuery]);
 
   const handleDelete = async (monster: Monster) => {
     if (window.confirm(`Delete "${monster.name}"? This cannot be undone.`)) {
       try {
         const response = await authFetch(getApiUrl(`/monsters/${monster.id}`), {
-          method: 'DELETE',
-        })
-        if (!response.ok) throw new Error('Failed to delete monster')
-        setMonsters((prev) => prev.filter((m) => m.id !== monster.id))
+          method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete monster");
+        setMonsters((prev) => prev.filter((m) => m.id !== monster.id));
         if (viewingMonster?.id === monster.id) {
-          setViewingMonster(null)
+          setViewingMonster(null);
         }
       } catch (err) {
-        logger.error('Failed to delete monster:', err)
+        logger.error("Failed to delete monster:", err);
       }
     }
-  }
+  };
 
   const getCRDisplay = (cr: number | string) => {
-    if (typeof cr === 'number') {
-      if (cr < 1) return `CR ${cr}`
-      return `CR ${cr}`
+    if (typeof cr === "number") {
+      if (cr < 1) return `CR ${cr}`;
+      return `CR ${cr}`;
     }
-    return `CR ${cr}`
-  }
+    return `CR ${cr}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -110,7 +112,7 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
           />
         </div>
         <button
-          onClick={() => openGenerator('monster')}
+          onClick={() => openGenerator("monster")}
           className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm"
         >
           <Icon name="Plus" className="w-4 h-4" />
@@ -135,17 +137,20 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
       {/* Empty State */}
       {!loading && filteredMonsters.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="Skull" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="Skull"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching monsters' : 'No monsters yet'}
+            {searchQuery ? "No matching monsters" : "No monsters yet"}
           </h3>
           <p className="text-text-muted text-sm mb-4">
             {searchQuery
-              ? 'Try adjusting your search.'
-              : 'Add custom monsters, bosses, and creatures.'}
+              ? "Try adjusting your search."
+              : "Add custom monsters, bosses, and creatures."}
           </p>
           <button
-            onClick={() => openGenerator('monster')}
+            onClick={() => openGenerator("monster")}
             className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm mx-auto"
           >
             <Icon name="Plus" className="w-4 h-4" />
@@ -169,14 +174,18 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
                     <Icon name="Skull" className="w-5 h-5 text-orange-400" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-text font-medium truncate">{monster.name}</h4>
-                    <p className="text-text-muted text-sm">{getCRDisplay(monster.cr)}</p>
+                    <h4 className="text-text font-medium truncate">
+                      {monster.name}
+                    </h4>
+                    <p className="text-text-muted text-sm">
+                      {getCRDisplay(monster.cr)}
+                    </p>
                   </div>
                 </div>
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(monster)
+                    e.stopPropagation();
+                    handleDelete(monster);
                   }}
                   className="p-1 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400 flex-shrink-0"
                 >
@@ -220,24 +229,28 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
         />
       )}
     </div>
-  )
+  );
 }
 
 // Monster Detail Modal
 interface MonsterDetailModalProps {
-  monster: Monster
-  onClose: () => void
-  onDelete: () => void
+  monster: Monster;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalProps) {
+function MonsterDetailModal({
+  monster,
+  onClose,
+  onDelete,
+}: MonsterDetailModalProps) {
   const getCRDisplay = (cr: number | string) => {
-    if (typeof cr === 'number') {
-      if (cr < 1) return `CR ${cr}`
-      return `CR ${cr}`
+    if (typeof cr === "number") {
+      if (cr < 1) return `CR ${cr}`;
+      return `CR ${cr}`;
     }
-    return `CR ${cr}`
-  }
+    return `CR ${cr}`;
+  };
 
   return (
     <div
@@ -252,7 +265,9 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
               <Icon name="Skull" className="w-5 h-5 text-orange-400" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-text">{monster.name}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {monster.name}
+              </h3>
               <div className="flex items-center gap-2 text-sm text-text-muted">
                 <span>{getCRDisplay(monster.cr)}</span>
                 {monster.type && (
@@ -279,25 +294,33 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
             {monster.hp && (
               <div className="px-4 py-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                 <p className="text-xs text-text-muted">Hit Points</p>
-                <p className="text-lg font-semibold text-orange-400">{monster.hp}</p>
+                <p className="text-lg font-semibold text-orange-400">
+                  {monster.hp}
+                </p>
               </div>
             )}
             {monster.ac && (
               <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <p className="text-xs text-text-muted">Armor Class</p>
-                <p className="text-lg font-semibold text-blue-400">{monster.ac}</p>
+                <p className="text-lg font-semibold text-blue-400">
+                  {monster.ac}
+                </p>
               </div>
             )}
             {monster.size && (
               <div className="px-4 py-2 bg-background border border-border rounded-lg">
                 <p className="text-xs text-text-muted">Size</p>
-                <p className="text-lg font-semibold text-text capitalize">{monster.size}</p>
+                <p className="text-lg font-semibold text-text capitalize">
+                  {monster.size}
+                </p>
               </div>
             )}
             {monster.alignment && (
               <div className="px-4 py-2 bg-background border border-border rounded-lg">
                 <p className="text-xs text-text-muted">Alignment</p>
-                <p className="text-lg font-semibold text-text capitalize">{monster.alignment}</p>
+                <p className="text-lg font-semibold text-text capitalize">
+                  {monster.alignment}
+                </p>
               </div>
             )}
           </div>
@@ -309,7 +332,9 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
                 Lore
               </h4>
               <div className="prose prose-invert prose-tavern max-w-none">
-                <ReactMarkdown>{monster.lore.replace(/\\n/g, '\n')}</ReactMarkdown>
+                <ReactMarkdown>
+                  {monster.lore.replace(/\\n/g, "\n")}
+                </ReactMarkdown>
               </div>
             </div>
           )}
@@ -321,7 +346,9 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
                 Abilities
               </h4>
               <div className="prose prose-invert prose-tavern max-w-none">
-                <ReactMarkdown>{monster.abilities.replace(/\\n/g, '\n')}</ReactMarkdown>
+                <ReactMarkdown>
+                  {monster.abilities.replace(/\\n/g, "\n")}
+                </ReactMarkdown>
               </div>
             </div>
           )}
@@ -333,7 +360,9 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
                 Tactics
               </h4>
               <div className="prose prose-invert prose-tavern max-w-none">
-                <ReactMarkdown>{monster.tactics.replace(/\\n/g, '\n')}</ReactMarkdown>
+                <ReactMarkdown>
+                  {monster.tactics.replace(/\\n/g, "\n")}
+                </ReactMarkdown>
               </div>
             </div>
           )}
@@ -362,5 +391,5 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
         </div>
       </div>
     </div>
-  )
+  );
 }

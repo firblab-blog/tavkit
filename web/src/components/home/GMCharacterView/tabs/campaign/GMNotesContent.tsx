@@ -1,75 +1,79 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../../../../common/Icon'
-import { useCampaignStore, type CampaignContent } from '../../../../../store/campaignStore'
-import { logger } from '../../../../../utils/logger'
-import CampaignContentEditorModal from '../../../../campaign/CampaignContentEditorModal'
+import { useEffect, useState, useMemo, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../../../../common/Icon";
+import {
+  useCampaignStore,
+  type CampaignContent,
+} from "../../../../../store/campaignStore";
+import { logger } from "../../../../../utils/logger";
+import CampaignContentEditorModal from "../../../../campaign/CampaignContentEditorModal";
 
 interface GMNotesContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
 /**
  * GMNotesContent - Display GM notes from the campaign.
  */
 export default function GMNotesContent({ campaignId }: GMNotesContentProps) {
-  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore()
+  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore();
 
-  const [notes, setNotes] = useState<CampaignContent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewingNote, setViewingNote] = useState<CampaignContent | null>(null)
-  const [showEditorModal, setShowEditorModal] = useState(false)
+  const [notes, setNotes] = useState<CampaignContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewingNote, setViewingNote] = useState<CampaignContent | null>(null);
+  const [showEditorModal, setShowEditorModal] = useState(false);
 
   useEffect(() => {
     const loadNotes = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const content = await fetchCampaignContent(campaignId, 'gm-notes')
-        setNotes(content)
+        const content = await fetchCampaignContent(campaignId, "gm-notes");
+        setNotes(content);
       } catch (err) {
-        setError('Failed to load GM notes')
-        logger.error('Failed to load GM notes:', err)
+        setError("Failed to load GM notes");
+        logger.error("Failed to load GM notes:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    loadNotes()
-  }, [campaignId, fetchCampaignContent])
+    };
+    loadNotes();
+  }, [campaignId, fetchCampaignContent]);
 
   const refreshContent = useCallback(async () => {
     try {
-      const content = await fetchCampaignContent(campaignId, 'gm-notes')
-      setNotes(content)
+      const content = await fetchCampaignContent(campaignId, "gm-notes");
+      setNotes(content);
     } catch (err) {
-      logger.error('Failed to refresh content:', err)
+      logger.error("Failed to refresh content:", err);
     }
-  }, [campaignId, fetchCampaignContent])
+  }, [campaignId, fetchCampaignContent]);
 
   const filteredNotes = useMemo(() => {
-    if (!searchQuery) return notes
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return notes;
+    const query = searchQuery.toLowerCase();
     return notes.filter(
       (note) =>
-        note.title.toLowerCase().includes(query) || note.content?.toLowerCase().includes(query)
-    )
-  }, [notes, searchQuery])
+        note.title.toLowerCase().includes(query) ||
+        note.content?.toLowerCase().includes(query),
+    );
+  }, [notes, searchQuery]);
 
   const handleDelete = async (note: CampaignContent) => {
     if (window.confirm(`Delete "${note.title}"? This cannot be undone.`)) {
       try {
-        await deleteCampaignContent(campaignId, note.id)
-        setNotes((prev) => prev.filter((n) => n.id !== note.id))
+        await deleteCampaignContent(campaignId, note.id);
+        setNotes((prev) => prev.filter((n) => n.id !== note.id));
         if (viewingNote?.id === note.id) {
-          setViewingNote(null)
+          setViewingNote(null);
         }
       } catch (err) {
-        logger.error('Failed to delete note:', err)
+        logger.error("Failed to delete note:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -114,14 +118,17 @@ export default function GMNotesContent({ campaignId }: GMNotesContentProps) {
       {/* Empty State */}
       {!loading && filteredNotes.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="FileEdit" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="FileEdit"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching notes' : 'No GM notes yet'}
+            {searchQuery ? "No matching notes" : "No GM notes yet"}
           </h3>
           <p className="text-text-muted text-sm mb-4">
             {searchQuery
-              ? 'Try adjusting your search.'
-              : 'Add private notes, session prep, and continuity tracking.'}
+              ? "Try adjusting your search."
+              : "Add private notes, session prep, and continuity tracking."}
           </p>
           {!searchQuery && (
             <button
@@ -163,8 +170,8 @@ export default function GMNotesContent({ campaignId }: GMNotesContentProps) {
                 </div>
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(note)
+                    e.stopPropagation();
+                    handleDelete(note);
                   }}
                   className="p-1.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400 flex-shrink-0"
                 >
@@ -193,17 +200,21 @@ export default function GMNotesContent({ campaignId }: GMNotesContentProps) {
         onSaved={refreshContent}
       />
     </div>
-  )
+  );
 }
 
 // GM Note Detail Modal
 interface GMNoteDetailModalProps {
-  note: CampaignContent
-  onClose: () => void
-  onDelete: () => void
+  note: CampaignContent;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function GMNoteDetailModal({ note, onClose, onDelete }: GMNoteDetailModalProps) {
+function GMNoteDetailModal({
+  note,
+  onClose,
+  onDelete,
+}: GMNoteDetailModalProps) {
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
@@ -217,7 +228,9 @@ function GMNoteDetailModal({ note, onClose, onDelete }: GMNoteDetailModalProps) 
               <Icon name="FileEdit" className="w-5 h-5 text-rose-400" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-text">{note.title}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {note.title}
+              </h3>
               <p className="text-sm text-text-muted">
                 {new Date(note.created_at).toLocaleDateString()}
               </p>
@@ -235,7 +248,9 @@ function GMNoteDetailModal({ note, onClose, onDelete }: GMNoteDetailModalProps) 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {note.content ? (
             <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>{note.content.replace(/\\n/g, '\n')}</ReactMarkdown>
+              <ReactMarkdown>
+                {note.content.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
           ) : (
             <p className="text-text-muted italic">No content</p>
@@ -260,5 +275,5 @@ function GMNoteDetailModal({ note, onClose, onDelete }: GMNoteDetailModalProps) 
         </div>
       </div>
     </div>
-  )
+  );
 }

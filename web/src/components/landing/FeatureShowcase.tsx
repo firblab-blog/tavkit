@@ -1,52 +1,52 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Icon, { IconName } from '../common/Icon'
-import { useContextStore } from '../../store/contextStore'
-import { useCampaignStore } from '../../store/campaignStore'
-import PlayerOnboarding from './PlayerOnboarding'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Icon, { IconName } from "../common/Icon";
+import { useContextStore } from "../../store/contextStore";
+import { useCampaignStore } from "../../store/campaignStore";
+import PlayerOnboarding from "./PlayerOnboarding";
 
 interface FeatureCardProps {
-  icon: IconName
-  title: string
-  description: string
-  color: 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'cyan'
+  icon: IconName;
+  title: string;
+  description: string;
+  color: "emerald" | "blue" | "purple" | "amber" | "rose" | "cyan";
 }
 
 const colorClasses = {
   emerald: {
-    icon: 'text-emerald-400',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/20',
+    icon: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
   },
   blue: {
-    icon: 'text-blue-400',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
+    icon: "text-blue-400",
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
   },
   purple: {
-    icon: 'text-purple-400',
-    bg: 'bg-purple-500/10',
-    border: 'border-purple-500/20',
+    icon: "text-purple-400",
+    bg: "bg-purple-500/10",
+    border: "border-purple-500/20",
   },
   amber: {
-    icon: 'text-amber-400',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/20',
+    icon: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
   },
   rose: {
-    icon: 'text-rose-400',
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/20',
+    icon: "text-rose-400",
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/20",
   },
   cyan: {
-    icon: 'text-cyan-400',
-    bg: 'bg-cyan-500/10',
-    border: 'border-cyan-500/20',
+    icon: "text-cyan-400",
+    bg: "bg-cyan-500/10",
+    border: "border-cyan-500/20",
   },
-}
+};
 
 function FeatureCard({ icon, title, description, color }: FeatureCardProps) {
-  const colors = colorClasses[color]
+  const colors = colorClasses[color];
 
   return (
     <div
@@ -56,41 +56,48 @@ function FeatureCard({ icon, title, description, color }: FeatureCardProps) {
       <h3 className="text-text font-semibold mb-1">{title}</h3>
       <p className="text-text-muted text-sm">{description}</p>
     </div>
-  )
+  );
 }
 
 interface RoleCardProps {
-  icon: IconName
-  title: string
-  subtitle: string
-  description: string
-  color: 'amber' | 'blue' | 'purple'
-  onClick: () => void
+  icon: IconName;
+  title: string;
+  subtitle: string;
+  description: string;
+  color: "amber" | "blue" | "purple";
+  onClick: () => void;
 }
 
-function RoleCard({ icon, title, subtitle, description, color, onClick }: RoleCardProps) {
+function RoleCard({
+  icon,
+  title,
+  subtitle,
+  description,
+  color,
+  onClick,
+}: RoleCardProps) {
   const colorStyles = {
     amber: {
-      icon: 'text-amber-400',
-      bg: 'bg-amber-500/10 hover:bg-amber-500/20',
-      border: 'border-amber-500/30 hover:border-amber-500/50',
-      glow: 'hover:shadow-amber-500/10',
+      icon: "text-amber-400",
+      bg: "bg-amber-500/10 hover:bg-amber-500/20",
+      border: "border-amber-500/30 hover:border-amber-500/50",
+      glow: "hover:shadow-amber-500/10",
     },
     blue: {
-      icon: 'text-blue-400',
-      bg: 'bg-blue-500/10 hover:bg-blue-500/20',
-      border: 'border-blue-500/30 hover:border-blue-500/50',
-      glow: 'hover:shadow-blue-500/10',
+      icon: "text-blue-400",
+      bg: "bg-blue-500/10 hover:bg-blue-500/20",
+      border: "border-blue-500/30 hover:border-blue-500/50",
+      glow: "hover:shadow-blue-500/10",
     },
     purple: {
-      icon: 'text-purple-400',
-      bg: 'bg-purple-500/10 hover:bg-purple-500/20',
-      border: 'border-purple-500/30 hover:border-purple-500/50',
-      glow: 'hover:shadow-purple-500/10',
+      icon: "text-purple-400",
+      bg: "bg-purple-500/10 hover:bg-purple-500/20",
+      border: "border-purple-500/30 hover:border-purple-500/50",
+      glow: "hover:shadow-purple-500/10",
     },
-  }
+  };
 
-  const styles = colorStyles[color]
+  const styles = colorStyles[color];
 
   return (
     <button
@@ -106,7 +113,7 @@ function RoleCard({ icon, title, subtitle, description, color, onClick }: RoleCa
       <p className={`text-sm font-medium ${styles.icon} mb-2`}>{subtitle}</p>
       <p className="text-text-muted text-sm">{description}</p>
     </button>
-  )
+  );
 }
 
 /**
@@ -118,38 +125,38 @@ function RoleCard({ icon, title, subtitle, description, color, onClick }: RoleCa
  * 3. Explore Path - Try out generators in sandbox mode
  */
 export default function FeatureShowcase() {
-  const navigate = useNavigate()
-  const { completeOnboarding, updateContext } = useContextStore()
-  const [showPlayerOnboarding, setShowPlayerOnboarding] = useState(false)
+  const navigate = useNavigate();
+  const { completeOnboarding, updateContext } = useContextStore();
+  const [showPlayerOnboarding, setShowPlayerOnboarding] = useState(false);
 
   const handleGMPath = async () => {
     // Mark onboarding as complete
-    await completeOnboarding()
+    await completeOnboarding();
     // Navigate to GM dashboard and open create modal
-    navigate('/dashboard/gm')
+    navigate("/dashboard/gm");
     // Open the global campaign creation modal
-    useCampaignStore.getState().openCreateCampaignModal()
-  }
+    useCampaignStore.getState().openCreateCampaignModal();
+  };
 
   const handlePlayerPath = () => {
     // Show player onboarding modal
-    setShowPlayerOnboarding(true)
-  }
+    setShowPlayerOnboarding(true);
+  };
 
   const handleExplorePath = async () => {
     // Mark onboarding as complete
-    await completeOnboarding()
+    await completeOnboarding();
     // Set context to library mode
     await updateContext({
-      last_context_type: 'library',
+      last_context_type: "library",
       last_campaign_id: null,
-    })
-    navigate('/dashboard/sandbox')
-  }
+    });
+    navigate("/dashboard/sandbox");
+  };
 
   // Show player onboarding flow if selected
   if (showPlayerOnboarding) {
-    return <PlayerOnboarding onBack={() => setShowPlayerOnboarding(false)} />
+    return <PlayerOnboarding onBack={() => setShowPlayerOnboarding(false)} />;
   }
 
   return (
@@ -163,15 +170,21 @@ export default function FeatureShowcase() {
       <div className="relative z-10 w-full max-w-5xl">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <img src="/tavkit-logo-master.svg" alt="TavKit" className="h-24 w-auto" />
+          <img
+            src="/tavkit-logo-master.svg"
+            alt="TavKit"
+            className="h-24 w-auto"
+          />
         </div>
 
         {/* Welcome message */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl md:text-4xl font-bold text-text mb-3">Welcome to TavKit</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-text mb-3">
+            Welcome to TavKit
+          </h1>
           <p className="text-xl text-text-muted max-w-2xl mx-auto">
-            Your AI-powered companion for tabletop roleplaying games. Create, prepare, and run
-            amazing adventures.
+            Your AI-powered companion for tabletop roleplaying games. Create,
+            prepare, and run amazing adventures.
           </p>
         </div>
 
@@ -258,5 +271,5 @@ export default function FeatureShowcase() {
         </p>
       </div>
     </div>
-  )
+  );
 }

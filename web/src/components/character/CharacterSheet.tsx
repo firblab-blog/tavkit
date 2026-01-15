@@ -1,138 +1,138 @@
-import { useState } from 'react'
-import DOMPurify from 'dompurify'
-import Icon from '../common/Icon'
-import CharacterEditForm from './CharacterEditForm'
-import { Character as StoreCharacter } from '@/store/characterStore'
-import { apiClient } from '@/api/client'
-import { getHPBreakdown } from '@/utils/characterStats'
-import { logger } from '@/utils/logger'
+import { useState } from "react";
+import DOMPurify from "dompurify";
+import Icon from "../common/Icon";
+import CharacterEditForm from "./CharacterEditForm";
+import { Character as StoreCharacter } from "@/store/characterStore";
+import { apiClient } from "@/api/client";
+import { getHPBreakdown } from "@/utils/characterStats";
+import { logger } from "@/utils/logger";
 
 // Skill data from D&D Beyond import
 interface SkillData {
-  bonus: number
-  proficient: boolean
-  expertise: boolean
+  bonus: number;
+  proficient: boolean;
+  expertise: boolean;
 }
 
 // Saving throw data from D&D Beyond import
 interface SavingThrowData {
-  bonus: number
-  proficient: boolean
+  bonus: number;
+  proficient: boolean;
 }
 
 // Action data from D&D Beyond import
 interface ActionData {
-  name: string
-  description?: string
-  attack_bonus?: number
-  damage?: string
-  range?: string
-  uses?: { current: number; max: number }
+  name: string;
+  description?: string;
+  attack_bonus?: number;
+  damage?: string;
+  range?: string;
+  uses?: { current: number; max: number };
 }
 
 interface Character {
-  id: string
-  name: string
-  race: string
-  subrace?: string
-  class_info: string
-  subclass?: string
-  level: number
-  background?: string
-  alignment?: string
-  experience?: number
-  inspiration?: boolean
+  id: string;
+  name: string;
+  race: string;
+  subrace?: string;
+  class_info: string;
+  subclass?: string;
+  level: number;
+  background?: string;
+  alignment?: string;
+  experience?: number;
+  inspiration?: boolean;
   // Ability Scores
-  strength?: number
-  dexterity?: number
-  constitution?: number
-  intelligence?: number
-  wisdom?: number
-  charisma?: number
+  strength?: number;
+  dexterity?: number;
+  constitution?: number;
+  intelligence?: number;
+  wisdom?: number;
+  charisma?: number;
   // Combat Stats
-  armor_class?: number
-  initiative?: number
-  speed?: number
-  speed_flying?: number
-  speed_swimming?: number
-  speed_climbing?: number
-  speed_burrowing?: number
-  size?: string
-  max_hp?: number
-  current_hp?: number
-  temp_hp?: number
+  armor_class?: number;
+  initiative?: number;
+  speed?: number;
+  speed_flying?: number;
+  speed_swimming?: number;
+  speed_climbing?: number;
+  speed_burrowing?: number;
+  size?: string;
+  max_hp?: number;
+  current_hp?: number;
+  temp_hp?: number;
   // Hit Dice
-  hit_dice?: string
-  hit_dice_total?: number
-  hit_dice_used?: number
+  hit_dice?: string;
+  hit_dice_total?: number;
+  hit_dice_used?: number;
   // Death Saves
-  death_saves?: any
-  death_save_successes?: number
-  death_save_failures?: number
-  exhaustion_level?: number
+  death_saves?: any;
+  death_save_successes?: number;
+  death_save_failures?: number;
+  exhaustion_level?: number;
   // Proficiency & Skills
-  proficiency_bonus?: number
-  saving_throws?: Record<string, SavingThrowData>
-  skills?: Record<string, SkillData>
-  proficiencies?: any
-  languages?: string[]
+  proficiency_bonus?: number;
+  saving_throws?: Record<string, SavingThrowData>;
+  skills?: Record<string, SkillData>;
+  proficiencies?: any;
+  languages?: string[];
   // Senses
-  senses?: any
-  passive_perception?: number
-  passive_insight?: number
-  passive_investigation?: number
+  senses?: any;
+  passive_perception?: number;
+  passive_insight?: number;
+  passive_investigation?: number;
   // Features & Actions
-  features?: any[]
-  racial_traits?: any[]
-  feats?: any[]
-  traits?: any[]
-  actions?: ActionData[]
-  bonus_actions?: ActionData[]
-  reactions?: ActionData[]
+  features?: any[];
+  racial_traits?: any[];
+  feats?: any[];
+  traits?: any[];
+  actions?: ActionData[];
+  bonus_actions?: ActionData[];
+  reactions?: ActionData[];
   // Equipment
-  equipment?: any[]
-  weapons?: any[]
-  armor?: any[]
-  currency?: any
-  treasure?: any[]
+  equipment?: any[];
+  weapons?: any[];
+  armor?: any[];
+  currency?: any;
+  treasure?: any[];
   // Spellcasting
-  spellcasting_ability?: string
-  spell_save_dc?: number
-  spell_attack_bonus?: number
-  spell_slots?: any
-  known_spells?: any[]
-  prepared_spells?: any[]
-  cantrips?: any[]
+  spellcasting_ability?: string;
+  spell_save_dc?: number;
+  spell_attack_bonus?: number;
+  spell_slots?: any;
+  known_spells?: any[];
+  prepared_spells?: any[];
+  cantrips?: any[];
   // Personality
-  personality_traits?: string
-  ideals?: string
-  bonds?: string
-  flaws?: string
-  backstory?: string
-  allies_organizations?: string
-  enemies?: string
-  notes?: string
-  appearance?: string
-  avatar?: string
+  personality_traits?: string;
+  ideals?: string;
+  bonds?: string;
+  flaws?: string;
+  backstory?: string;
+  allies_organizations?: string;
+  enemies?: string;
+  notes?: string;
+  appearance?: string;
+  avatar?: string;
   // Physical Characteristics
-  age?: string
-  height?: string
-  weight?: string
-  eyes?: string
-  skin?: string
-  hair?: string
-  gender?: string
-  faith?: string
+  age?: string;
+  height?: string;
+  weight?: string;
+  eyes?: string;
+  skin?: string;
+  hair?: string;
+  gender?: string;
+  faith?: string;
   // Lifestyle
-  lifestyle?: string
+  lifestyle?: string;
   // D&D Beyond
-  dndbeyond_id?: string
+  dndbeyond_id?: string;
 }
 
 interface CharacterSheetProps {
-  character: Character
-  onUpdate?: () => void
-  onClose: () => void
+  character: Character;
+  onUpdate?: () => void;
+  onClose: () => void;
 }
 
 export default function CharacterSheet({
@@ -140,74 +140,83 @@ export default function CharacterSheet({
   onUpdate,
   onClose: _onClose,
 }: CharacterSheetProps) {
-  const [editMode, setEditMode] = useState(false)
-  const [selectedSpell, setSelectedSpell] = useState<any>(null)
-  const [deathSaveSuccesses, setDeathSaveSuccesses] = useState(character.death_save_successes || 0)
-  const [deathSaveFailures, setDeathSaveFailures] = useState(character.death_save_failures || 0)
-  const [savingDeathSaves, setSavingDeathSaves] = useState(false)
+  const [editMode, setEditMode] = useState(false);
+  const [selectedSpell, setSelectedSpell] = useState<any>(null);
+  const [deathSaveSuccesses, setDeathSaveSuccesses] = useState(
+    character.death_save_successes || 0,
+  );
+  const [deathSaveFailures, setDeathSaveFailures] = useState(
+    character.death_save_failures || 0,
+  );
+  const [savingDeathSaves, setSavingDeathSaves] = useState(false);
 
   // Calculate ability modifiers
   const getModifier = (score?: number): string => {
-    if (!score) return '+0'
-    const mod = Math.floor((score - 10) / 2)
-    return mod >= 0 ? `+${mod}` : `${mod}`
-  }
+    if (!score) return "+0";
+    const mod = Math.floor((score - 10) / 2);
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+  };
 
   // Handle successful edit
   const handleEditSuccess = () => {
-    setEditMode(false)
+    setEditMode(false);
     if (onUpdate) {
-      onUpdate()
+      onUpdate();
     }
-  }
+  };
 
   // Handle death save toggle
-  const handleDeathSaveToggle = async (type: 'successes' | 'failures', index: number) => {
-    if (savingDeathSaves) return
+  const handleDeathSaveToggle = async (
+    type: "successes" | "failures",
+    index: number,
+  ) => {
+    if (savingDeathSaves) return;
 
-    const currentValue = type === 'successes' ? deathSaveSuccesses : deathSaveFailures
+    const currentValue =
+      type === "successes" ? deathSaveSuccesses : deathSaveFailures;
     // If clicking on a filled circle at or before current value, unfill from that point
     // If clicking on an unfilled circle, fill up to that point
-    const newValue = currentValue >= index ? index - 1 : index
+    const newValue = currentValue >= index ? index - 1 : index;
 
     // Optimistically update UI
-    if (type === 'successes') {
-      setDeathSaveSuccesses(newValue)
+    if (type === "successes") {
+      setDeathSaveSuccesses(newValue);
     } else {
-      setDeathSaveFailures(newValue)
+      setDeathSaveFailures(newValue);
     }
 
-    setSavingDeathSaves(true)
+    setSavingDeathSaves(true);
     try {
       await apiClient.put(`/characters/${character.id}`, {
         name: character.name,
         level: character.level,
         race: character.race,
         class_info: character.class_info,
-        death_save_successes: type === 'successes' ? newValue : deathSaveSuccesses,
-        death_save_failures: type === 'failures' ? newValue : deathSaveFailures,
-      })
+        death_save_successes:
+          type === "successes" ? newValue : deathSaveSuccesses,
+        death_save_failures: type === "failures" ? newValue : deathSaveFailures,
+      });
       // Notify parent to refresh if needed
       if (onUpdate) {
-        onUpdate()
+        onUpdate();
       }
     } catch (error) {
       // Revert on error
-      if (type === 'successes') {
-        setDeathSaveSuccesses(currentValue)
+      if (type === "successes") {
+        setDeathSaveSuccesses(currentValue);
       } else {
-        setDeathSaveFailures(currentValue)
+        setDeathSaveFailures(currentValue);
       }
-      logger.error('Failed to update death saves:', error)
+      logger.error("Failed to update death saves:", error);
     } finally {
-      setSavingDeathSaves(false)
+      setSavingDeathSaves(false);
     }
-  }
+  };
 
   // Convert local Character interface to store Character type for the edit form
   const storeCharacter: StoreCharacter = {
     id: character.id,
-    user_id: '',
+    user_id: "",
     name: character.name,
     race: character.race,
     class_info: character.class_info,
@@ -239,9 +248,9 @@ export default function CharacterSheet({
     avatar: character.avatar,
     languages: character.languages,
     currency: character.currency,
-    created_at: '',
-    updated_at: '',
-  }
+    created_at: "",
+    updated_at: "",
+  };
 
   // If in edit mode, show the edit form
   if (editMode) {
@@ -249,7 +258,9 @@ export default function CharacterSheet({
       <div className="h-full overflow-y-auto bg-background">
         <div className="border-b border-border bg-background-panel p-6 sticky top-0 z-10">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-text">Edit Character: {character.name}</h2>
+            <h2 className="text-xl font-bold text-text">
+              Edit Character: {character.name}
+            </h2>
             <button
               onClick={() => setEditMode(false)}
               className="text-text-muted hover:text-text transition-colors"
@@ -266,7 +277,7 @@ export default function CharacterSheet({
           />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -291,7 +302,9 @@ export default function CharacterSheet({
             {/* Basic Info */}
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-2xl font-bold text-text">{character.name}</h2>
+                <h2 className="text-2xl font-bold text-text">
+                  {character.name}
+                </h2>
                 {character.inspiration && (
                   <span className="text-yellow-500" title="Inspired">
                     <Icon name="Sparkles" className="w-5 h-5" />
@@ -300,7 +313,8 @@ export default function CharacterSheet({
               </div>
               <div className="flex flex-wrap gap-2 text-sm text-text-muted">
                 <span>
-                  Level {character.level} {character.subrace ? `${character.subrace} ` : ''}
+                  Level {character.level}{" "}
+                  {character.subrace ? `${character.subrace} ` : ""}
                   {character.race} {character.class_info}
                   {character.subclass && ` (${character.subclass})`}
                 </span>
@@ -378,10 +392,18 @@ export default function CharacterSheet({
                 character.speed_climbing ||
                 character.speed_burrowing) && (
                 <div className="text-xs text-text-muted mt-1 space-x-2">
-                  {character.speed_flying && <span>Fly {character.speed_flying}ft</span>}
-                  {character.speed_swimming && <span>Swim {character.speed_swimming}ft</span>}
-                  {character.speed_climbing && <span>Climb {character.speed_climbing}ft</span>}
-                  {character.speed_burrowing && <span>Burrow {character.speed_burrowing}ft</span>}
+                  {character.speed_flying && (
+                    <span>Fly {character.speed_flying}ft</span>
+                  )}
+                  {character.speed_swimming && (
+                    <span>Swim {character.speed_swimming}ft</span>
+                  )}
+                  {character.speed_climbing && (
+                    <span>Climb {character.speed_climbing}ft</span>
+                  )}
+                  {character.speed_burrowing && (
+                    <span>Burrow {character.speed_burrowing}ft</span>
+                  )}
                 </div>
               )}
             </div>
@@ -391,22 +413,24 @@ export default function CharacterSheet({
                 {character.current_hp ?? character.max_hp ?? 0}
               </div>
               <div className="text-xs text-text-muted">
-                /{' '}
+                /{" "}
                 {(() => {
                   const hpBreakdown = getHPBreakdown(
                     character.max_hp,
                     character.level,
-                    character.constitution
-                  )
+                    character.constitution,
+                  );
                   return hpBreakdown.conBonus > 0
                     ? `${hpBreakdown.base} +${hpBreakdown.conBonus}`
                     : hpBreakdown.conBonus < 0
                       ? `${hpBreakdown.base} ${hpBreakdown.conBonus}`
-                      : character.max_hp || 0
+                      : character.max_hp || 0;
                 })()}
               </div>
               {character.temp_hp !== undefined && character.temp_hp > 0 && (
-                <div className="text-xs text-primary mt-1">+{character.temp_hp} temp</div>
+                <div className="text-xs text-primary mt-1">
+                  +{character.temp_hp} temp
+                </div>
               )}
             </div>
             <div className="text-center">
@@ -416,15 +440,18 @@ export default function CharacterSheet({
               </div>
               {character.hit_dice_total !== undefined && (
                 <div className="text-xs text-text-muted">
-                  {(character.hit_dice_total || 0) - (character.hit_dice_used || 0)} /{' '}
-                  {character.hit_dice_total}
+                  {(character.hit_dice_total || 0) -
+                    (character.hit_dice_used || 0)}{" "}
+                  / {character.hit_dice_total}
                 </div>
               )}
             </div>
             <div className="text-center">
               <div className="text-sm text-text-muted mb-1">Proficiency</div>
               <div className="text-2xl sm:text-3xl font-bold text-primary">
-                +{character.proficiency_bonus || Math.floor((character.level - 1) / 4) + 2}
+                +
+                {character.proficiency_bonus ||
+                  Math.floor((character.level - 1) / 4) + 2}
               </div>
             </div>
           </div>
@@ -433,7 +460,9 @@ export default function CharacterSheet({
           {character.size && (
             <div className="mt-4 pt-4 border-t border-border">
               <span className="text-sm text-text-muted">Size: </span>
-              <span className="text-sm font-semibold text-text">{character.size}</span>
+              <span className="text-sm font-semibold text-text">
+                {character.size}
+              </span>
             </div>
           )}
 
@@ -446,14 +475,14 @@ export default function CharacterSheet({
                   {[1, 2, 3].map((i) => (
                     <button
                       key={`success-${i}`}
-                      onClick={() => handleDeathSaveToggle('successes', i)}
+                      onClick={() => handleDeathSaveToggle("successes", i)}
                       disabled={savingDeathSaves}
                       className={`w-4 h-4 rounded-full border-2 transition-colors cursor-pointer hover:border-green-400 disabled:cursor-wait ${
                         deathSaveSuccesses >= i
-                          ? 'bg-green-500 border-green-500'
-                          : 'border-text-muted hover:bg-green-500/20'
+                          ? "bg-green-500 border-green-500"
+                          : "border-text-muted hover:bg-green-500/20"
                       }`}
-                      title={`${deathSaveSuccesses >= i ? 'Remove' : 'Add'} success ${i}`}
+                      title={`${deathSaveSuccesses >= i ? "Remove" : "Add"} success ${i}`}
                     />
                   ))}
                 </div>
@@ -464,14 +493,14 @@ export default function CharacterSheet({
                   {[1, 2, 3].map((i) => (
                     <button
                       key={`failure-${i}`}
-                      onClick={() => handleDeathSaveToggle('failures', i)}
+                      onClick={() => handleDeathSaveToggle("failures", i)}
                       disabled={savingDeathSaves}
                       className={`w-4 h-4 rounded-full border-2 transition-colors cursor-pointer hover:border-red-400 disabled:cursor-wait ${
                         deathSaveFailures >= i
-                          ? 'bg-red-500 border-red-500'
-                          : 'border-text-muted hover:bg-red-500/20'
+                          ? "bg-red-500 border-red-500"
+                          : "border-text-muted hover:bg-red-500/20"
                       }`}
-                      title={`${deathSaveFailures >= i ? 'Remove' : 'Add'} failure ${i}`}
+                      title={`${deathSaveFailures >= i ? "Remove" : "Add"} failure ${i}`}
                     />
                   ))}
                 </div>
@@ -488,23 +517,37 @@ export default function CharacterSheet({
           </h3>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-4">
             {[
-              { name: 'STR', value: character.strength, full: 'Strength' },
-              { name: 'DEX', value: character.dexterity, full: 'Dexterity' },
-              { name: 'CON', value: character.constitution, full: 'Constitution' },
-              { name: 'INT', value: character.intelligence, full: 'Intelligence' },
-              { name: 'WIS', value: character.wisdom, full: 'Wisdom' },
-              { name: 'CHA', value: character.charisma, full: 'Charisma' },
+              { name: "STR", value: character.strength, full: "Strength" },
+              { name: "DEX", value: character.dexterity, full: "Dexterity" },
+              {
+                name: "CON",
+                value: character.constitution,
+                full: "Constitution",
+              },
+              {
+                name: "INT",
+                value: character.intelligence,
+                full: "Intelligence",
+              },
+              { name: "WIS", value: character.wisdom, full: "Wisdom" },
+              { name: "CHA", value: character.charisma, full: "Charisma" },
             ].map((ability) => (
               <div
                 key={ability.name}
                 className="flex flex-col items-center bg-background rounded-lg p-2 sm:p-4"
               >
-                <div className="text-xs text-text-muted mb-1 hidden sm:block">{ability.full}</div>
-                <div className="text-base sm:text-lg font-bold text-text mb-1">{ability.name}</div>
+                <div className="text-xs text-text-muted mb-1 hidden sm:block">
+                  {ability.full}
+                </div>
+                <div className="text-base sm:text-lg font-bold text-text mb-1">
+                  {ability.name}
+                </div>
                 <div className="text-2xl sm:text-3xl font-bold text-primary mb-1">
                   {ability.value || 10}
                 </div>
-                <div className="text-sm text-text-muted">{getModifier(ability.value)}</div>
+                <div className="text-sm text-text-muted">
+                  {getModifier(ability.value)}
+                </div>
               </div>
             ))}
           </div>
@@ -515,26 +558,37 @@ export default function CharacterSheet({
           <h3 className="text-lg font-bold text-text mb-4">Saving Throws</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
             {[
-              { name: 'Strength', short: 'STR', value: character.strength },
-              { name: 'Dexterity', short: 'DEX', value: character.dexterity },
-              { name: 'Constitution', short: 'CON', value: character.constitution },
-              { name: 'Intelligence', short: 'INT', value: character.intelligence },
-              { name: 'Wisdom', short: 'WIS', value: character.wisdom },
-              { name: 'Charisma', short: 'CHA', value: character.charisma },
+              { name: "Strength", short: "STR", value: character.strength },
+              { name: "Dexterity", short: "DEX", value: character.dexterity },
+              {
+                name: "Constitution",
+                short: "CON",
+                value: character.constitution,
+              },
+              {
+                name: "Intelligence",
+                short: "INT",
+                value: character.intelligence,
+              },
+              { name: "Wisdom", short: "WIS", value: character.wisdom },
+              { name: "Charisma", short: "CHA", value: character.charisma },
             ].map((save) => {
               // New format: saving_throws = { "STR": { bonus: number, proficient: boolean }, ... }
-              const saveData = character.saving_throws?.[save.short]
-              const proficient = saveData?.proficient || false
+              const saveData = character.saving_throws?.[save.short];
+              const proficient = saveData?.proficient || false;
               // Use pre-calculated bonus if available, otherwise calculate
               const total =
                 saveData?.bonus !== undefined
                   ? saveData.bonus
                   : (() => {
-                      const modifier = save.value ? Math.floor((save.value - 10) / 2) : 0
+                      const modifier = save.value
+                        ? Math.floor((save.value - 10) / 2)
+                        : 0;
                       const profBonus =
-                        character.proficiency_bonus || Math.floor((character.level - 1) / 4) + 2
-                      return modifier + (proficient ? profBonus : 0)
-                    })()
+                        character.proficiency_bonus ||
+                        Math.floor((character.level - 1) / 4) + 2;
+                      return modifier + (proficient ? profBonus : 0);
+                    })();
 
               return (
                 <div
@@ -557,7 +611,7 @@ export default function CharacterSheet({
                     {total >= 0 ? `+${total}` : total}
                   </span>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -567,49 +621,67 @@ export default function CharacterSheet({
           <h3 className="text-lg font-bold text-text mb-4">Skills</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {[
-              { name: 'Acrobatics', ability: 'dexterity' },
-              { name: 'Animal Handling', ability: 'wisdom' },
-              { name: 'Arcana', ability: 'intelligence' },
-              { name: 'Athletics', ability: 'strength' },
-              { name: 'Deception', ability: 'charisma' },
-              { name: 'History', ability: 'intelligence' },
-              { name: 'Insight', ability: 'wisdom' },
-              { name: 'Intimidation', ability: 'charisma' },
-              { name: 'Investigation', ability: 'intelligence' },
-              { name: 'Medicine', ability: 'wisdom' },
-              { name: 'Nature', ability: 'intelligence' },
-              { name: 'Perception', ability: 'wisdom' },
-              { name: 'Performance', ability: 'charisma' },
-              { name: 'Persuasion', ability: 'charisma' },
-              { name: 'Religion', ability: 'intelligence' },
-              { name: 'Sleight of Hand', ability: 'dexterity' },
-              { name: 'Stealth', ability: 'dexterity' },
-              { name: 'Survival', ability: 'wisdom' },
+              { name: "Acrobatics", ability: "dexterity" },
+              { name: "Animal Handling", ability: "wisdom" },
+              { name: "Arcana", ability: "intelligence" },
+              { name: "Athletics", ability: "strength" },
+              { name: "Deception", ability: "charisma" },
+              { name: "History", ability: "intelligence" },
+              { name: "Insight", ability: "wisdom" },
+              { name: "Intimidation", ability: "charisma" },
+              { name: "Investigation", ability: "intelligence" },
+              { name: "Medicine", ability: "wisdom" },
+              { name: "Nature", ability: "intelligence" },
+              { name: "Perception", ability: "wisdom" },
+              { name: "Performance", ability: "charisma" },
+              { name: "Persuasion", ability: "charisma" },
+              { name: "Religion", ability: "intelligence" },
+              { name: "Sleight of Hand", ability: "dexterity" },
+              { name: "Stealth", ability: "dexterity" },
+              { name: "Survival", ability: "wisdom" },
             ].map((skill) => {
               // New format: skills = { "Skill Name": { bonus: number, proficient: boolean, expertise: boolean }, ... }
-              const skillData = character.skills?.[skill.name]
-              const proficient = skillData?.proficient || false
-              const expertise = skillData?.expertise || false
+              const skillData = character.skills?.[skill.name];
+              const proficient = skillData?.proficient || false;
+              const expertise = skillData?.expertise || false;
               // Use pre-calculated bonus if available, otherwise calculate
               const total =
                 skillData?.bonus !== undefined
                   ? skillData.bonus
                   : (() => {
                       const abilityScore =
-                        (character[skill.ability as keyof Character] as number) || 10
-                      const modifier = Math.floor((abilityScore - 10) / 2)
+                        (character[
+                          skill.ability as keyof Character
+                        ] as number) || 10;
+                      const modifier = Math.floor((abilityScore - 10) / 2);
                       const profBonus =
-                        character.proficiency_bonus || Math.floor((character.level - 1) / 4) + 2
-                      return modifier + (proficient ? profBonus : 0) + (expertise ? profBonus : 0)
-                    })()
+                        character.proficiency_bonus ||
+                        Math.floor((character.level - 1) / 4) + 2;
+                      return (
+                        modifier +
+                        (proficient ? profBonus : 0) +
+                        (expertise ? profBonus : 0)
+                      );
+                    })();
 
               return (
-                <div key={skill.name} className="flex items-center gap-2 bg-background rounded p-3">
+                <div
+                  key={skill.name}
+                  className="flex items-center gap-2 bg-background rounded p-3"
+                >
                   <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center">
                     {expertise ? (
-                      <div className="w-3 h-3 bg-primary rounded-full" title="Expertise" />
+                      <div
+                        className="w-3 h-3 bg-primary rounded-full"
+                        title="Expertise"
+                      />
                     ) : (
-                      <input type="checkbox" checked={proficient} readOnly className="w-4 h-4" />
+                      <input
+                        type="checkbox"
+                        checked={proficient}
+                        readOnly
+                        className="w-4 h-4"
+                      />
                     )}
                   </div>
                   <span className="flex-1 text-sm text-text">{skill.name}</span>
@@ -617,7 +689,7 @@ export default function CharacterSheet({
                     {total >= 0 ? `+${total}` : total}
                   </span>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -635,12 +707,16 @@ export default function CharacterSheet({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               {/* Senses */}
               <div>
-                <h4 className="text-sm font-semibold text-text mb-2">Special Senses</h4>
-                {character.senses && Object.keys(character.senses).length > 0 ? (
+                <h4 className="text-sm font-semibold text-text mb-2">
+                  Special Senses
+                </h4>
+                {character.senses &&
+                Object.keys(character.senses).length > 0 ? (
                   <div className="space-y-1">
                     {Object.entries(character.senses).map(([sense, value]) => (
                       <div key={sense} className="text-sm text-text-muted">
-                        <span className="capitalize">{sense}</span>: {String(value)}
+                        <span className="capitalize">{sense}</span>:{" "}
+                        {String(value)}
                       </div>
                     ))}
                   </div>
@@ -651,11 +727,15 @@ export default function CharacterSheet({
 
               {/* Passive Scores */}
               <div>
-                <h4 className="text-sm font-semibold text-text mb-2">Passive Scores</h4>
+                <h4 className="text-sm font-semibold text-text mb-2">
+                  Passive Scores
+                </h4>
                 <div className="space-y-1">
                   {character.passive_perception !== undefined && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-text-muted">Passive Perception</span>
+                      <span className="text-text-muted">
+                        Passive Perception
+                      </span>
                       <span className="font-semibold text-text">
                         {character.passive_perception}
                       </span>
@@ -664,12 +744,16 @@ export default function CharacterSheet({
                   {character.passive_insight !== undefined && (
                     <div className="flex justify-between text-sm">
                       <span className="text-text-muted">Passive Insight</span>
-                      <span className="font-semibold text-text">{character.passive_insight}</span>
+                      <span className="font-semibold text-text">
+                        {character.passive_insight}
+                      </span>
                     </div>
                   )}
                   {character.passive_investigation !== undefined && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-text-muted">Passive Investigation</span>
+                      <span className="text-text-muted">
+                        Passive Investigation
+                      </span>
                       <span className="font-semibold text-text">
                         {character.passive_investigation}
                       </span>
@@ -686,14 +770,15 @@ export default function CharacterSheet({
           <div className="bg-background-panel border border-border rounded-lg p-6">
             <h3 className="text-lg font-bold text-text mb-4">Proficiencies</h3>
             <div className="space-y-2">
-              {character.proficiencies && Object.keys(character.proficiencies).length > 0 ? (
+              {character.proficiencies &&
+              Object.keys(character.proficiencies).length > 0 ? (
                 Object.entries(character.proficiencies).map(([key, value]) => (
                   <div key={key} className="text-sm">
                     <div className="font-semibold text-text capitalize">
-                      {key.replace(/_/g, ' ')}
+                      {key.replace(/_/g, " ")}
                     </div>
                     <div className="text-text-muted">
-                      {Array.isArray(value) ? value.join(', ') : String(value)}
+                      {Array.isArray(value) ? value.join(", ") : String(value)}
                     </div>
                   </div>
                 ))
@@ -707,7 +792,7 @@ export default function CharacterSheet({
             <h3 className="text-lg font-bold text-text mb-4">Languages</h3>
             <div className="text-sm text-text">
               {character.languages && character.languages.length > 0 ? (
-                character.languages.join(', ')
+                character.languages.join(", ")
               ) : (
                 <span className="text-text-muted italic">None listed</span>
               )}
@@ -725,21 +810,29 @@ export default function CharacterSheet({
               </h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <div className="text-sm text-text-muted mb-1">Spellcasting Ability</div>
+                  <div className="text-sm text-text-muted mb-1">
+                    Spellcasting Ability
+                  </div>
                   <div className="text-xl font-bold text-primary uppercase">
-                    {character.spellcasting_ability || 'None'}
+                    {character.spellcasting_ability || "None"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-text-muted mb-1">Spell Save DC</div>
+                  <div className="text-sm text-text-muted mb-1">
+                    Spell Save DC
+                  </div>
                   <div className="text-xl font-bold text-primary">
-                    {character.spell_save_dc || '—'}
+                    {character.spell_save_dc || "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-text-muted mb-1">Spell Attack Bonus</div>
+                  <div className="text-sm text-text-muted mb-1">
+                    Spell Attack Bonus
+                  </div>
                   <div className="text-xl font-bold text-primary">
-                    {character.spell_attack_bonus ? `+${character.spell_attack_bonus}` : '—'}
+                    {character.spell_attack_bonus
+                      ? `+${character.spell_attack_bonus}`
+                      : "—"}
                   </div>
                 </div>
               </div>
@@ -747,20 +840,24 @@ export default function CharacterSheet({
               {/* Spell Slots */}
               {character.spell_slots && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-semibold text-text mb-3">Spell Slots</h4>
+                  <h4 className="text-sm font-semibold text-text mb-3">
+                    Spell Slots
+                  </h4>
                   <div className="grid grid-cols-9 gap-3">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => {
-                      const slots = character.spell_slots?.[`level_${level}`]
-                      if (!slots || slots.total === 0) return null
+                      const slots = character.spell_slots?.[`level_${level}`];
+                      if (!slots || slots.total === 0) return null;
 
                       return (
                         <div key={level} className="text-center">
-                          <div className="text-xs text-text-muted mb-1">L{level}</div>
+                          <div className="text-xs text-text-muted mb-1">
+                            L{level}
+                          </div>
                           <div className="text-lg font-bold text-primary">
                             {slots.used || 0} / {slots.total}
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 </div>
@@ -768,28 +865,37 @@ export default function CharacterSheet({
             </div>
 
             {/* Prepared Spells */}
-            {character.prepared_spells && character.prepared_spells.length > 0 && (
-              <div className="bg-background-panel border border-border rounded-lg p-6">
-                <h3 className="text-lg font-bold text-text mb-4">Prepared Spells</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  {character.prepared_spells.map((spell, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedSpell(spell)}
-                      className="bg-background border border-border rounded-lg p-3 hover:border-primary/50 transition-colors text-left"
-                    >
-                      <div className="flex items-start justify-between mb-1">
-                        <h4 className="font-semibold text-text text-sm">{spell.name}</h4>
-                        <span className="text-xs px-2 py-0.5 bg-primary/20 text-primary rounded flex-shrink-0 ml-2">
-                          {spell.level === 0 ? 'C' : `L${spell.level}`}
-                        </span>
-                      </div>
-                      {spell.school && <p className="text-xs text-text-muted">{spell.school}</p>}
-                    </button>
-                  ))}
+            {character.prepared_spells &&
+              character.prepared_spells.length > 0 && (
+                <div className="bg-background-panel border border-border rounded-lg p-6">
+                  <h3 className="text-lg font-bold text-text mb-4">
+                    Prepared Spells
+                  </h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    {character.prepared_spells.map((spell, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedSpell(spell)}
+                        className="bg-background border border-border rounded-lg p-3 hover:border-primary/50 transition-colors text-left"
+                      >
+                        <div className="flex items-start justify-between mb-1">
+                          <h4 className="font-semibold text-text text-sm">
+                            {spell.name}
+                          </h4>
+                          <span className="text-xs px-2 py-0.5 bg-primary/20 text-primary rounded flex-shrink-0 ml-2">
+                            {spell.level === 0 ? "C" : `L${spell.level}`}
+                          </span>
+                        </div>
+                        {spell.school && (
+                          <p className="text-xs text-text-muted">
+                            {spell.school}
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </>
         )}
 
@@ -804,12 +910,14 @@ export default function CharacterSheet({
               <div className="bg-background-panel border border-border rounded-lg p-6">
                 <h3 className="text-lg font-bold text-text mb-4">Currency</h3>
                 <div className="flex gap-6">
-                  {['cp', 'sp', 'ep', 'gp', 'pp'].map((coin) => (
+                  {["cp", "sp", "ep", "gp", "pp"].map((coin) => (
                     <div key={coin} className="text-center">
                       <div className="text-2xl font-bold text-primary">
                         {character.currency?.[coin] || 0}
                       </div>
-                      <div className="text-xs text-text-muted uppercase mt-1">{coin}</div>
+                      <div className="text-xs text-text-muted uppercase mt-1">
+                        {coin}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -827,10 +935,16 @@ export default function CharacterSheet({
                   {character.weapons && character.weapons.length > 0 ? (
                     character.weapons.map((weapon, idx) => (
                       <div key={idx} className="bg-background rounded p-3">
-                        <div className="font-semibold text-text">{weapon.name}</div>
+                        <div className="font-semibold text-text">
+                          {weapon.name}
+                        </div>
                         <div className="text-sm text-text-muted mt-1">
-                          {weapon.attack_bonus && <span>+{weapon.attack_bonus} to hit</span>}
-                          {weapon.damage && <span> • {weapon.damage} damage</span>}
+                          {weapon.attack_bonus && (
+                            <span>+{weapon.attack_bonus} to hit</span>
+                          )}
+                          {weapon.damage && (
+                            <span> • {weapon.damage} damage</span>
+                          )}
                         </div>
                       </div>
                     ))
@@ -849,7 +963,9 @@ export default function CharacterSheet({
                   {character.armor && character.armor.length > 0 ? (
                     character.armor.map((armor, idx) => (
                       <div key={idx} className="bg-background rounded p-3">
-                        <div className="font-semibold text-text">{armor.name}</div>
+                        <div className="font-semibold text-text">
+                          {armor.name}
+                        </div>
                         <div className="text-sm text-text-muted mt-1">
                           {armor.ac && <span>AC {armor.ac}</span>}
                           {armor.type && <span> • {armor.type}</span>}
@@ -875,10 +991,14 @@ export default function CharacterSheet({
                     <div key={idx} className="bg-background rounded p-3">
                       <div className="font-semibold text-text">{item.name}</div>
                       {item.description && (
-                        <div className="text-sm text-text-muted mt-1">{item.description}</div>
+                        <div className="text-sm text-text-muted mt-1">
+                          {item.description}
+                        </div>
                       )}
                       {item.quantity && item.quantity > 1 && (
-                        <div className="text-xs text-text-muted mt-1">Qty: {item.quantity}</div>
+                        <div className="text-xs text-text-muted mt-1">
+                          Qty: {item.quantity}
+                        </div>
                       )}
                     </div>
                   ))}
@@ -900,8 +1020,12 @@ export default function CharacterSheet({
                 <div className="space-y-4">
                   {character.features.map((feature, idx) => (
                     <div key={idx} className="bg-background rounded p-4">
-                      <h4 className="font-semibold text-text mb-2">{feature.name}</h4>
-                      <p className="text-sm text-text-muted">{feature.description}</p>
+                      <h4 className="font-semibold text-text mb-2">
+                        {feature.name}
+                      </h4>
+                      <p className="text-sm text-text-muted">
+                        {feature.description}
+                      </p>
                       {feature.uses && (
                         <div className="text-xs text-primary mt-2">
                           Uses: {feature.uses.current} / {feature.uses.max}
@@ -915,12 +1039,18 @@ export default function CharacterSheet({
 
             {character.racial_traits && character.racial_traits.length > 0 && (
               <div className="bg-background-panel border border-border rounded-lg p-6">
-                <h3 className="text-lg font-bold text-text mb-4">Racial Traits</h3>
+                <h3 className="text-lg font-bold text-text mb-4">
+                  Racial Traits
+                </h3>
                 <div className="space-y-4">
                   {character.racial_traits.map((trait, idx) => (
                     <div key={idx} className="bg-background rounded p-4">
-                      <h4 className="font-semibold text-text mb-2">{trait.name}</h4>
-                      <p className="text-sm text-text-muted">{trait.description}</p>
+                      <h4 className="font-semibold text-text mb-2">
+                        {trait.name}
+                      </h4>
+                      <p className="text-sm text-text-muted">
+                        {trait.description}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -937,9 +1067,13 @@ export default function CharacterSheet({
                 <div className="space-y-4">
                   {character.feats.map((feat, idx) => (
                     <div key={idx} className="bg-background rounded p-4">
-                      <h4 className="font-semibold text-text mb-2">{feat.name}</h4>
+                      <h4 className="font-semibold text-text mb-2">
+                        {feat.name}
+                      </h4>
                       {feat.description && (
-                        <p className="text-sm text-text-muted">{feat.description}</p>
+                        <p className="text-sm text-text-muted">
+                          {feat.description}
+                        </p>
                       )}
                     </div>
                   ))}
@@ -969,9 +1103,13 @@ export default function CharacterSheet({
                   <div className="space-y-3">
                     {character.actions.map((action, idx) => (
                       <div key={idx} className="bg-background rounded p-3">
-                        <div className="font-semibold text-text">{action.name}</div>
+                        <div className="font-semibold text-text">
+                          {action.name}
+                        </div>
                         {action.description && (
-                          <p className="text-sm text-text-muted mt-1">{action.description}</p>
+                          <p className="text-sm text-text-muted mt-1">
+                            {action.description}
+                          </p>
                         )}
                         <div className="flex gap-4 mt-2 text-xs text-text-muted">
                           {action.attack_bonus !== undefined && (
@@ -992,29 +1130,34 @@ export default function CharacterSheet({
               )}
 
               {/* Bonus Actions */}
-              {character.bonus_actions && character.bonus_actions.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-text mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full" />
-                    Bonus Actions
-                  </h4>
-                  <div className="space-y-3">
-                    {character.bonus_actions.map((action, idx) => (
-                      <div key={idx} className="bg-background rounded p-3">
-                        <div className="font-semibold text-text">{action.name}</div>
-                        {action.description && (
-                          <p className="text-sm text-text-muted mt-1">{action.description}</p>
-                        )}
-                        {action.uses && (
-                          <div className="text-xs text-primary mt-2">
-                            Uses: {action.uses.current} / {action.uses.max}
+              {character.bonus_actions &&
+                character.bonus_actions.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-text mb-3 flex items-center gap-2">
+                      <span className="w-2 h-2 bg-yellow-500 rounded-full" />
+                      Bonus Actions
+                    </h4>
+                    <div className="space-y-3">
+                      {character.bonus_actions.map((action, idx) => (
+                        <div key={idx} className="bg-background rounded p-3">
+                          <div className="font-semibold text-text">
+                            {action.name}
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {action.description && (
+                            <p className="text-sm text-text-muted mt-1">
+                              {action.description}
+                            </p>
+                          )}
+                          {action.uses && (
+                            <div className="text-xs text-primary mt-2">
+                              Uses: {action.uses.current} / {action.uses.max}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Reactions */}
               {character.reactions && character.reactions.length > 0 && (
@@ -1026,9 +1169,13 @@ export default function CharacterSheet({
                   <div className="space-y-3">
                     {character.reactions.map((action, idx) => (
                       <div key={idx} className="bg-background rounded p-3">
-                        <div className="font-semibold text-text">{action.name}</div>
+                        <div className="font-semibold text-text">
+                          {action.name}
+                        </div>
                         {action.description && (
-                          <p className="text-sm text-text-muted mt-1">{action.description}</p>
+                          <p className="text-sm text-text-muted mt-1">
+                            {action.description}
+                          </p>
                         )}
                         {action.uses && (
                           <div className="text-xs text-primary mt-2">
@@ -1057,25 +1204,35 @@ export default function CharacterSheet({
             <div className="space-y-4">
               {character.personality_traits && (
                 <div>
-                  <h4 className="text-sm font-semibold text-text mb-2">Personality Traits</h4>
-                  <p className="text-text-muted">{character.personality_traits}</p>
+                  <h4 className="text-sm font-semibold text-text mb-2">
+                    Personality Traits
+                  </h4>
+                  <p className="text-text-muted">
+                    {character.personality_traits}
+                  </p>
                 </div>
               )}
               {character.ideals && (
                 <div>
-                  <h4 className="text-sm font-semibold text-text mb-2">Ideals</h4>
+                  <h4 className="text-sm font-semibold text-text mb-2">
+                    Ideals
+                  </h4>
                   <p className="text-text-muted">{character.ideals}</p>
                 </div>
               )}
               {character.bonds && (
                 <div>
-                  <h4 className="text-sm font-semibold text-text mb-2">Bonds</h4>
+                  <h4 className="text-sm font-semibold text-text mb-2">
+                    Bonds
+                  </h4>
                   <p className="text-text-muted">{character.bonds}</p>
                 </div>
               )}
               {character.flaws && (
                 <div>
-                  <h4 className="text-sm font-semibold text-text mb-2">Flaws</h4>
+                  <h4 className="text-sm font-semibold text-text mb-2">
+                    Flaws
+                  </h4>
                   <p className="text-text-muted">{character.flaws}</p>
                 </div>
               )}
@@ -1112,49 +1269,65 @@ export default function CharacterSheet({
                 {character.age && (
                   <div className="bg-background rounded p-3">
                     <div className="text-xs text-text-muted mb-1">Age</div>
-                    <div className="text-sm font-semibold text-text">{character.age}</div>
+                    <div className="text-sm font-semibold text-text">
+                      {character.age}
+                    </div>
                   </div>
                 )}
                 {character.gender && (
                   <div className="bg-background rounded p-3">
                     <div className="text-xs text-text-muted mb-1">Gender</div>
-                    <div className="text-sm font-semibold text-text">{character.gender}</div>
+                    <div className="text-sm font-semibold text-text">
+                      {character.gender}
+                    </div>
                   </div>
                 )}
                 {character.height && (
                   <div className="bg-background rounded p-3">
                     <div className="text-xs text-text-muted mb-1">Height</div>
-                    <div className="text-sm font-semibold text-text">{character.height}</div>
+                    <div className="text-sm font-semibold text-text">
+                      {character.height}
+                    </div>
                   </div>
                 )}
                 {character.weight && (
                   <div className="bg-background rounded p-3">
                     <div className="text-xs text-text-muted mb-1">Weight</div>
-                    <div className="text-sm font-semibold text-text">{character.weight}</div>
+                    <div className="text-sm font-semibold text-text">
+                      {character.weight}
+                    </div>
                   </div>
                 )}
                 {character.eyes && (
                   <div className="bg-background rounded p-3">
                     <div className="text-xs text-text-muted mb-1">Eyes</div>
-                    <div className="text-sm font-semibold text-text">{character.eyes}</div>
+                    <div className="text-sm font-semibold text-text">
+                      {character.eyes}
+                    </div>
                   </div>
                 )}
                 {character.skin && (
                   <div className="bg-background rounded p-3">
                     <div className="text-xs text-text-muted mb-1">Skin</div>
-                    <div className="text-sm font-semibold text-text">{character.skin}</div>
+                    <div className="text-sm font-semibold text-text">
+                      {character.skin}
+                    </div>
                   </div>
                 )}
                 {character.hair && (
                   <div className="bg-background rounded p-3">
                     <div className="text-xs text-text-muted mb-1">Hair</div>
-                    <div className="text-sm font-semibold text-text">{character.hair}</div>
+                    <div className="text-sm font-semibold text-text">
+                      {character.hair}
+                    </div>
                   </div>
                 )}
                 {character.faith && (
                   <div className="bg-background rounded p-3">
                     <div className="text-xs text-text-muted mb-1">Faith</div>
-                    <div className="text-sm font-semibold text-text">{character.faith}</div>
+                    <div className="text-sm font-semibold text-text">
+                      {character.faith}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1163,8 +1336,12 @@ export default function CharacterSheet({
             {/* Appearance Description */}
             {character.appearance && (
               <div>
-                <h4 className="text-sm font-semibold text-text mb-2">Description</h4>
-                <p className="text-text-muted whitespace-pre-wrap">{character.appearance}</p>
+                <h4 className="text-sm font-semibold text-text mb-2">
+                  Description
+                </h4>
+                <p className="text-text-muted whitespace-pre-wrap">
+                  {character.appearance}
+                </p>
               </div>
             )}
           </div>
@@ -1173,7 +1350,9 @@ export default function CharacterSheet({
         {character.backstory && (
           <div className="bg-background-panel border border-border rounded-lg p-6">
             <h3 className="text-lg font-bold text-text mb-4">Backstory</h3>
-            <p className="text-text-muted whitespace-pre-wrap">{character.backstory}</p>
+            <p className="text-text-muted whitespace-pre-wrap">
+              {character.backstory}
+            </p>
           </div>
         )}
 
@@ -1198,7 +1377,9 @@ export default function CharacterSheet({
                   <Icon name="AlertCircle" className="w-5 h-5 text-primary" />
                   Enemies
                 </h3>
-                <p className="text-text-muted whitespace-pre-wrap">{character.enemies}</p>
+                <p className="text-text-muted whitespace-pre-wrap">
+                  {character.enemies}
+                </p>
               </div>
             )}
           </div>
@@ -1207,7 +1388,9 @@ export default function CharacterSheet({
         {character.notes && (
           <div className="bg-background-panel border border-border rounded-lg p-6">
             <h3 className="text-lg font-bold text-text mb-4">Notes</h3>
-            <p className="text-text-muted whitespace-pre-wrap">{character.notes}</p>
+            <p className="text-text-muted whitespace-pre-wrap">
+              {character.notes}
+            </p>
           </div>
         )}
       </div>
@@ -1224,10 +1407,14 @@ export default function CharacterSheet({
           >
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-xl font-bold text-text">{selectedSpell.name}</h3>
+                <h3 className="text-xl font-bold text-text">
+                  {selectedSpell.name}
+                </h3>
                 <div className="flex items-center gap-2 mt-1 text-sm text-text-muted">
                   <span>
-                    {selectedSpell.level === 0 ? 'Cantrip' : `Level ${selectedSpell.level}`}
+                    {selectedSpell.level === 0
+                      ? "Cantrip"
+                      : `Level ${selectedSpell.level}`}
                   </span>
                   {selectedSpell.school && (
                     <>
@@ -1248,14 +1435,16 @@ export default function CharacterSheet({
             <div className="space-y-4">
               {selectedSpell.casting_time !== undefined && (
                 <div>
-                  <h4 className="text-sm font-semibold text-text mb-1">Casting Time</h4>
+                  <h4 className="text-sm font-semibold text-text mb-1">
+                    Casting Time
+                  </h4>
                   <p className="text-sm text-text-muted">
                     {selectedSpell.casting_time === 1
-                      ? '1 action'
+                      ? "1 action"
                       : selectedSpell.casting_time === 2
-                        ? '1 bonus action'
+                        ? "1 bonus action"
                         : selectedSpell.casting_time === 3
-                          ? '1 reaction'
+                          ? "1 reaction"
                           : `${selectedSpell.casting_time} actions`}
                   </p>
                 </div>
@@ -1263,16 +1452,22 @@ export default function CharacterSheet({
 
               {selectedSpell.range !== undefined && (
                 <div>
-                  <h4 className="text-sm font-semibold text-text mb-1">Range</h4>
+                  <h4 className="text-sm font-semibold text-text mb-1">
+                    Range
+                  </h4>
                   <p className="text-sm text-text-muted">
-                    {selectedSpell.range === 0 ? 'Self' : `${selectedSpell.range} feet`}
+                    {selectedSpell.range === 0
+                      ? "Self"
+                      : `${selectedSpell.range} feet`}
                   </p>
                 </div>
               )}
 
               {selectedSpell.description && (
                 <div>
-                  <h4 className="text-sm font-semibold text-text mb-1">Description</h4>
+                  <h4 className="text-sm font-semibold text-text mb-1">
+                    Description
+                  </h4>
                   <div
                     className="text-sm text-text-muted prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{
@@ -1286,5 +1481,5 @@ export default function CharacterSheet({
         </div>
       )}
     </div>
-  )
+  );
 }

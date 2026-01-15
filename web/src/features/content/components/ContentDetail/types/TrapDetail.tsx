@@ -1,98 +1,106 @@
 // Trap content detail view
 
-import Icon from '@/components/common/Icon'
+import Icon from "@/components/common/Icon";
 
 interface Detection {
-  passive_perception_dc?: number
-  investigation_dc?: number
-  clues?: string[]
+  passive_perception_dc?: number;
+  investigation_dc?: number;
+  clues?: string[];
 }
 
 interface SolutionPath {
-  approach: string
-  skill?: string
-  dc?: number
-  description: string
-  time?: string
-  failure?: string
+  approach: string;
+  skill?: string;
+  dc?: number;
+  description: string;
+  time?: string;
+  failure?: string;
 }
 
 interface Scaling {
-  easier?: string
-  harder?: string
+  easier?: string;
+  harder?: string;
 }
 
 interface TrapData {
-  name?: string
-  trap_type?: string
-  difficulty: string
-  environment?: string
-  description?: string
-  trigger?: string
-  effect?: string
-  damage?: string
-  detection?: string | Detection
-  solution_paths?: string | SolutionPath[]
-  complications?: string | string[]
-  rewards?: string | string[]
-  scaling?: string | Scaling
-  dm_notes?: string
+  name?: string;
+  trap_type?: string;
+  difficulty: string;
+  environment?: string;
+  description?: string;
+  trigger?: string;
+  effect?: string;
+  damage?: string;
+  detection?: string | Detection;
+  solution_paths?: string | SolutionPath[];
+  complications?: string | string[];
+  rewards?: string | string[];
+  scaling?: string | Scaling;
+  dm_notes?: string;
 }
 
 interface TrapDetailProps {
-  trap: TrapData
+  trap: TrapData;
 }
 
 function parseJSON<T>(value: string | T | undefined): T | null {
-  if (!value) return null
-  if (typeof value === 'string') {
+  if (!value) return null;
+  if (typeof value === "string") {
     try {
-      return JSON.parse(value)
+      return JSON.parse(value);
     } catch {
-      return null
+      return null;
     }
   }
-  return value
+  return value;
 }
 
 function getDifficultyColor(difficulty: string): string {
   switch (difficulty.toLowerCase()) {
-    case 'deadly':
-      return 'text-red-400'
-    case 'hard':
-      return 'text-orange-400'
-    case 'medium':
-      return 'text-yellow-400'
+    case "deadly":
+      return "text-red-400";
+    case "hard":
+      return "text-orange-400";
+    case "medium":
+      return "text-yellow-400";
     default:
-      return 'text-green-400'
+      return "text-green-400";
   }
 }
 
 export function TrapDetail({ trap }: TrapDetailProps) {
-  const detection = parseJSON<Detection>(trap.detection)
-  const solutionPaths = parseJSON<SolutionPath[]>(trap.solution_paths)
-  const complications = parseJSON<string[]>(trap.complications)
-  const rewards = parseJSON<string[]>(trap.rewards)
-  const scaling = parseJSON<Scaling>(trap.scaling)
+  const detection = parseJSON<Detection>(trap.detection);
+  const solutionPaths = parseJSON<SolutionPath[]>(trap.solution_paths);
+  const complications = parseJSON<string[]>(trap.complications);
+  const rewards = parseJSON<string[]>(trap.rewards);
+  const scaling = parseJSON<Scaling>(trap.scaling);
 
   return (
     <div className="space-y-6">
       {/* Type/Difficulty/Environment */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-surface p-4 rounded-lg border border-border">
-          <div className="text-xs text-text-muted uppercase tracking-wide mb-2">Type</div>
+          <div className="text-xs text-text-muted uppercase tracking-wide mb-2">
+            Type
+          </div>
           <div className="text-lg text-text capitalize">
-            {trap.trap_type?.replace(/_/g, ' ')}
+            {trap.trap_type?.replace(/_/g, " ")}
           </div>
         </div>
         <div className="bg-surface p-4 rounded-lg border border-border">
-          <div className="text-xs text-text-muted uppercase tracking-wide mb-2">Difficulty</div>
-          <div className={`text-lg font-semibold capitalize ${getDifficultyColor(trap.difficulty)}`}>
+          <div className="text-xs text-text-muted uppercase tracking-wide mb-2">
+            Difficulty
+          </div>
+          <div
+            className={`text-lg font-semibold capitalize ${getDifficultyColor(trap.difficulty)}`}
+          >
             {trap.difficulty}
           </div>
         </div>
         <div className="bg-surface p-4 rounded-lg border border-border">
-          <div className="text-xs text-text-muted uppercase tracking-wide mb-2">Environment</div>
+          <div className="text-xs text-text-muted uppercase tracking-wide mb-2">
+            Environment
+          </div>
           <div className="text-lg text-text capitalize">{trap.environment}</div>
         </div>
       </div>
@@ -100,7 +108,9 @@ export function TrapDetail({ trap }: TrapDetailProps) {
       {/* Description */}
       {trap.description && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-2">Description</h3>
+          <h3 className="text-lg font-semibold text-primary mb-2">
+            Description
+          </h3>
           <p className="text-text leading-relaxed">{trap.description}</p>
         </div>
       )}
@@ -117,13 +127,17 @@ export function TrapDetail({ trap }: TrapDetailProps) {
       <div className="grid grid-cols-2 gap-4">
         {trap.effect && (
           <div className="bg-surface p-4 rounded-lg border border-border">
-            <div className="text-xs text-text-muted uppercase tracking-wide mb-2">Effect</div>
+            <div className="text-xs text-text-muted uppercase tracking-wide mb-2">
+              Effect
+            </div>
             <div className="text-text">{trap.effect}</div>
           </div>
         )}
         {trap.damage && (
           <div className="bg-surface p-4 rounded-lg border border-border">
-            <div className="text-xs text-text-muted uppercase tracking-wide mb-2">Damage</div>
+            <div className="text-xs text-text-muted uppercase tracking-wide mb-2">
+              Damage
+            </div>
             <div className="text-text font-mono">{trap.damage}</div>
           </div>
         )}
@@ -137,13 +151,17 @@ export function TrapDetail({ trap }: TrapDetailProps) {
             {detection.passive_perception_dc && (
               <div className="flex items-center gap-2">
                 <span className="text-text-muted">Passive Perception DC:</span>
-                <span className="text-text font-bold">{detection.passive_perception_dc}</span>
+                <span className="text-text font-bold">
+                  {detection.passive_perception_dc}
+                </span>
               </div>
             )}
             {detection.investigation_dc && (
               <div className="flex items-center gap-2">
                 <span className="text-text-muted">Investigation DC:</span>
-                <span className="text-text font-bold">{detection.investigation_dc}</span>
+                <span className="text-text font-bold">
+                  {detection.investigation_dc}
+                </span>
               </div>
             )}
             {Array.isArray(detection.clues) && detection.clues.length > 0 && (
@@ -151,7 +169,9 @@ export function TrapDetail({ trap }: TrapDetailProps) {
                 <div className="text-sm text-text-muted mb-2">Clues:</div>
                 <ul className="list-disc list-inside space-y-1">
                   {detection.clues.map((clue, idx) => (
-                    <li key={idx} className="text-text">{clue}</li>
+                    <li key={idx} className="text-text">
+                      {clue}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -163,10 +183,15 @@ export function TrapDetail({ trap }: TrapDetailProps) {
       {/* Solution Paths */}
       {Array.isArray(solutionPaths) && solutionPaths.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">Solution Paths</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            Solution Paths
+          </h3>
           <div className="grid gap-4">
             {solutionPaths.map((path, idx) => (
-              <div key={idx} className="bg-surface p-4 rounded-lg border border-primary/50">
+              <div
+                key={idx}
+                className="bg-surface p-4 rounded-lg border border-primary/50"
+              >
                 <div className="flex items-start justify-between mb-2">
                   <h4 className="font-semibold text-text">{path.approach}</h4>
                   <div className="flex gap-2">
@@ -183,9 +208,15 @@ export function TrapDetail({ trap }: TrapDetailProps) {
                   </div>
                 </div>
                 <p className="text-text text-sm mb-2">{path.description}</p>
-                {path.time && <p className="text-text-muted text-xs">⏱️ Time: {path.time}</p>}
+                {path.time && (
+                  <p className="text-text-muted text-xs">
+                    ⏱️ Time: {path.time}
+                  </p>
+                )}
                 {path.failure && (
-                  <p className="text-red-400 text-xs mt-1">⚠️ On Failure: {path.failure}</p>
+                  <p className="text-red-400 text-xs mt-1">
+                    ⚠️ On Failure: {path.failure}
+                  </p>
                 )}
               </div>
             ))}
@@ -202,7 +233,9 @@ export function TrapDetail({ trap }: TrapDetailProps) {
           </h3>
           <ul className="list-disc list-inside space-y-1">
             {complications.map((comp, idx) => (
-              <li key={idx} className="text-text">{comp}</li>
+              <li key={idx} className="text-text">
+                {comp}
+              </li>
             ))}
           </ul>
         </div>
@@ -214,7 +247,9 @@ export function TrapDetail({ trap }: TrapDetailProps) {
           <h3 className="text-lg font-semibold text-primary mb-3">Rewards</h3>
           <ul className="list-disc list-inside space-y-1">
             {rewards.map((reward, idx) => (
-              <li key={idx} className="text-text">{reward}</li>
+              <li key={idx} className="text-text">
+                {reward}
+              </li>
             ))}
           </ul>
         </div>
@@ -227,13 +262,17 @@ export function TrapDetail({ trap }: TrapDetailProps) {
           <div className="grid gap-4">
             {scaling.easier && (
               <div className="bg-green-900/20 p-4 rounded-lg border border-green-700">
-                <h4 className="font-semibold text-green-400 mb-2">Easier Version</h4>
+                <h4 className="font-semibold text-green-400 mb-2">
+                  Easier Version
+                </h4>
                 <p className="text-text text-sm">{scaling.easier}</p>
               </div>
             )}
             {scaling.harder && (
               <div className="bg-red-900/20 p-4 rounded-lg border border-red-700">
-                <h4 className="font-semibold text-red-400 mb-2">Harder Version</h4>
+                <h4 className="font-semibold text-red-400 mb-2">
+                  Harder Version
+                </h4>
                 <p className="text-text text-sm">{scaling.harder}</p>
               </div>
             )}
@@ -249,10 +288,12 @@ export function TrapDetail({ trap }: TrapDetailProps) {
             DM Notes
           </h3>
           <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-700">
-            <p className="text-text leading-relaxed whitespace-pre-wrap">{trap.dm_notes}</p>
+            <p className="text-text leading-relaxed whitespace-pre-wrap">
+              {trap.dm_notes}
+            </p>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

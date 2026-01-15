@@ -1,46 +1,61 @@
-import Icon from './common/Icon'
-import { logger } from '@/utils/logger'
+import Icon from "./common/Icon";
+import { logger } from "@/utils/logger";
 
 interface SavedContentDetailProps {
-  content: any
+  content: any;
   type:
-    | 'npcs'
-    | 'monsters'
-    | 'encounters'
-    | 'dialogues'
-    | 'locations'
-    | 'quests'
-    | 'items'
-    | 'rumors'
-    | 'taverns'
-    | 'merchants'
-    | 'traps'
-    | 'critters'
-    | 'chases'
-  onClose: () => void
+    | "npcs"
+    | "monsters"
+    | "encounters"
+    | "dialogues"
+    | "locations"
+    | "quests"
+    | "items"
+    | "rumors"
+    | "taverns"
+    | "merchants"
+    | "traps"
+    | "critters"
+    | "chases";
+  onClose: () => void;
 }
 
-export default function SavedContentDetail({ content, type, onClose }: SavedContentDetailProps) {
-  logger.debug('[SavedContentDetail] Rendering detail for:', type, content)
+export default function SavedContentDetail({
+  content,
+  type,
+  onClose,
+}: SavedContentDetailProps) {
+  logger.debug("[SavedContentDetail] Rendering detail for:", type, content);
 
   const renderNPCDetail = (npc: any) => {
-    logger.debug('[SavedContentDetail] NPC data:', npc)
-    logger.debug('[SavedContentDetail] NPC stats raw:', npc.stats, typeof npc.stats)
+    logger.debug("[SavedContentDetail] NPC data:", npc);
+    logger.debug(
+      "[SavedContentDetail] NPC stats raw:",
+      npc.stats,
+      typeof npc.stats,
+    );
 
-    let stats = null
+    let stats = null;
     try {
       if (npc.stats) {
-        stats = typeof npc.stats === 'string' ? JSON.parse(npc.stats) : npc.stats
-        logger.debug('[SavedContentDetail] Parsed stats:', stats)
+        stats =
+          typeof npc.stats === "string" ? JSON.parse(npc.stats) : npc.stats;
+        logger.debug("[SavedContentDetail] Parsed stats:", stats);
       }
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse stats:', error, npc.stats)
+      logger.error(
+        "[SavedContentDetail] Failed to parse stats:",
+        error,
+        npc.stats,
+      );
     }
 
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-tavern-light mb-2">{npc.name}</h2>
+          <h2 className="text-3xl font-bold text-tavern-light mb-2">
+            {npc.name}
+          </h2>
           <div className="flex gap-4 text-tavern-cream">
             {npc.race && <span className="text-sm">{npc.race}</span>}
             {npc.class && <span className="text-sm">{npc.class}</span>}
@@ -49,21 +64,31 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {npc.personality && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Personality</h3>
-            <p className="text-tavern-cream leading-relaxed">{npc.personality}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Personality
+            </h3>
+            <p className="text-tavern-cream leading-relaxed">
+              {npc.personality}
+            </p>
           </div>
         )}
 
         {npc.backstory && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Backstory</h3>
-            <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">{npc.backstory}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Backstory
+            </h3>
+            <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
+              {npc.backstory}
+            </p>
           </div>
         )}
 
         {stats && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Statistics</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Statistics
+            </h3>
             <div className="space-y-4">
               {/* Level and Alignment */}
               <div className="grid grid-cols-2 gap-4">
@@ -72,7 +97,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                     <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-1">
                       Level
                     </div>
-                    <div className="text-2xl font-bold text-tavern-light">{stats.level}</div>
+                    <div className="text-2xl font-bold text-tavern-light">
+                      {stats.level}
+                    </div>
                   </div>
                 )}
                 {stats.alignment && (
@@ -80,7 +107,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                     <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-1">
                       Alignment
                     </div>
-                    <div className="text-lg font-semibold text-tavern-light">{stats.alignment}</div>
+                    <div className="text-lg font-semibold text-tavern-light">
+                      {stats.alignment}
+                    </div>
                   </div>
                 )}
               </div>
@@ -88,21 +117,29 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               {/* Ability Scores */}
               {stats.abilities && (
                 <div>
-                  <h4 className="text-sm font-semibold text-tavern-cream mb-2">Ability Scores</h4>
+                  <h4 className="text-sm font-semibold text-tavern-cream mb-2">
+                    Ability Scores
+                  </h4>
                   <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                    {Object.entries(stats.abilities).map(([ability, score]: [string, any]) => (
-                      <div
-                        key={ability}
-                        className="bg-background-panel p-3 rounded-lg border border-border text-center"
-                      >
-                        <div className="text-xs text-tavern-mauve uppercase">{ability}</div>
-                        <div className="text-2xl font-bold text-tavern-light">{score}</div>
-                        <div className="text-xs text-tavern-cream">
-                          {Math.floor((score - 10) / 2) >= 0 ? '+' : ''}
-                          {Math.floor((score - 10) / 2)}
+                    {Object.entries(stats.abilities).map(
+                      ([ability, score]: [string, any]) => (
+                        <div
+                          key={ability}
+                          className="bg-background-panel p-3 rounded-lg border border-border text-center"
+                        >
+                          <div className="text-xs text-tavern-mauve uppercase">
+                            {ability}
+                          </div>
+                          <div className="text-2xl font-bold text-tavern-light">
+                            {score}
+                          </div>
+                          <div className="text-xs text-tavern-cream">
+                            {Math.floor((score - 10) / 2) >= 0 ? "+" : ""}
+                            {Math.floor((score - 10) / 2)}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                 </div>
               )}
@@ -143,7 +180,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               {/* Role */}
               {stats.role && (
                 <div className="bg-background-panel p-4 rounded-lg border border-border">
-                  <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-1">Role</div>
+                  <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-1">
+                    Role
+                  </div>
                   <div className="text-tavern-light">{stats.role}</div>
                 </div>
               )}
@@ -165,23 +204,32 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderMonsterDetail = (monster: any) => {
-    let stats = null
+    let stats = null;
     try {
       if (monster.stats) {
-        stats = typeof monster.stats === 'string' ? JSON.parse(monster.stats) : monster.stats
+        stats =
+          typeof monster.stats === "string"
+            ? JSON.parse(monster.stats)
+            : monster.stats;
       }
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse monster stats:', error, monster.stats)
+      logger.error(
+        "[SavedContentDetail] Failed to parse monster stats:",
+        error,
+        monster.stats,
+      );
     }
 
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-tavern-light mb-2">{monster.name}</h2>
+          <h2 className="text-3xl font-bold text-tavern-light mb-2">
+            {monster.name}
+          </h2>
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 bg-tavern-terra/20 text-tavern-terra rounded-lg font-semibold">
               CR {monster.cr}
@@ -191,19 +239,23 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {stats && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Combat Statistics</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Combat Statistics
+            </h3>
             <div className="bg-background-panel p-6 rounded-lg border border-border space-y-4">
               {stats.armor_class && (
                 <div className="flex justify-between">
                   <span className="text-tavern-mauve">Armor Class</span>
-                  <span className="text-tavern-light font-semibold">{stats.armor_class}</span>
+                  <span className="text-tavern-light font-semibold">
+                    {stats.armor_class}
+                  </span>
                 </div>
               )}
               {stats.hit_points && (
                 <div className="flex justify-between">
                   <span className="text-tavern-mauve">Hit Points</span>
                   <span className="text-tavern-light font-semibold">
-                    {typeof stats.hit_points === 'object'
+                    {typeof stats.hit_points === "object"
                       ? `${stats.hit_points.average} (${stats.hit_points.roll})`
                       : stats.hit_points}
                   </span>
@@ -213,11 +265,13 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                 <div>
                   <div className="text-tavern-mauve mb-2">Speed</div>
                   <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(stats.speed).map(([type, value]: [string, any]) => (
-                      <div key={type} className="text-tavern-cream">
-                        <span className="capitalize">{type}:</span> {value}
-                      </div>
-                    ))}
+                    {Object.entries(stats.speed).map(
+                      ([type, value]: [string, any]) => (
+                        <div key={type} className="text-tavern-cream">
+                          <span className="capitalize">{type}:</span> {value}
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
               )}
@@ -227,35 +281,49 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {stats?.abilities && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Ability Scores</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Ability Scores
+            </h3>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-              {Object.entries(stats.abilities).map(([ability, score]: [string, any]) => (
-                <div
-                  key={ability}
-                  className="bg-background-panel p-3 rounded-lg border border-border text-center"
-                >
-                  <div className="text-xs text-tavern-mauve uppercase">{ability}</div>
-                  <div className="text-2xl font-bold text-tavern-light">{score}</div>
-                  <div className="text-xs text-tavern-cream">
-                    {Math.floor((score - 10) / 2) >= 0 ? '+' : ''}
-                    {Math.floor((score - 10) / 2)}
+              {Object.entries(stats.abilities).map(
+                ([ability, score]: [string, any]) => (
+                  <div
+                    key={ability}
+                    className="bg-background-panel p-3 rounded-lg border border-border text-center"
+                  >
+                    <div className="text-xs text-tavern-mauve uppercase">
+                      {ability}
+                    </div>
+                    <div className="text-2xl font-bold text-tavern-light">
+                      {score}
+                    </div>
+                    <div className="text-xs text-tavern-cream">
+                      {Math.floor((score - 10) / 2) >= 0 ? "+" : ""}
+                      {Math.floor((score - 10) / 2)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ),
+              )}
             </div>
           </div>
         )}
 
         {monster.lore && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Lore</h3>
-            <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">{monster.lore}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Lore
+            </h3>
+            <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
+              {monster.lore}
+            </p>
           </div>
         )}
 
         {monster.tactics && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Tactics</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Tactics
+            </h3>
             <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
               {monster.tactics}
             </p>
@@ -264,50 +332,64 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {stats?.actions && stats.actions.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Actions</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Actions
+            </h3>
             <div className="space-y-3">
               {stats.actions.map((action: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
-                  <div className="font-semibold text-tavern-light mb-1">{action.name}</div>
-                  <p className="text-tavern-cream text-sm">{action.description}</p>
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
+                  <div className="font-semibold text-tavern-light mb-1">
+                    {action.name}
+                  </div>
+                  <p className="text-tavern-cream text-sm">
+                    {action.description}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderEncounterDetail = (encounter: any) => {
-    let creatures = []
-    let environment = null
-    let treasure = null
+    let creatures = [];
+    let environment = null;
+    let treasure = null;
 
     try {
       creatures = encounter.creatures
-        ? typeof encounter.creatures === 'string'
+        ? typeof encounter.creatures === "string"
           ? JSON.parse(encounter.creatures)
           : encounter.creatures
-        : []
+        : [];
       environment = encounter.environment
-        ? typeof encounter.environment === 'string'
+        ? typeof encounter.environment === "string"
           ? JSON.parse(encounter.environment)
           : encounter.environment
-        : null
+        : null;
       treasure = encounter.treasure
-        ? typeof encounter.treasure === 'string'
+        ? typeof encounter.treasure === "string"
           ? JSON.parse(encounter.treasure)
           : encounter.treasure
-        : null
+        : null;
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse encounter data:', error)
+      logger.error(
+        "[SavedContentDetail] Failed to parse encounter data:",
+        error,
+      );
     }
 
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-tavern-light mb-3">{encounter.name}</h2>
+          <h2 className="text-3xl font-bold text-tavern-light mb-3">
+            {encounter.name}
+          </h2>
           <div className="flex flex-wrap gap-2 mb-3">
             <span className="px-3 py-1 bg-tavern-dark rounded-lg text-tavern-cream text-sm">
               Party Level: {encounter.party_level}
@@ -317,13 +399,13 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
             </span>
             <span
               className={`px-3 py-1 rounded-lg text-sm font-semibold capitalize ${
-                encounter.difficulty === 'deadly'
-                  ? 'bg-red-900/30 text-red-400'
-                  : encounter.difficulty === 'hard'
-                    ? 'bg-orange-900/30 text-orange-400'
-                    : encounter.difficulty === 'medium'
-                      ? 'bg-yellow-900/30 text-yellow-400'
-                      : 'bg-green-900/30 text-green-400'
+                encounter.difficulty === "deadly"
+                  ? "bg-red-900/30 text-red-400"
+                  : encounter.difficulty === "hard"
+                    ? "bg-orange-900/30 text-orange-400"
+                    : encounter.difficulty === "medium"
+                      ? "bg-yellow-900/30 text-yellow-400"
+                      : "bg-green-900/30 text-green-400"
               }`}
             >
               {encounter.difficulty}
@@ -333,7 +415,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {encounter.description && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Description</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Description
+            </h3>
             <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
               {encounter.description}
             </p>
@@ -342,24 +426,38 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {environment && Object.keys(environment).length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Environment</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Environment
+            </h3>
             <div className="bg-background-panel p-4 rounded-lg border border-border space-y-2">
               {environment.terrain && (
                 <div>
-                  <span className="text-tavern-mauve font-medium">Terrain:</span>{' '}
-                  <span className="text-tavern-cream">{environment.terrain}</span>
+                  <span className="text-tavern-mauve font-medium">
+                    Terrain:
+                  </span>{" "}
+                  <span className="text-tavern-cream">
+                    {environment.terrain}
+                  </span>
                 </div>
               )}
               {environment.lighting && (
                 <div>
-                  <span className="text-tavern-mauve font-medium">Lighting:</span>{' '}
-                  <span className="text-tavern-cream">{environment.lighting}</span>
+                  <span className="text-tavern-mauve font-medium">
+                    Lighting:
+                  </span>{" "}
+                  <span className="text-tavern-cream">
+                    {environment.lighting}
+                  </span>
                 </div>
               )}
               {environment.weather && (
                 <div>
-                  <span className="text-tavern-mauve font-medium">Weather:</span>{' '}
-                  <span className="text-tavern-cream">{environment.weather}</span>
+                  <span className="text-tavern-mauve font-medium">
+                    Weather:
+                  </span>{" "}
+                  <span className="text-tavern-cream">
+                    {environment.weather}
+                  </span>
                 </div>
               )}
             </div>
@@ -368,13 +466,20 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {creatures.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Creatures</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Creatures
+            </h3>
             <div className="space-y-3">
               {creatures.map((creature: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="font-semibold text-tavern-light">{creature.name}</div>
+                      <div className="font-semibold text-tavern-light">
+                        {creature.name}
+                      </div>
                       <div className="text-sm text-tavern-mauve">
                         Quantity: {creature.quantity || 1}
                       </div>
@@ -386,7 +491,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                     )}
                   </div>
                   {creature.notes && (
-                    <p className="text-tavern-cream text-sm mt-2">{creature.notes}</p>
+                    <p className="text-tavern-cream text-sm mt-2">
+                      {creature.notes}
+                    </p>
                   )}
                 </div>
               ))}
@@ -398,33 +505,41 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           {encounter.xp_total && (
             <div className="bg-background-panel p-4 rounded-lg border border-border">
               <div className="text-tavern-mauve text-sm">Total XP</div>
-              <div className="text-2xl font-bold text-tavern-light">{encounter.xp_total}</div>
+              <div className="text-2xl font-bold text-tavern-light">
+                {encounter.xp_total}
+              </div>
             </div>
           )}
           {encounter.xp_per_player && (
             <div className="bg-background-panel p-4 rounded-lg border border-border">
               <div className="text-tavern-mauve text-sm">XP per Player</div>
-              <div className="text-2xl font-bold text-tavern-light">{encounter.xp_per_player}</div>
+              <div className="text-2xl font-bold text-tavern-light">
+                {encounter.xp_per_player}
+              </div>
             </div>
           )}
         </div>
 
         {treasure && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Treasure</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Treasure
+            </h3>
             <div className="bg-background-panel p-4 rounded-lg border border-border space-y-3">
               {treasure.coins && Object.keys(treasure.coins).length > 0 && (
                 <div>
                   <div className="text-sm text-tavern-mauve mb-2">Coins</div>
                   <div className="flex flex-wrap gap-3">
-                    {Object.entries(treasure.coins).map(([coin, amount]: [string, any]) => (
-                      <span
-                        key={coin}
-                        className="px-3 py-1 bg-tavern-gold/20 text-tavern-gold rounded-lg text-sm font-semibold"
-                      >
-                        {amount} {coin.toUpperCase()}
-                      </span>
-                    ))}
+                    {Object.entries(treasure.coins).map(
+                      ([coin, amount]: [string, any]) => (
+                        <span
+                          key={coin}
+                          className="px-3 py-1 bg-tavern-gold/20 text-tavern-gold rounded-lg text-sm font-semibold"
+                        >
+                          {amount} {coin.toUpperCase()}
+                        </span>
+                      ),
+                    )}
                   </div>
                 </div>
               )}
@@ -444,49 +559,58 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {encounter.notes && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Notes</h3>
-            <p className="text-tavern-cream leading-relaxed">{encounter.notes}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Notes
+            </h3>
+            <p className="text-tavern-cream leading-relaxed">
+              {encounter.notes}
+            </p>
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderDialogueDetail = (dialogue: any) => {
-    let dialogueTree = null
-    let skillChecks = []
-    let information = null
-    let quests = []
+    let dialogueTree = null;
+    let skillChecks = [];
+    let information = null;
+    let quests = [];
 
     try {
       dialogueTree = dialogue.dialogue_tree
-        ? typeof dialogue.dialogue_tree === 'string'
+        ? typeof dialogue.dialogue_tree === "string"
           ? JSON.parse(dialogue.dialogue_tree)
           : dialogue.dialogue_tree
-        : null
+        : null;
       skillChecks = dialogue.skill_checks
-        ? typeof dialogue.skill_checks === 'string'
+        ? typeof dialogue.skill_checks === "string"
           ? JSON.parse(dialogue.skill_checks)
           : dialogue.skill_checks
-        : []
+        : [];
       information = dialogue.information
-        ? typeof dialogue.information === 'string'
+        ? typeof dialogue.information === "string"
           ? JSON.parse(dialogue.information)
           : dialogue.information
-        : null
+        : null;
       quests = dialogue.potential_quests
-        ? typeof dialogue.potential_quests === 'string'
+        ? typeof dialogue.potential_quests === "string"
           ? JSON.parse(dialogue.potential_quests)
           : dialogue.potential_quests
-        : []
+        : [];
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse dialogue data:', error)
+      logger.error(
+        "[SavedContentDetail] Failed to parse dialogue data:",
+        error,
+      );
     }
 
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-tavern-light mb-2">{dialogue.character_name}</h2>
+          <h2 className="text-3xl font-bold text-tavern-light mb-2">
+            {dialogue.character_name}
+          </h2>
           <div className="flex gap-4 text-tavern-cream text-sm">
             {dialogue.scene_setting && <span>📍 {dialogue.scene_setting}</span>}
             {dialogue.mood && (
@@ -500,7 +624,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {dialogueTree && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Dialogue Options</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Dialogue Options
+            </h3>
             <div className="space-y-4">
               {dialogueTree.friendly && (
                 <div className="bg-background-panel p-4 rounded-lg border border-border">
@@ -516,10 +642,12 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                       {dialogueTree.friendly.player_option}"
                     </p>
                     <p className="text-tavern-cream">
-                      <strong className="text-tavern-gold">NPC:</strong>{' '}
+                      <strong className="text-tavern-gold">NPC:</strong>{" "}
                       {dialogueTree.friendly.npc_response}
                     </p>
-                    <p className="text-tavern-mauve italic">→ {dialogueTree.friendly.outcome}</p>
+                    <p className="text-tavern-mauve italic">
+                      → {dialogueTree.friendly.outcome}
+                    </p>
                   </div>
                 </div>
               )}
@@ -537,10 +665,12 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                       {dialogueTree.neutral.player_option}"
                     </p>
                     <p className="text-tavern-cream">
-                      <strong className="text-tavern-gold">NPC:</strong>{' '}
+                      <strong className="text-tavern-gold">NPC:</strong>{" "}
                       {dialogueTree.neutral.npc_response}
                     </p>
-                    <p className="text-tavern-mauve italic">→ {dialogueTree.neutral.outcome}</p>
+                    <p className="text-tavern-mauve italic">
+                      → {dialogueTree.neutral.outcome}
+                    </p>
                   </div>
                 </div>
               )}
@@ -558,10 +688,12 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                       {dialogueTree.hostile.player_option}"
                     </p>
                     <p className="text-tavern-cream">
-                      <strong className="text-tavern-gold">NPC:</strong>{' '}
+                      <strong className="text-tavern-gold">NPC:</strong>{" "}
                       {dialogueTree.hostile.npc_response}
                     </p>
-                    <p className="text-tavern-mauve italic">→ {dialogueTree.hostile.outcome}</p>
+                    <p className="text-tavern-mauve italic">
+                      → {dialogueTree.hostile.outcome}
+                    </p>
                   </div>
                 </div>
               )}
@@ -571,15 +703,22 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {skillChecks && skillChecks.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Skill Checks</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Skill Checks
+            </h3>
             <div className="space-y-3">
               {skillChecks.map((check: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-tavern-light font-semibold">
                       {check.skill || check.name}
                     </span>
-                    <span className="text-tavern-gold font-bold">DC {check.dc}</span>
+                    <span className="text-tavern-gold font-bold">
+                      DC {check.dc}
+                    </span>
                   </div>
                   {check.success && (
                     <p className="text-sm text-green-400 mb-1">
@@ -599,7 +738,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {information && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Information Revealed</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Information Revealed
+            </h3>
             <div className="bg-background-panel p-4 rounded-lg border border-border">
               {Array.isArray(information) ? (
                 <ul className="list-disc list-inside text-tavern-cream space-y-1">
@@ -616,15 +757,24 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {quests && quests.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Potential Quests</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Potential Quests
+            </h3>
             <div className="space-y-3">
               {quests.map((quest: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
-                  <div className="font-semibold text-tavern-light mb-1">Quest {idx + 1}</div>
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
+                  <div className="font-semibold text-tavern-light mb-1">
+                    Quest {idx + 1}
+                  </div>
                   <p className="text-tavern-cream text-sm">
-                    {typeof quest === 'string'
+                    {typeof quest === "string"
                       ? quest
-                      : quest.description || quest.name || JSON.stringify(quest)}
+                      : quest.description ||
+                        quest.name ||
+                        JSON.stringify(quest)}
                   </p>
                 </div>
               ))}
@@ -632,50 +782,55 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderLocationDetail = (location: any) => {
-    let features = []
-    let secrets = []
-    let factions = []
-    let npcs = []
-    let encounters = []
+    let features = [];
+    let secrets = [];
+    let factions = [];
+    let npcs = [];
+    let encounters = [];
 
     try {
       features = location.features
-        ? typeof location.features === 'string'
+        ? typeof location.features === "string"
           ? JSON.parse(location.features)
           : location.features
-        : []
+        : [];
       secrets = location.secrets
-        ? typeof location.secrets === 'string'
+        ? typeof location.secrets === "string"
           ? JSON.parse(location.secrets)
           : location.secrets
-        : []
+        : [];
       factions = location.factions
-        ? typeof location.factions === 'string'
+        ? typeof location.factions === "string"
           ? JSON.parse(location.factions)
           : location.factions
-        : []
+        : [];
       npcs = location.npcs
-        ? typeof location.npcs === 'string'
+        ? typeof location.npcs === "string"
           ? JSON.parse(location.npcs)
           : location.npcs
-        : []
+        : [];
       encounters = location.encounters
-        ? typeof location.encounters === 'string'
+        ? typeof location.encounters === "string"
           ? JSON.parse(location.encounters)
           : location.encounters
-        : []
+        : [];
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse location data:', error)
+      logger.error(
+        "[SavedContentDetail] Failed to parse location data:",
+        error,
+      );
     }
 
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-tavern-light mb-2">{location.name}</h2>
+          <h2 className="text-3xl font-bold text-tavern-light mb-2">
+            {location.name}
+          </h2>
           <div className="flex gap-2">
             <span className="px-3 py-1 bg-tavern-purple/30 text-tavern-cream rounded-lg text-sm capitalize">
               {location.type}
@@ -690,7 +845,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {location.description && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Description</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Description
+            </h3>
             <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
               {location.description}
             </p>
@@ -699,10 +856,14 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {features && features.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Notable Features</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Notable Features
+            </h3>
             <ul className="list-disc list-inside space-y-2 text-tavern-cream">
               {features.map((feature: any, idx: number) => (
-                <li key={idx}>{typeof feature === 'string' ? feature : feature.description}</li>
+                <li key={idx}>
+                  {typeof feature === "string" ? feature : feature.description}
+                </li>
               ))}
             </ul>
           </div>
@@ -710,12 +871,17 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {secrets && secrets.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Secrets & Clues</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Secrets & Clues
+            </h3>
             <div className="space-y-2">
               {secrets.map((secret: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-3 rounded-lg border border-border">
+                <div
+                  key={idx}
+                  className="bg-background-panel p-3 rounded-lg border border-border"
+                >
                   <p className="text-tavern-cream text-sm">
-                    {typeof secret === 'string' ? secret : secret.description}
+                    {typeof secret === "string" ? secret : secret.description}
                   </p>
                 </div>
               ))}
@@ -725,7 +891,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {factions && factions.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Factions Present</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Factions Present
+            </h3>
             <div className="flex flex-wrap gap-2">
               {factions.map((faction: string, idx: number) => (
                 <span
@@ -741,14 +909,16 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {npcs && npcs.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">NPCs</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              NPCs
+            </h3>
             <div className="flex flex-wrap gap-2">
               {npcs.map((npc: any, idx: number) => (
                 <span
                   key={idx}
                   className="px-3 py-1 bg-tavern-dark text-tavern-cream rounded-full text-sm"
                 >
-                  {typeof npc === 'string' ? npc : npc?.name || 'Unnamed NPC'}
+                  {typeof npc === "string" ? npc : npc?.name || "Unnamed NPC"}
                 </span>
               ))}
             </div>
@@ -757,74 +927,80 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {encounters && encounters.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Encounter Hooks</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Encounter Hooks
+            </h3>
             <ul className="list-disc list-inside space-y-2 text-tavern-cream">
               {encounters.map((encounter: any, idx: number) => (
                 <li key={idx}>
-                  {typeof encounter === 'string' ? encounter : encounter.description}
+                  {typeof encounter === "string"
+                    ? encounter
+                    : encounter.description}
                 </li>
               ))}
             </ul>
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderQuestDetail = (quest: any) => {
-    let objectives = []
-    let rewards = []
-    let complications = []
-    let npcsInvolved = []
-    let locationsInvolved = []
+    let objectives = [];
+    let rewards = [];
+    let complications = [];
+    let npcsInvolved = [];
+    let locationsInvolved = [];
 
     try {
       objectives = quest.objectives
-        ? typeof quest.objectives === 'string'
+        ? typeof quest.objectives === "string"
           ? JSON.parse(quest.objectives)
           : quest.objectives
-        : []
+        : [];
       rewards = quest.rewards
-        ? typeof quest.rewards === 'string'
+        ? typeof quest.rewards === "string"
           ? JSON.parse(quest.rewards)
           : quest.rewards
-        : []
+        : [];
       complications = quest.complications
-        ? typeof quest.complications === 'string'
+        ? typeof quest.complications === "string"
           ? JSON.parse(quest.complications)
           : quest.complications
-        : []
+        : [];
       npcsInvolved = quest.npcs_involved
-        ? typeof quest.npcs_involved === 'string'
+        ? typeof quest.npcs_involved === "string"
           ? JSON.parse(quest.npcs_involved)
           : quest.npcs_involved
-        : []
+        : [];
       locationsInvolved = quest.locations_involved
-        ? typeof quest.locations_involved === 'string'
+        ? typeof quest.locations_involved === "string"
           ? JSON.parse(quest.locations_involved)
           : quest.locations_involved
-        : []
+        : [];
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse quest data:', error)
+      logger.error("[SavedContentDetail] Failed to parse quest data:", error);
     }
 
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-tavern-light mb-3">{quest.title}</h2>
+          <h2 className="text-3xl font-bold text-tavern-light mb-3">
+            {quest.title}
+          </h2>
           <div className="flex gap-2 flex-wrap">
             <span className="px-3 py-1 bg-tavern-purple/30 text-tavern-cream rounded-lg text-sm uppercase">
               {quest.type}
             </span>
             <span
               className={`px-3 py-1 rounded-lg text-sm uppercase ${
-                quest.status === 'available'
-                  ? 'bg-blue-900/30 text-blue-400'
-                  : quest.status === 'active'
-                    ? 'bg-green-900/30 text-green-400'
-                    : quest.status === 'completed'
-                      ? 'bg-tavern-gold/20 text-tavern-gold'
-                      : 'bg-red-900/30 text-red-400'
+                quest.status === "available"
+                  ? "bg-blue-900/30 text-blue-400"
+                  : quest.status === "active"
+                    ? "bg-green-900/30 text-green-400"
+                    : quest.status === "completed"
+                      ? "bg-tavern-gold/20 text-tavern-gold"
+                      : "bg-red-900/30 text-red-400"
               }`}
             >
               {quest.status}
@@ -844,7 +1020,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {quest.description && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Description</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Description
+            </h3>
             <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
               {quest.description}
             </p>
@@ -853,11 +1031,15 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {objectives && objectives.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Objectives</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Objectives
+            </h3>
             <ul className="list-disc list-inside space-y-2 text-tavern-cream">
               {objectives.map((objective: any, idx: number) => (
                 <li key={idx}>
-                  {typeof objective === 'string' ? objective : objective.description}
+                  {typeof objective === "string"
+                    ? objective
+                    : objective.description}
                 </li>
               ))}
             </ul>
@@ -866,11 +1048,15 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {rewards && rewards.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Rewards</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Rewards
+            </h3>
             <div className="bg-tavern-gold/10 p-4 rounded-lg border border-tavern-gold/30">
               <ul className="space-y-1 text-tavern-cream">
                 {rewards.map((reward: any, idx: number) => (
-                  <li key={idx}>{typeof reward === 'string' ? reward : reward.description}</li>
+                  <li key={idx}>
+                    {typeof reward === "string" ? reward : reward.description}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -879,12 +1065,19 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {complications && complications.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Complications</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Complications
+            </h3>
             <div className="space-y-2">
               {complications.map((complication: any, idx: number) => (
-                <div key={idx} className="bg-red-900/20 p-3 rounded-lg border border-red-500/30">
+                <div
+                  key={idx}
+                  className="bg-red-900/20 p-3 rounded-lg border border-red-500/30"
+                >
                   <p className="text-tavern-cream text-sm">
-                    {typeof complication === 'string' ? complication : complication.description}
+                    {typeof complication === "string"
+                      ? complication
+                      : complication.description}
                   </p>
                 </div>
               ))}
@@ -898,7 +1091,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-1">
                 Combat Intensity
               </div>
-              <div className="text-tavern-light capitalize">{quest.combat_intensity}</div>
+              <div className="text-tavern-light capitalize">
+                {quest.combat_intensity}
+              </div>
             </div>
           )}
           {quest.time_limit && (
@@ -913,14 +1108,16 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {npcsInvolved && npcsInvolved.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">NPCs Involved</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              NPCs Involved
+            </h3>
             <div className="flex flex-wrap gap-2">
               {npcsInvolved.map((npc: any, idx: number) => (
                 <span
                   key={idx}
                   className="px-3 py-1 bg-tavern-dark text-tavern-cream rounded-full text-sm"
                 >
-                  {typeof npc === 'string' ? npc : npc?.name || 'Unnamed NPC'}
+                  {typeof npc === "string" ? npc : npc?.name || "Unnamed NPC"}
                 </span>
               ))}
             </div>
@@ -929,46 +1126,52 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {locationsInvolved && locationsInvolved.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Locations</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Locations
+            </h3>
             <div className="flex flex-wrap gap-2">
               {locationsInvolved.map((location: any, idx: number) => (
                 <span
                   key={idx}
                   className="px-3 py-1 bg-tavern-purple/30 text-tavern-cream rounded-full text-sm"
                 >
-                  {typeof location === 'string' ? location : location?.name || 'Unnamed Location'}
+                  {typeof location === "string"
+                    ? location
+                    : location?.name || "Unnamed Location"}
                 </span>
               ))}
             </div>
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderItemDetail = (item: any) => {
-    let properties = null
-    let value = null
+    let properties = null;
+    let value = null;
 
     try {
       properties = item.properties
-        ? typeof item.properties === 'string'
+        ? typeof item.properties === "string"
           ? JSON.parse(item.properties)
           : item.properties
-        : null
+        : null;
       value = item.value
-        ? typeof item.value === 'string'
+        ? typeof item.value === "string"
           ? JSON.parse(item.value)
           : item.value
-        : null
+        : null;
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse item data:', error)
+      logger.error("[SavedContentDetail] Failed to parse item data:", error);
     }
 
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-tavern-light mb-3">{item.name}</h2>
+          <h2 className="text-3xl font-bold text-tavern-light mb-3">
+            {item.name}
+          </h2>
           <div className="flex gap-2 flex-wrap mb-3">
             <span className="px-3 py-1 bg-tavern-purple/30 text-tavern-cream rounded-lg text-sm capitalize">
               {item.type}
@@ -976,20 +1179,20 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
             {item.rarity && (
               <span
                 className={`px-3 py-1 rounded-lg text-sm capitalize ${
-                  item.rarity === 'common'
-                    ? 'bg-gray-700/50 text-gray-300'
-                    : item.rarity === 'uncommon'
-                      ? 'bg-green-900/30 text-green-400'
-                      : item.rarity === 'rare'
-                        ? 'bg-blue-900/30 text-blue-400'
-                        : item.rarity === 'very_rare'
-                          ? 'bg-purple-900/30 text-purple-400'
-                          : item.rarity === 'legendary'
-                            ? 'bg-orange-900/30 text-orange-400'
-                            : 'bg-tavern-gold/20 text-tavern-gold'
+                  item.rarity === "common"
+                    ? "bg-gray-700/50 text-gray-300"
+                    : item.rarity === "uncommon"
+                      ? "bg-green-900/30 text-green-400"
+                      : item.rarity === "rare"
+                        ? "bg-blue-900/30 text-blue-400"
+                        : item.rarity === "very_rare"
+                          ? "bg-purple-900/30 text-purple-400"
+                          : item.rarity === "legendary"
+                            ? "bg-orange-900/30 text-orange-400"
+                            : "bg-tavern-gold/20 text-tavern-gold"
                 }`}
               >
-                {item.rarity.replace('_', ' ')}
+                {item.rarity.replace("_", " ")}
               </span>
             )}
             {item.requires_attunement && (
@@ -1002,7 +1205,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {item.description && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Description</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Description
+            </h3>
             <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
               {item.description}
             </p>
@@ -1011,29 +1216,37 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {properties && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Properties</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Properties
+            </h3>
             <div className="bg-background-panel p-4 rounded-lg border border-border space-y-2">
               {Object.entries(properties).map(([key, val]: [string, any]) => {
                 // Format damage_dice objects like {count: 1, die: 6, bonus: 2}
-                let displayValue: string
-                if (key === 'damage_dice' && typeof val === 'object' && val !== null) {
-                  const dice = val as any
+                let displayValue: string;
+                if (
+                  key === "damage_dice" &&
+                  typeof val === "object" &&
+                  val !== null
+                ) {
+                  const dice = val as any;
                   displayValue =
                     dice.count && dice.die
-                      ? `${dice.count}d${dice.die}${dice.bonus ? ` + ${dice.bonus}` : ''}`
-                      : JSON.stringify(val)
-                } else if (typeof val === 'object' && val !== null) {
-                  displayValue = JSON.stringify(val)
+                      ? `${dice.count}d${dice.die}${dice.bonus ? ` + ${dice.bonus}` : ""}`
+                      : JSON.stringify(val);
+                } else if (typeof val === "object" && val !== null) {
+                  displayValue = JSON.stringify(val);
                 } else {
-                  displayValue = String(val)
+                  displayValue = String(val);
                 }
 
                 return (
                   <div key={key} className="flex justify-between">
-                    <span className="text-tavern-mauve capitalize">{key.replace(/_/g, ' ')}</span>
+                    <span className="text-tavern-mauve capitalize">
+                      {key.replace(/_/g, " ")}
+                    </span>
                     <span className="text-tavern-light">{displayValue}</span>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -1041,8 +1254,12 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {item.origin && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Origin</h3>
-            <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">{item.origin}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Origin
+            </h3>
+            <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
+              {item.origin}
+            </p>
           </div>
         )}
 
@@ -1050,7 +1267,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           <div>
             <h3 className="text-lg font-semibold text-red-400 mb-2">Curse</h3>
             <div className="bg-red-900/20 p-4 rounded-lg border border-red-500/30">
-              <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">{item.curse}</p>
+              <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
+                {item.curse}
+              </p>
             </div>
           </div>
         )}
@@ -1064,9 +1283,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                     Value
                   </div>
                   <div className="text-tavern-light text-lg">
-                    {typeof value === 'object' && value !== null
-                      ? `${value.amount} ${value.currency || 'gp'}`
-                      : typeof item.value === 'number'
+                    {typeof value === "object" && value !== null
+                      ? `${value.amount} ${value.currency || "gp"}`
+                      : typeof item.value === "number"
                         ? `${item.value} gp`
                         : value || item.value}
                   </div>
@@ -1078,8 +1297,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                     Weight
                   </div>
                   <div className="text-tavern-light text-lg">
-                    {typeof item.weight === 'object' && (item.weight as any).amount
-                      ? `${(item.weight as any).amount} ${(item.weight as any).unit || 'lb'}`
+                    {typeof item.weight === "object" &&
+                    (item.weight as any).amount
+                      ? `${(item.weight as any).amount} ${(item.weight as any).unit || "lb"}`
                       : `${item.weight} lb`}
                   </div>
                 </div>
@@ -1088,20 +1308,20 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderRumorDetail = (rumor: any) => {
-    let tags = []
+    let tags = [];
 
     try {
       tags = rumor.tags
-        ? typeof rumor.tags === 'string'
+        ? typeof rumor.tags === "string"
           ? JSON.parse(rumor.tags)
           : rumor.tags
-        : []
+        : [];
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse rumor data:', error)
+      logger.error("[SavedContentDetail] Failed to parse rumor data:", error);
     }
 
     return (
@@ -1113,37 +1333,47 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
         </div>
 
         <div className="bg-background-panel p-4 rounded-lg border border-border inline-block">
-          <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Veracity</div>
+          <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+            Veracity
+          </div>
           <span
             className={`px-3 py-1 rounded text-sm inline-block ${
-              rumor.veracity === 'true'
-                ? 'bg-green-900/30 text-green-400'
-                : rumor.veracity === 'partially_true'
-                  ? 'bg-yellow-900/30 text-yellow-400'
-                  : 'bg-red-900/30 text-red-400'
+              rumor.veracity === "true"
+                ? "bg-green-900/30 text-green-400"
+                : rumor.veracity === "partially_true"
+                  ? "bg-yellow-900/30 text-yellow-400"
+                  : "bg-red-900/30 text-red-400"
             }`}
           >
-            {rumor.veracity.replace('_', ' ')}
+            {rumor.veracity.replace("_", " ")}
           </span>
         </div>
 
         {rumor.source && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Source</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Source
+            </h3>
             <p className="text-tavern-cream">{rumor.source}</p>
           </div>
         )}
 
         {rumor.context && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Context</h3>
-            <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">{rumor.context}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Context
+            </h3>
+            <p className="text-tavern-cream leading-relaxed whitespace-pre-wrap">
+              {rumor.context}
+            </p>
           </div>
         )}
 
         {rumor.leads_to && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Leads To</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Leads To
+            </h3>
             <span className="px-3 py-1 bg-tavern-purple/30 text-tavern-cream rounded-lg text-sm capitalize">
               {rumor.leads_to}
             </span>
@@ -1154,14 +1384,18 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           <div className="bg-tavern-gold/10 p-4 rounded-lg border border-tavern-gold/30">
             <div className="flex items-center gap-2">
               <Icon name="AlertCircle" className="w-5 h-5 text-tavern-gold" />
-              <span className="text-tavern-gold font-semibold">Foreshadows Future Events</span>
+              <span className="text-tavern-gold font-semibold">
+                Foreshadows Future Events
+              </span>
             </div>
           </div>
         )}
 
         {tags && tags.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Tags</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Tags
+            </h3>
             <div className="flex flex-wrap gap-2">
               {tags.map((tag: string, idx: number) => (
                 <span
@@ -1175,86 +1409,112 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderTavernDetail = (tavern: any) => {
-    let menuFood, menuDrinks, rooms, patrons, events, rumors
+    let menuFood, menuDrinks, rooms, patrons, events, rumors;
     try {
       menuFood = tavern.menu_food
-        ? typeof tavern.menu_food === 'string'
+        ? typeof tavern.menu_food === "string"
           ? JSON.parse(tavern.menu_food)
           : tavern.menu_food
-        : null
+        : null;
       menuDrinks = tavern.menu_drinks
-        ? typeof tavern.menu_drinks === 'string'
+        ? typeof tavern.menu_drinks === "string"
           ? JSON.parse(tavern.menu_drinks)
           : tavern.menu_drinks
-        : null
+        : null;
       rooms = tavern.rooms
-        ? typeof tavern.rooms === 'string'
+        ? typeof tavern.rooms === "string"
           ? JSON.parse(tavern.rooms)
           : tavern.rooms
-        : null
+        : null;
       patrons = tavern.patrons
-        ? typeof tavern.patrons === 'string'
+        ? typeof tavern.patrons === "string"
           ? JSON.parse(tavern.patrons)
           : tavern.patrons
-        : null
+        : null;
       events = tavern.events
-        ? typeof tavern.events === 'string'
+        ? typeof tavern.events === "string"
           ? JSON.parse(tavern.events)
           : tavern.events
-        : null
+        : null;
       rumors = tavern.rumors
-        ? typeof tavern.rumors === 'string'
+        ? typeof tavern.rumors === "string"
           ? JSON.parse(tavern.rumors)
           : tavern.rumors
-        : null
+        : null;
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse tavern data:', error)
+      logger.error("[SavedContentDetail] Failed to parse tavern data:", error);
     }
 
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-background-panel p-4 rounded-lg border border-border">
-            <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Type</div>
-            <div className="text-lg text-tavern-light capitalize">{tavern.type}</div>
+            <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+              Type
+            </div>
+            <div className="text-lg text-tavern-light capitalize">
+              {tavern.type}
+            </div>
           </div>
           {tavern.quality && (
             <div className="bg-background-panel p-4 rounded-lg border border-border">
-              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Quality</div>
-              <div className="text-lg text-tavern-light capitalize">{tavern.quality}</div>
+              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+                Quality
+              </div>
+              <div className="text-lg text-tavern-light capitalize">
+                {tavern.quality}
+              </div>
             </div>
           )}
           {tavern.size && (
             <div className="bg-background-panel p-4 rounded-lg border border-border">
-              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Size</div>
-              <div className="text-lg text-tavern-light capitalize">{tavern.size}</div>
+              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+                Size
+              </div>
+              <div className="text-lg text-tavern-light capitalize">
+                {tavern.size}
+              </div>
             </div>
           )}
         </div>
 
         {tavern.atmosphere && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Atmosphere</h3>
-            <p className="text-tavern-cream leading-relaxed">{tavern.atmosphere}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Atmosphere
+            </h3>
+            <p className="text-tavern-cream leading-relaxed">
+              {tavern.atmosphere}
+            </p>
             {tavern.description && (
-              <p className="text-tavern-cream leading-relaxed mt-2">{tavern.description}</p>
+              <p className="text-tavern-cream leading-relaxed mt-2">
+                {tavern.description}
+              </p>
             )}
           </div>
         )}
 
-        {(tavern.keeper_name || tavern.keeper_personality || tavern.keeper_description) && (
+        {(tavern.keeper_name ||
+          tavern.keeper_personality ||
+          tavern.keeper_description) && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">The Keeper</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              The Keeper
+            </h3>
             <div className="bg-background-panel p-4 rounded-lg border border-border space-y-2">
               {tavern.keeper_name && (
-                <h4 className="font-semibold text-tavern-light text-lg">{tavern.keeper_name}</h4>
+                <h4 className="font-semibold text-tavern-light text-lg">
+                  {tavern.keeper_name}
+                </h4>
               )}
               {tavern.keeper_personality && (
-                <p className="text-tavern-cream italic text-sm">{tavern.keeper_personality}</p>
+                <p className="text-tavern-cream italic text-sm">
+                  {tavern.keeper_personality}
+                </p>
               )}
               {tavern.keeper_description && (
                 <p className="text-tavern-cream">{tavern.keeper_description}</p>
@@ -1265,18 +1525,29 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {(menuFood || menuDrinks) && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Menu</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Menu
+            </h3>
             <div className="bg-background-panel p-4 rounded-lg border border-border space-y-4">
               {Array.isArray(menuFood) && menuFood.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-tavern-mauve mb-2">Food</h4>
+                  <h4 className="text-sm font-semibold text-tavern-mauve mb-2">
+                    Food
+                  </h4>
                   <div className="space-y-2">
                     {menuFood.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-start">
+                      <div
+                        key={idx}
+                        className="flex justify-between items-start"
+                      >
                         <div className="flex-1">
-                          <div className="text-tavern-light font-medium">{item.name}</div>
+                          <div className="text-tavern-light font-medium">
+                            {item.name}
+                          </div>
                           {item.description && (
-                            <div className="text-tavern-cream text-sm">{item.description}</div>
+                            <div className="text-tavern-cream text-sm">
+                              {item.description}
+                            </div>
                           )}
                         </div>
                         <span className="text-tavern-gold ml-4 whitespace-nowrap">
@@ -1289,14 +1560,23 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               )}
               {Array.isArray(menuDrinks) && menuDrinks.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-tavern-mauve mb-2">Drinks</h4>
+                  <h4 className="text-sm font-semibold text-tavern-mauve mb-2">
+                    Drinks
+                  </h4>
                   <div className="space-y-2">
                     {menuDrinks.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-start">
+                      <div
+                        key={idx}
+                        className="flex justify-between items-start"
+                      >
                         <div className="flex-1">
-                          <div className="text-tavern-light font-medium">{item.name}</div>
+                          <div className="text-tavern-light font-medium">
+                            {item.name}
+                          </div>
                           {item.description && (
-                            <div className="text-tavern-cream text-sm">{item.description}</div>
+                            <div className="text-tavern-cream text-sm">
+                              {item.description}
+                            </div>
                           )}
                         </div>
                         <span className="text-tavern-gold ml-4 whitespace-nowrap">
@@ -1313,22 +1593,33 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(rooms) && rooms.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Accommodations</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Accommodations
+            </h3>
             <div className="grid gap-3">
               {rooms.map((room: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h4 className="font-semibold text-tavern-light">{room.type}</h4>
+                      <h4 className="font-semibold text-tavern-light">
+                        {room.type}
+                      </h4>
                       {room.available && (
                         <span className="text-tavern-mauve text-xs">
                           ({room.available} available)
                         </span>
                       )}
                     </div>
-                    <span className="text-tavern-gold whitespace-nowrap">{room.price}</span>
+                    <span className="text-tavern-gold whitespace-nowrap">
+                      {room.price}
+                    </span>
                   </div>
-                  <p className="text-tavern-cream text-sm">{room.description || room.details}</p>
+                  <p className="text-tavern-cream text-sm">
+                    {room.description || room.details}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1337,19 +1628,28 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(patrons) && patrons.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Notable Patrons</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Notable Patrons
+            </h3>
             <div className="grid gap-3">
               {patrons.map((patron: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
                   <div className="flex items-start gap-3 mb-2">
-                    <h4 className="font-semibold text-tavern-light">{patron.name}</h4>
+                    <h4 className="font-semibold text-tavern-light">
+                      {patron.name}
+                    </h4>
                     {patron.race && (
                       <span className="text-tavern-mauve text-xs uppercase tracking-wide">
                         {patron.race}
                       </span>
                     )}
                   </div>
-                  <p className="text-tavern-cream text-sm">{patron.description}</p>
+                  <p className="text-tavern-cream text-sm">
+                    {patron.description}
+                  </p>
                   {patron.hook && (
                     <p className="text-tavern-gold text-sm mt-2 flex items-start gap-2">
                       <span>💡</span>
@@ -1364,11 +1664,15 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(events) && events.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Current Events</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Current Events
+            </h3>
             <ul className="list-disc list-inside space-y-1">
               {events.map((event: any, idx: number) => (
                 <li key={idx} className="text-tavern-cream">
-                  {typeof event === 'string' ? event : event.description || event.name}
+                  {typeof event === "string"
+                    ? event
+                    : event.description || event.name}
                 </li>
               ))}
             </ul>
@@ -1377,11 +1681,15 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(rumors) && rumors.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Rumors & Gossip</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Rumors & Gossip
+            </h3>
             <ul className="list-disc list-inside space-y-1">
               {rumors.map((rumor: any, idx: number) => (
                 <li key={idx} className="text-tavern-cream">
-                  {typeof rumor === 'string' ? rumor : rumor.text || rumor.description}
+                  {typeof rumor === "string"
+                    ? rumor
+                    : rumor.text || rumor.description}
                 </li>
               ))}
             </ul>
@@ -1390,12 +1698,21 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(patrons) && patrons.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Notable Patrons</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Notable Patrons
+            </h3>
             <div className="grid gap-3">
               {patrons.map((patron: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
-                  <h4 className="font-semibold text-tavern-light mb-1">{patron.name}</h4>
-                  <p className="text-tavern-cream text-sm">{patron.description}</p>
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
+                  <h4 className="font-semibold text-tavern-light mb-1">
+                    {patron.name}
+                  </h4>
+                  <p className="text-tavern-cream text-sm">
+                    {patron.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1414,80 +1731,105 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderMerchantDetail = (merchant: any) => {
-    let inventory, services, specialItems, rumors, recentlySold
+    let inventory, services, specialItems, rumors, recentlySold;
     try {
       inventory = merchant.inventory
-        ? typeof merchant.inventory === 'string'
+        ? typeof merchant.inventory === "string"
           ? JSON.parse(merchant.inventory)
           : merchant.inventory
-        : null
+        : null;
       services = merchant.services
-        ? typeof merchant.services === 'string'
+        ? typeof merchant.services === "string"
           ? JSON.parse(merchant.services)
           : merchant.services
-        : null
+        : null;
       specialItems = merchant.special_items
-        ? typeof merchant.special_items === 'string'
+        ? typeof merchant.special_items === "string"
           ? JSON.parse(merchant.special_items)
           : merchant.special_items
-        : null
+        : null;
       rumors = merchant.rumors
-        ? typeof merchant.rumors === 'string'
+        ? typeof merchant.rumors === "string"
           ? JSON.parse(merchant.rumors)
           : merchant.rumors
-        : null
+        : null;
       recentlySold = merchant.recently_sold
-        ? typeof merchant.recently_sold === 'string'
+        ? typeof merchant.recently_sold === "string"
           ? JSON.parse(merchant.recently_sold)
           : merchant.recently_sold
-        : null
+        : null;
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse merchant data:', error)
+      logger.error(
+        "[SavedContentDetail] Failed to parse merchant data:",
+        error,
+      );
     }
 
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-background-panel p-4 rounded-lg border border-border">
-            <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Shop Type</div>
+            <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+              Shop Type
+            </div>
             <div className="text-lg text-tavern-light capitalize">
-              {merchant.shop_type?.replace(/_/g, ' ')}
+              {merchant.shop_type?.replace(/_/g, " ")}
             </div>
           </div>
           {merchant.location && (
             <div className="bg-background-panel p-4 rounded-lg border border-border">
-              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Location</div>
-              <div className="text-lg text-tavern-light">{merchant.location}</div>
+              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+                Location
+              </div>
+              <div className="text-lg text-tavern-light">
+                {merchant.location}
+              </div>
             </div>
           )}
         </div>
 
         {merchant.atmosphere && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Atmosphere</h3>
-            <p className="text-tavern-cream leading-relaxed">{merchant.atmosphere}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Atmosphere
+            </h3>
+            <p className="text-tavern-cream leading-relaxed">
+              {merchant.atmosphere}
+            </p>
             {merchant.description && (
-              <p className="text-tavern-cream leading-relaxed mt-2">{merchant.description}</p>
+              <p className="text-tavern-cream leading-relaxed mt-2">
+                {merchant.description}
+              </p>
             )}
           </div>
         )}
 
-        {(merchant.owner_name || merchant.owner_personality || merchant.owner_description) && (
+        {(merchant.owner_name ||
+          merchant.owner_personality ||
+          merchant.owner_description) && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">The Owner</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              The Owner
+            </h3>
             <div className="bg-background-panel p-4 rounded-lg border border-border space-y-2">
               {merchant.owner_name && (
-                <h4 className="font-semibold text-tavern-light text-lg">{merchant.owner_name}</h4>
+                <h4 className="font-semibold text-tavern-light text-lg">
+                  {merchant.owner_name}
+                </h4>
               )}
               {merchant.owner_personality && (
-                <p className="text-tavern-cream italic text-sm">{merchant.owner_personality}</p>
+                <p className="text-tavern-cream italic text-sm">
+                  {merchant.owner_personality}
+                </p>
               )}
               {merchant.owner_description && (
-                <p className="text-tavern-cream">{merchant.owner_description}</p>
+                <p className="text-tavern-cream">
+                  {merchant.owner_description}
+                </p>
               )}
               {merchant.haggle_willingness && (
                 <p className="text-tavern-mauve text-sm">
@@ -1500,18 +1842,31 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(inventory) && inventory.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Inventory</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Inventory
+            </h3>
             <div className="grid gap-3">
               {inventory.map((item: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-tavern-light">{item.name}</h4>
-                    <span className="text-tavern-gold whitespace-nowrap">{item.price}</span>
+                    <h4 className="font-semibold text-tavern-light">
+                      {item.name}
+                    </h4>
+                    <span className="text-tavern-gold whitespace-nowrap">
+                      {item.price}
+                    </span>
                   </div>
                   {item.quantity && (
-                    <p className="text-tavern-mauve text-xs mb-1">Stock: {item.quantity}</p>
+                    <p className="text-tavern-mauve text-xs mb-1">
+                      Stock: {item.quantity}
+                    </p>
                   )}
-                  <p className="text-tavern-cream text-sm">{item.description}</p>
+                  <p className="text-tavern-cream text-sm">
+                    {item.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1520,7 +1875,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(specialItems) && specialItems.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Special Items</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Special Items
+            </h3>
             <div className="grid gap-3">
               {specialItems.map((item: any, idx: number) => (
                 <div
@@ -1528,15 +1885,21 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                   className="bg-background-panel p-4 rounded-lg border-2 border-tavern-gold/30"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-tavern-light">{item.name}</h4>
+                    <h4 className="font-semibold text-tavern-light">
+                      {item.name}
+                    </h4>
                     <span className="text-tavern-gold font-bold whitespace-nowrap">
                       {item.price}
                     </span>
                   </div>
                   {item.quantity && (
-                    <p className="text-tavern-mauve text-xs mb-1">Stock: {item.quantity}</p>
+                    <p className="text-tavern-mauve text-xs mb-1">
+                      Stock: {item.quantity}
+                    </p>
                   )}
-                  <p className="text-tavern-cream text-sm">{item.description}</p>
+                  <p className="text-tavern-cream text-sm">
+                    {item.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1545,15 +1908,26 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(services) && services.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Services Offered</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Services Offered
+            </h3>
             <div className="grid gap-3">
               {services.map((service: any, idx: number) => (
-                <div key={idx} className="bg-background-panel p-4 rounded-lg border border-border">
+                <div
+                  key={idx}
+                  className="bg-background-panel p-4 rounded-lg border border-border"
+                >
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-tavern-light">{service.name}</h4>
-                    <span className="text-tavern-gold whitespace-nowrap">{service.price}</span>
+                    <h4 className="font-semibold text-tavern-light">
+                      {service.name}
+                    </h4>
+                    <span className="text-tavern-gold whitespace-nowrap">
+                      {service.price}
+                    </span>
                   </div>
-                  <p className="text-tavern-cream text-sm">{service.description}</p>
+                  <p className="text-tavern-cream text-sm">
+                    {service.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1562,7 +1936,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(recentlySold) && recentlySold.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Recently Sold</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Recently Sold
+            </h3>
             <div className="grid gap-3">
               {recentlySold.map((item: any, idx: number) => (
                 <div
@@ -1570,14 +1946,20 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                   className="bg-background-panel p-4 rounded-lg border border-border opacity-75"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-tavern-light">{item.name}</h4>
+                    <h4 className="font-semibold text-tavern-light">
+                      {item.name}
+                    </h4>
                     <span className="text-tavern-mauve whitespace-nowrap line-through">
                       {item.price}
                     </span>
                   </div>
-                  <p className="text-tavern-cream text-sm">{item.description}</p>
+                  <p className="text-tavern-cream text-sm">
+                    {item.description}
+                  </p>
                   {item.buyer && (
-                    <p className="text-tavern-mauve text-xs mt-1">Sold to: {item.buyer}</p>
+                    <p className="text-tavern-mauve text-xs mt-1">
+                      Sold to: {item.buyer}
+                    </p>
                   )}
                 </div>
               ))}
@@ -1587,11 +1969,15 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(rumors) && rumors.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Rumors & Gossip</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Rumors & Gossip
+            </h3>
             <ul className="list-disc list-inside space-y-1">
               {rumors.map((rumor: any, idx: number) => (
                 <li key={idx} className="text-tavern-cream">
-                  {typeof rumor === 'string' ? rumor : rumor.text || rumor.description}
+                  {typeof rumor === "string"
+                    ? rumor
+                    : rumor.text || rumor.description}
                 </li>
               ))}
             </ul>
@@ -1610,61 +1996,65 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderTrapDetail = (trap: any) => {
-    let detection, solutionPaths, complications, rewards, scaling
+    let detection, solutionPaths, complications, rewards, scaling;
     try {
       detection = trap.detection
-        ? typeof trap.detection === 'string'
+        ? typeof trap.detection === "string"
           ? JSON.parse(trap.detection)
           : trap.detection
-        : null
+        : null;
       solutionPaths = trap.solution_paths
-        ? typeof trap.solution_paths === 'string'
+        ? typeof trap.solution_paths === "string"
           ? JSON.parse(trap.solution_paths)
           : trap.solution_paths
-        : null
+        : null;
       complications = trap.complications
-        ? typeof trap.complications === 'string'
+        ? typeof trap.complications === "string"
           ? JSON.parse(trap.complications)
           : trap.complications
-        : null
+        : null;
       rewards = trap.rewards
-        ? typeof trap.rewards === 'string'
+        ? typeof trap.rewards === "string"
           ? JSON.parse(trap.rewards)
           : trap.rewards
-        : null
+        : null;
       scaling = trap.scaling
-        ? typeof trap.scaling === 'string'
+        ? typeof trap.scaling === "string"
           ? JSON.parse(trap.scaling)
           : trap.scaling
-        : null
+        : null;
     } catch (error) {
-      logger.error('[SavedContentDetail] Failed to parse trap data:', error)
+      logger.error("[SavedContentDetail] Failed to parse trap data:", error);
     }
 
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-background-panel p-4 rounded-lg border border-border">
-            <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Type</div>
+            <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+              Type
+            </div>
             <div className="text-lg text-tavern-light capitalize">
-              {trap.trap_type?.replace(/_/g, ' ')}
+              {trap.trap_type?.replace(/_/g, " ")}
             </div>
           </div>
           <div className="bg-background-panel p-4 rounded-lg border border-border">
-            <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Difficulty</div>
+            <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+              Difficulty
+            </div>
             <div
               className={`text-lg font-semibold capitalize ${
-                trap.difficulty === 'deadly'
-                  ? 'text-red-400'
-                  : trap.difficulty === 'hard'
-                    ? 'text-orange-400'
-                    : trap.difficulty === 'medium'
-                      ? 'text-yellow-400'
-                      : 'text-green-400'
+                trap.difficulty === "deadly"
+                  ? "text-red-400"
+                  : trap.difficulty === "hard"
+                    ? "text-orange-400"
+                    : trap.difficulty === "medium"
+                      ? "text-yellow-400"
+                      : "text-green-400"
               }`}
             >
               {trap.difficulty}
@@ -1674,20 +2064,28 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
             <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
               Environment
             </div>
-            <div className="text-lg text-tavern-light capitalize">{trap.environment}</div>
+            <div className="text-lg text-tavern-light capitalize">
+              {trap.environment}
+            </div>
           </div>
         </div>
 
         {trap.description && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Description</h3>
-            <p className="text-tavern-cream leading-relaxed">{trap.description}</p>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Description
+            </h3>
+            <p className="text-tavern-cream leading-relaxed">
+              {trap.description}
+            </p>
           </div>
         )}
 
         {trap.trigger && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-2">Trigger</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-2">
+              Trigger
+            </h3>
             <p className="text-tavern-cream leading-relaxed">{trap.trigger}</p>
           </div>
         )}
@@ -1695,13 +2093,17 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
         <div className="grid grid-cols-2 gap-4">
           {trap.effect && (
             <div className="bg-background-panel p-4 rounded-lg border border-border">
-              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Effect</div>
+              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+                Effect
+              </div>
               <div className="text-tavern-light">{trap.effect}</div>
             </div>
           )}
           {trap.damage && (
             <div className="bg-background-panel p-4 rounded-lg border border-border">
-              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">Damage</div>
+              <div className="text-xs text-tavern-mauve uppercase tracking-wide mb-2">
+                Damage
+              </div>
               <div className="text-tavern-light font-mono">{trap.damage}</div>
             </div>
           )}
@@ -1709,11 +2111,15 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {detection && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Detection</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Detection
+            </h3>
             <div className="bg-background-panel p-4 rounded-lg border border-border space-y-3">
               {detection.passive_perception_dc && (
                 <div className="flex items-center gap-2">
-                  <span className="text-tavern-mauve">Passive Perception DC:</span>
+                  <span className="text-tavern-mauve">
+                    Passive Perception DC:
+                  </span>
                   <span className="text-tavern-light font-bold">
                     {detection.passive_perception_dc}
                   </span>
@@ -1722,7 +2128,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               {detection.investigation_dc && (
                 <div className="flex items-center gap-2">
                   <span className="text-tavern-mauve">Investigation DC:</span>
-                  <span className="text-tavern-light font-bold">{detection.investigation_dc}</span>
+                  <span className="text-tavern-light font-bold">
+                    {detection.investigation_dc}
+                  </span>
                 </div>
               )}
               {Array.isArray(detection.clues) && detection.clues.length > 0 && (
@@ -1743,7 +2151,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(solutionPaths) && solutionPaths.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Solution Paths</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Solution Paths
+            </h3>
             <div className="grid gap-4">
               {solutionPaths.map((path: any, idx: number) => (
                 <div
@@ -1751,7 +2161,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                   className="bg-background-panel p-4 rounded-lg border border-tavern-purple"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-tavern-light">{path.approach}</h4>
+                    <h4 className="font-semibold text-tavern-light">
+                      {path.approach}
+                    </h4>
                     <div className="flex gap-2">
                       {path.skill && (
                         <span className="px-2 py-1 bg-tavern-dark text-tavern-mauve rounded text-xs">
@@ -1765,10 +2177,18 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                       )}
                     </div>
                   </div>
-                  <p className="text-tavern-cream text-sm mb-2">{path.description}</p>
-                  {path.time && <p className="text-tavern-mauve text-xs">⏱️ Time: {path.time}</p>}
+                  <p className="text-tavern-cream text-sm mb-2">
+                    {path.description}
+                  </p>
+                  {path.time && (
+                    <p className="text-tavern-mauve text-xs">
+                      ⏱️ Time: {path.time}
+                    </p>
+                  )}
                   {path.failure && (
-                    <p className="text-red-400 text-xs mt-1">⚠️ On Failure: {path.failure}</p>
+                    <p className="text-red-400 text-xs mt-1">
+                      ⚠️ On Failure: {path.failure}
+                    </p>
                   )}
                 </div>
               ))}
@@ -1794,7 +2214,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {Array.isArray(rewards) && rewards.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Rewards</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Rewards
+            </h3>
             <ul className="list-disc list-inside space-y-1">
               {rewards.map((reward: string, idx: number) => (
                 <li key={idx} className="text-tavern-cream">
@@ -1807,17 +2229,23 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
 
         {scaling && (scaling.easier || scaling.harder) && (
           <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3">Scaling</h3>
+            <h3 className="text-lg font-semibold text-tavern-gold mb-3">
+              Scaling
+            </h3>
             <div className="grid gap-4">
               {scaling.easier && (
                 <div className="bg-green-900/20 p-4 rounded-lg border border-green-700">
-                  <h4 className="font-semibold text-green-400 mb-2">Easier Version</h4>
+                  <h4 className="font-semibold text-green-400 mb-2">
+                    Easier Version
+                  </h4>
                   <p className="text-tavern-cream text-sm">{scaling.easier}</p>
                 </div>
               )}
               {scaling.harder && (
                 <div className="bg-red-900/20 p-4 rounded-lg border border-red-700">
-                  <h4 className="font-semibold text-red-400 mb-2">Harder Version</h4>
+                  <h4 className="font-semibold text-red-400 mb-2">
+                    Harder Version
+                  </h4>
                   <p className="text-tavern-cream text-sm">{scaling.harder}</p>
                 </div>
               )}
@@ -1839,43 +2267,47 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderCritterDetail = (critter: any) => {
-    let stats, specialAbilities, uses, interestingFacts
+    let stats, specialAbilities, uses, interestingFacts;
     try {
       stats = critter.stats
-        ? typeof critter.stats === 'string'
+        ? typeof critter.stats === "string"
           ? JSON.parse(critter.stats)
           : critter.stats
-        : null
+        : null;
       specialAbilities = critter.special_abilities
-        ? typeof critter.special_abilities === 'string'
+        ? typeof critter.special_abilities === "string"
           ? JSON.parse(critter.special_abilities)
           : critter.special_abilities
-        : []
+        : [];
       uses = critter.uses
-        ? typeof critter.uses === 'string'
+        ? typeof critter.uses === "string"
           ? JSON.parse(critter.uses)
           : critter.uses
-        : []
+        : [];
       interestingFacts = critter.interesting_facts
-        ? typeof critter.interesting_facts === 'string'
+        ? typeof critter.interesting_facts === "string"
           ? JSON.parse(critter.interesting_facts)
           : critter.interesting_facts
-        : []
+        : [];
     } catch (e) {
-      logger.error('Error parsing critter data:', e)
+      logger.error("Error parsing critter data:", e);
     }
 
     return (
       <div className="space-y-6">
         {/* Header with badges */}
         <div>
-          <h2 className="text-2xl font-bold text-tavern-gold">{critter.name}</h2>
+          <h2 className="text-2xl font-bold text-tavern-gold">
+            {critter.name}
+          </h2>
           {critter.species && (
-            <p className="text-sm text-tavern-mauve italic mt-1">{critter.species}</p>
+            <p className="text-sm text-tavern-mauve italic mt-1">
+              {critter.species}
+            </p>
           )}
           <div className="flex gap-2 mt-2 flex-wrap">
             <span className="px-3 py-1 bg-tavern-purple/40 text-tavern-cream rounded text-sm capitalize">
@@ -1904,7 +2336,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               <Icon name="FileText" className="w-5 h-5" />
               Description
             </h3>
-            <p className="text-tavern-cream leading-relaxed">{critter.description}</p>
+            <p className="text-tavern-cream leading-relaxed">
+              {critter.description}
+            </p>
           </div>
         )}
 
@@ -1915,7 +2349,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               <Icon name="AlertCircle" className="w-5 h-5" />
               Behavior
             </h3>
-            <p className="text-tavern-cream leading-relaxed">{critter.behavior}</p>
+            <p className="text-tavern-cream leading-relaxed">
+              {critter.behavior}
+            </p>
           </div>
         )}
 
@@ -1930,7 +2366,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               {stats.ac !== undefined && (
                 <div className="bg-tavern-dark p-3 rounded border border-tavern-purple">
                   <p className="text-xs text-tavern-mauve mb-1">Armor Class</p>
-                  <p className="text-xl font-bold text-tavern-gold">{stats.ac}</p>
+                  <p className="text-xl font-bold text-tavern-gold">
+                    {stats.ac}
+                  </p>
                 </div>
               )}
               {stats.hp !== undefined && (
@@ -1942,7 +2380,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               {stats.speed && (
                 <div className="bg-tavern-dark p-3 rounded border border-tavern-purple">
                   <p className="text-xs text-tavern-mauve mb-1">Speed</p>
-                  <p className="text-xl font-bold text-blue-400">{stats.speed}</p>
+                  <p className="text-xl font-bold text-blue-400">
+                    {stats.speed}
+                  </p>
                 </div>
               )}
             </div>
@@ -1958,37 +2398,49 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                 {stats.str !== undefined && (
                   <div className="bg-tavern-dark p-2 rounded border border-tavern-purple text-center">
                     <p className="text-xs text-tavern-mauve mb-1">STR</p>
-                    <p className="text-lg font-bold text-tavern-cream">{stats.str}</p>
+                    <p className="text-lg font-bold text-tavern-cream">
+                      {stats.str}
+                    </p>
                   </div>
                 )}
                 {stats.dex !== undefined && (
                   <div className="bg-tavern-dark p-2 rounded border border-tavern-purple text-center">
                     <p className="text-xs text-tavern-mauve mb-1">DEX</p>
-                    <p className="text-lg font-bold text-tavern-cream">{stats.dex}</p>
+                    <p className="text-lg font-bold text-tavern-cream">
+                      {stats.dex}
+                    </p>
                   </div>
                 )}
                 {stats.con !== undefined && (
                   <div className="bg-tavern-dark p-2 rounded border border-tavern-purple text-center">
                     <p className="text-xs text-tavern-mauve mb-1">CON</p>
-                    <p className="text-lg font-bold text-tavern-cream">{stats.con}</p>
+                    <p className="text-lg font-bold text-tavern-cream">
+                      {stats.con}
+                    </p>
                   </div>
                 )}
                 {stats.int !== undefined && (
                   <div className="bg-tavern-dark p-2 rounded border border-tavern-purple text-center">
                     <p className="text-xs text-tavern-mauve mb-1">INT</p>
-                    <p className="text-lg font-bold text-tavern-cream">{stats.int}</p>
+                    <p className="text-lg font-bold text-tavern-cream">
+                      {stats.int}
+                    </p>
                   </div>
                 )}
                 {stats.wis !== undefined && (
                   <div className="bg-tavern-dark p-2 rounded border border-tavern-purple text-center">
                     <p className="text-xs text-tavern-mauve mb-1">WIS</p>
-                    <p className="text-lg font-bold text-tavern-cream">{stats.wis}</p>
+                    <p className="text-lg font-bold text-tavern-cream">
+                      {stats.wis}
+                    </p>
                   </div>
                 )}
                 {stats.cha !== undefined && (
                   <div className="bg-tavern-dark p-2 rounded border border-tavern-purple text-center">
                     <p className="text-xs text-tavern-mauve mb-1">CHA</p>
-                    <p className="text-lg font-bold text-tavern-cream">{stats.cha}</p>
+                    <p className="text-lg font-bold text-tavern-cream">
+                      {stats.cha}
+                    </p>
                   </div>
                 )}
               </div>
@@ -2005,9 +2457,16 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
             </h3>
             <div className="space-y-3">
               {specialAbilities.map((ability: any, idx: number) => (
-                <div key={idx} className="bg-tavern-dark p-4 rounded border border-tavern-purple">
-                  <h4 className="font-semibold text-tavern-gold mb-2">{ability.name}</h4>
-                  <p className="text-tavern-cream text-sm">{ability.description}</p>
+                <div
+                  key={idx}
+                  className="bg-tavern-dark p-4 rounded border border-tavern-purple"
+                >
+                  <h4 className="font-semibold text-tavern-gold mb-2">
+                    {ability.name}
+                  </h4>
+                  <p className="text-tavern-cream text-sm">
+                    {ability.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -2040,7 +2499,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                   <Icon name="AlertCircle" className="w-5 h-5" />
                   Training
                 </h3>
-                <p className="text-tavern-cream">{critter.training_difficulty}</p>
+                <p className="text-tavern-cream">
+                  {critter.training_difficulty}
+                </p>
               </div>
             )}
             {critter.diet && (
@@ -2089,13 +2550,15 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               Encounter Notes
             </h3>
             <div className="bg-amber-900/20 p-4 rounded border border-amber-700">
-              <p className="text-tavern-cream leading-relaxed">{critter.encounter_notes}</p>
+              <p className="text-tavern-cream leading-relaxed">
+                {critter.encounter_notes}
+              </p>
             </div>
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderChaseDetail = (chase: any) => {
     let participants,
@@ -2105,50 +2568,50 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
       chasePhases,
       endingConditions,
       rewards,
-      environmentalFactors
+      environmentalFactors;
     try {
       participants = chase.participants
-        ? typeof chase.participants === 'string'
+        ? typeof chase.participants === "string"
           ? JSON.parse(chase.participants)
           : chase.participants
-        : null
+        : null;
       obstacles = chase.obstacles
-        ? typeof chase.obstacles === 'string'
+        ? typeof chase.obstacles === "string"
           ? JSON.parse(chase.obstacles)
           : chase.obstacles
-        : []
+        : [];
       complications = chase.complications
-        ? typeof chase.complications === 'string'
+        ? typeof chase.complications === "string"
           ? JSON.parse(chase.complications)
           : chase.complications
-        : []
+        : [];
       shortcuts = chase.shortcuts
-        ? typeof chase.shortcuts === 'string'
+        ? typeof chase.shortcuts === "string"
           ? JSON.parse(chase.shortcuts)
           : chase.shortcuts
-        : []
+        : [];
       chasePhases = chase.chase_phases
-        ? typeof chase.chase_phases === 'string'
+        ? typeof chase.chase_phases === "string"
           ? JSON.parse(chase.chase_phases)
           : chase.chase_phases
-        : []
+        : [];
       endingConditions = chase.ending_conditions
-        ? typeof chase.ending_conditions === 'string'
+        ? typeof chase.ending_conditions === "string"
           ? JSON.parse(chase.ending_conditions)
           : chase.ending_conditions
-        : null
+        : null;
       rewards = chase.rewards
-        ? typeof chase.rewards === 'string'
+        ? typeof chase.rewards === "string"
           ? JSON.parse(chase.rewards)
           : chase.rewards
-        : null
+        : null;
       environmentalFactors = chase.environmental_factors
-        ? typeof chase.environmental_factors === 'string'
+        ? typeof chase.environmental_factors === "string"
           ? JSON.parse(chase.environmental_factors)
           : chase.environmental_factors
-        : []
+        : [];
     } catch (e) {
-      logger.error('Error parsing chase data:', e)
+      logger.error("Error parsing chase data:", e);
     }
 
     return (
@@ -2159,12 +2622,12 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           <div className="flex gap-2 mt-2 flex-wrap">
             {chase.chase_type && (
               <span className="px-3 py-1 bg-tavern-purple/40 text-tavern-cream rounded text-sm capitalize">
-                {chase.chase_type.replace(/_/g, ' ')}
+                {chase.chase_type.replace(/_/g, " ")}
               </span>
             )}
             {chase.terrain && (
               <span className="px-3 py-1 bg-blue-900/40 text-blue-300 rounded text-sm capitalize">
-                {chase.terrain.replace(/_/g, ' ')}
+                {chase.terrain.replace(/_/g, " ")}
               </span>
             )}
             {chase.difficulty && (
@@ -2182,7 +2645,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               <Icon name="FileText" className="w-5 h-5" />
               Description
             </h3>
-            <p className="text-tavern-cream leading-relaxed">{chase.description}</p>
+            <p className="text-tavern-cream leading-relaxed">
+              {chase.description}
+            </p>
           </div>
         )}
 
@@ -2208,13 +2673,19 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               {participants.quarry && (
                 <div className="bg-tavern-dark p-3 rounded border border-tavern-purple">
                   <span className="font-medium text-tavern-gold">Quarry:</span>
-                  <p className="text-tavern-cream mt-1">{participants.quarry}</p>
+                  <p className="text-tavern-cream mt-1">
+                    {participants.quarry}
+                  </p>
                 </div>
               )}
               {participants.pursuers && (
                 <div className="bg-tavern-dark p-3 rounded border border-tavern-purple">
-                  <span className="font-medium text-tavern-gold">Pursuers:</span>
-                  <p className="text-tavern-cream mt-1">{participants.pursuers}</p>
+                  <span className="font-medium text-tavern-gold">
+                    Pursuers:
+                  </span>
+                  <p className="text-tavern-cream mt-1">
+                    {participants.pursuers}
+                  </p>
                 </div>
               )}
             </div>
@@ -2228,7 +2699,9 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               <Icon name="MapPin" className="w-5 h-5" />
               Starting Conditions
             </h3>
-            <p className="text-tavern-cream leading-relaxed">{chase.starting_conditions}</p>
+            <p className="text-tavern-cream leading-relaxed">
+              {chase.starting_conditions}
+            </p>
           </div>
         )}
 
@@ -2241,21 +2714,32 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
             </h3>
             <div className="space-y-3">
               {obstacles.map((obstacle: any, idx: number) => (
-                <div key={idx} className="bg-tavern-dark p-4 rounded border border-tavern-purple">
-                  <h4 className="font-semibold text-tavern-gold mb-2">{obstacle.name}</h4>
+                <div
+                  key={idx}
+                  className="bg-tavern-dark p-4 rounded border border-tavern-purple"
+                >
+                  <h4 className="font-semibold text-tavern-gold mb-2">
+                    {obstacle.name}
+                  </h4>
                   {obstacle.description && (
-                    <p className="text-tavern-mauve text-sm mb-3">{obstacle.description}</p>
+                    <p className="text-tavern-mauve text-sm mb-3">
+                      {obstacle.description}
+                    </p>
                   )}
                   <div className="grid md:grid-cols-2 gap-2 text-sm">
                     {obstacle.check && (
                       <div>
-                        <span className="text-tavern-gold font-medium">Check:</span>
+                        <span className="text-tavern-gold font-medium">
+                          Check:
+                        </span>
                         <p className="text-tavern-cream">{obstacle.check}</p>
                       </div>
                     )}
                     {obstacle.failure && (
                       <div>
-                        <span className="text-red-400 font-medium">Failure:</span>
+                        <span className="text-red-400 font-medium">
+                          Failure:
+                        </span>
                         <p className="text-tavern-cream">{obstacle.failure}</p>
                       </div>
                     )}
@@ -2275,7 +2759,10 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
             </h3>
             <ul className="space-y-2">
               {complications.map((complication: string, idx: number) => (
-                <li key={idx} className="flex items-start gap-2 text-tavern-cream">
+                <li
+                  key={idx}
+                  className="flex items-start gap-2 text-tavern-cream"
+                >
                   <span className="text-tavern-gold">•</span>
                   <span>{complication}</span>
                 </li>
@@ -2297,12 +2784,18 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
                   key={idx}
                   className="bg-tavern-dark p-3 rounded border-2 border-tavern-gold/30"
                 >
-                  <h4 className="font-semibold text-tavern-cream mb-1">{shortcut.name}</h4>
+                  <h4 className="font-semibold text-tavern-cream mb-1">
+                    {shortcut.name}
+                  </h4>
                   {shortcut.description && (
-                    <p className="text-tavern-mauve text-sm mb-1">{shortcut.description}</p>
+                    <p className="text-tavern-mauve text-sm mb-1">
+                      {shortcut.description}
+                    </p>
                   )}
                   {shortcut.benefit && (
-                    <p className="text-tavern-gold text-sm font-medium">✓ {shortcut.benefit}</p>
+                    <p className="text-tavern-gold text-sm font-medium">
+                      ✓ {shortcut.benefit}
+                    </p>
                   )}
                 </div>
               ))}
@@ -2319,16 +2812,23 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
             </h3>
             <div className="space-y-2">
               {chasePhases.map((phase: any, idx: number) => (
-                <div key={idx} className="bg-tavern-dark p-3 rounded border border-tavern-purple">
+                <div
+                  key={idx}
+                  className="bg-tavern-dark p-3 rounded border border-tavern-purple"
+                >
                   <div className="flex justify-between items-center mb-1">
-                    <span className="font-medium text-tavern-gold">Round {phase.round}</span>
+                    <span className="font-medium text-tavern-gold">
+                      Round {phase.round}
+                    </span>
                     {phase.difficulty && (
                       <span className="text-sm px-2 py-0.5 bg-tavern-gold/20 text-tavern-gold rounded">
                         {phase.difficulty}
                       </span>
                     )}
                   </div>
-                  <p className="text-tavern-cream text-sm">{phase.description}</p>
+                  <p className="text-tavern-cream text-sm">
+                    {phase.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -2336,22 +2836,26 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
         )}
 
         {/* Environmental Factors */}
-        {Array.isArray(environmentalFactors) && environmentalFactors.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3 flex items-center gap-2">
-              <Icon name="Globe" className="w-5 h-5" />
-              Environmental Factors
-            </h3>
-            <ul className="space-y-2">
-              {environmentalFactors.map((factor: string, idx: number) => (
-                <li key={idx} className="flex items-start gap-2 text-tavern-cream">
-                  <span className="text-tavern-gold">•</span>
-                  <span>{factor}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {Array.isArray(environmentalFactors) &&
+          environmentalFactors.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-tavern-gold mb-3 flex items-center gap-2">
+                <Icon name="Globe" className="w-5 h-5" />
+                Environmental Factors
+              </h3>
+              <ul className="space-y-2">
+                {environmentalFactors.map((factor: string, idx: number) => (
+                  <li
+                    key={idx}
+                    className="flex items-start gap-2 text-tavern-cream"
+                  >
+                    <span className="text-tavern-gold">•</span>
+                    <span>{factor}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
         {/* Special Rules */}
         {chase.special_rules && (
@@ -2360,39 +2864,50 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               <Icon name="Book" className="w-5 h-5" />
               Special Rules
             </h3>
-            <p className="text-tavern-cream leading-relaxed">{chase.special_rules}</p>
+            <p className="text-tavern-cream leading-relaxed">
+              {chase.special_rules}
+            </p>
           </div>
         )}
 
         {/* Ending Conditions */}
-        {endingConditions && (endingConditions.success || endingConditions.failure) && (
-          <div>
-            <h3 className="text-lg font-semibold text-tavern-gold mb-3 flex items-center gap-2">
-              <Icon name="Shield" className="w-5 h-5" />
-              Ending Conditions
-            </h3>
-            <div className="space-y-2">
-              {endingConditions.success && (
-                <div className="bg-green-900/20 p-3 rounded border border-green-700">
-                  <span className="font-medium text-green-400">Success:</span>
-                  <p className="text-tavern-cream mt-1">{endingConditions.success}</p>
-                </div>
-              )}
-              {endingConditions.failure && (
-                <div className="bg-red-900/20 p-3 rounded border border-red-700">
-                  <span className="font-medium text-red-400">Failure:</span>
-                  <p className="text-tavern-cream mt-1">{endingConditions.failure}</p>
-                </div>
-              )}
-              {endingConditions.alternative && (
-                <div className="bg-tavern-gold/10 p-3 rounded border border-tavern-gold/30">
-                  <span className="font-medium text-tavern-gold">Alternative:</span>
-                  <p className="text-tavern-cream mt-1">{endingConditions.alternative}</p>
-                </div>
-              )}
+        {endingConditions &&
+          (endingConditions.success || endingConditions.failure) && (
+            <div>
+              <h3 className="text-lg font-semibold text-tavern-gold mb-3 flex items-center gap-2">
+                <Icon name="Shield" className="w-5 h-5" />
+                Ending Conditions
+              </h3>
+              <div className="space-y-2">
+                {endingConditions.success && (
+                  <div className="bg-green-900/20 p-3 rounded border border-green-700">
+                    <span className="font-medium text-green-400">Success:</span>
+                    <p className="text-tavern-cream mt-1">
+                      {endingConditions.success}
+                    </p>
+                  </div>
+                )}
+                {endingConditions.failure && (
+                  <div className="bg-red-900/20 p-3 rounded border border-red-700">
+                    <span className="font-medium text-red-400">Failure:</span>
+                    <p className="text-tavern-cream mt-1">
+                      {endingConditions.failure}
+                    </p>
+                  </div>
+                )}
+                {endingConditions.alternative && (
+                  <div className="bg-tavern-gold/10 p-3 rounded border border-tavern-gold/30">
+                    <span className="font-medium text-tavern-gold">
+                      Alternative:
+                    </span>
+                    <p className="text-tavern-cream mt-1">
+                      {endingConditions.alternative}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Rewards */}
         {rewards && rewards.success && (
@@ -2408,13 +2923,17 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
               </div>
               {rewards.partial && (
                 <div className="bg-tavern-dark p-3 rounded border border-tavern-purple">
-                  <span className="font-medium text-tavern-gold">Partial Success:</span>
+                  <span className="font-medium text-tavern-gold">
+                    Partial Success:
+                  </span>
                   <p className="text-tavern-cream mt-1">{rewards.partial}</p>
                 </div>
               )}
               {rewards.failure && (
                 <div className="bg-tavern-dark p-3 rounded border border-tavern-purple">
-                  <span className="font-medium text-tavern-mauve">Failure:</span>
+                  <span className="font-medium text-tavern-mauve">
+                    Failure:
+                  </span>
                   <p className="text-tavern-cream mt-1">{rewards.failure}</p>
                 </div>
               )}
@@ -2422,8 +2941,8 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -2431,55 +2950,85 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center gap-3">
-            {type === 'npcs' && <Icon name="Users" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'monsters' && <Icon name="Shield" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'encounters' && <Icon name="Swords" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'dialogues' && (
+            {type === "npcs" && (
+              <Icon name="Users" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "monsters" && (
+              <Icon name="Shield" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "encounters" && (
+              <Icon name="Swords" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "dialogues" && (
               <Icon name="MessageSquare" className="w-6 h-6 text-tavern-gold" />
             )}
-            {type === 'locations' && <Icon name="Map" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'quests' && <Icon name="Scroll" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'items' && <Icon name="Package" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'rumors' && <Icon name="Quote" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'taverns' && <Icon name="Beer" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'merchants' && <Icon name="Package" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'traps' && <Icon name="AlertCircle" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'critters' && <Icon name="Shield" className="w-6 h-6 text-tavern-gold" />}
-            {type === 'chases' && <Icon name="ArrowRight" className="w-6 h-6 text-tavern-gold" />}
+            {type === "locations" && (
+              <Icon name="Map" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "quests" && (
+              <Icon name="Scroll" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "items" && (
+              <Icon name="Package" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "rumors" && (
+              <Icon name="Quote" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "taverns" && (
+              <Icon name="Beer" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "merchants" && (
+              <Icon name="Package" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "traps" && (
+              <Icon name="AlertCircle" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "critters" && (
+              <Icon name="Shield" className="w-6 h-6 text-tavern-gold" />
+            )}
+            {type === "chases" && (
+              <Icon name="ArrowRight" className="w-6 h-6 text-tavern-gold" />
+            )}
             <h2 className="text-xl font-bold text-tavern-light">
-              {type.slice(0, -1).charAt(0).toUpperCase() + type.slice(1, -1)} Details
+              {type.slice(0, -1).charAt(0).toUpperCase() + type.slice(1, -1)}{" "}
+              Details
             </h2>
           </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-tavern-dark rounded-lg transition-colors"
           >
-            <Icon name="X" className="w-5 h-5 text-tavern-mauve hover:text-tavern-light" />
+            <Icon
+              name="X"
+              className="w-5 h-5 text-tavern-mauve hover:text-tavern-light"
+            />
           </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {type === 'npcs' && renderNPCDetail(content)}
-          {type === 'monsters' && renderMonsterDetail(content)}
-          {type === 'encounters' && renderEncounterDetail(content)}
-          {type === 'dialogues' && renderDialogueDetail(content)}
-          {type === 'locations' && renderLocationDetail(content)}
-          {type === 'quests' && renderQuestDetail(content)}
-          {type === 'items' && renderItemDetail(content)}
-          {type === 'rumors' && renderRumorDetail(content)}
-          {type === 'taverns' && renderTavernDetail(content)}
-          {type === 'merchants' && renderMerchantDetail(content)}
-          {type === 'traps' && renderTrapDetail(content)}
-          {type === 'critters' && renderCritterDetail(content)}
-          {type === 'chases' && renderChaseDetail(content)}
+          {type === "npcs" && renderNPCDetail(content)}
+          {type === "monsters" && renderMonsterDetail(content)}
+          {type === "encounters" && renderEncounterDetail(content)}
+          {type === "dialogues" && renderDialogueDetail(content)}
+          {type === "locations" && renderLocationDetail(content)}
+          {type === "quests" && renderQuestDetail(content)}
+          {type === "items" && renderItemDetail(content)}
+          {type === "rumors" && renderRumorDetail(content)}
+          {type === "taverns" && renderTavernDetail(content)}
+          {type === "merchants" && renderMerchantDetail(content)}
+          {type === "traps" && renderTrapDetail(content)}
+          {type === "critters" && renderCritterDetail(content)}
+          {type === "chases" && renderChaseDetail(content)}
         </div>
 
         {/* Footer */}
         <div className="p-4 border-t border-border flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-tavern-mauve">
             <Icon name="Calendar" className="w-4 h-4" />
-            <span>Created {new Date(content.created_at).toLocaleDateString()}</span>
+            <span>
+              Created {new Date(content.created_at).toLocaleDateString()}
+            </span>
           </div>
           {content.ai_generated && (
             <span className="px-2 py-1 bg-tavern-gold/20 text-tavern-gold rounded text-xs">
@@ -2489,5 +3038,5 @@ export default function SavedContentDetail({ content, type, onClose }: SavedCont
         </div>
       </div>
     </div>
-  )
+  );
 }

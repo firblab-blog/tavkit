@@ -1,54 +1,57 @@
-import { useState } from 'react'
-import Icon from '../../common/Icon'
-import { usePlayerCombatStore } from '../../../store/playerCombatStore'
+import { useState } from "react";
+import Icon from "../../common/Icon";
+import { usePlayerCombatStore } from "../../../store/playerCombatStore";
 
 interface HPTrackerProps {
-  characterId: string
+  characterId: string;
 }
 
 export default function HPTracker({ characterId }: HPTrackerProps) {
-  const { combat, adjustHP, setTempHP, setLocalCombat } = usePlayerCombatStore()
-  const [hpChange, setHpChange] = useState('')
-  const [tempHpInput, setTempHpInput] = useState('')
-  const [mode, setMode] = useState<'damage' | 'heal'>('damage')
+  const { combat, adjustHP, setTempHP, setLocalCombat } =
+    usePlayerCombatStore();
+  const [hpChange, setHpChange] = useState("");
+  const [tempHpInput, setTempHpInput] = useState("");
+  const [mode, setMode] = useState<"damage" | "heal">("damage");
 
-  const hpPercentage = combat.max_hp > 0 ? (combat.current_hp / combat.max_hp) * 100 : 0
+  const hpPercentage =
+    combat.max_hp > 0 ? (combat.current_hp / combat.max_hp) * 100 : 0;
 
   const getHPColor = () => {
-    if (hpPercentage > 50) return 'bg-emerald-500'
-    if (hpPercentage > 25) return 'bg-yellow-500'
-    return 'bg-red-500'
-  }
+    if (hpPercentage > 50) return "bg-emerald-500";
+    if (hpPercentage > 25) return "bg-yellow-500";
+    return "bg-red-500";
+  };
 
   const handleHPChange = async () => {
-    const amount = parseInt(hpChange)
-    if (isNaN(amount) || amount === 0) return
+    const amount = parseInt(hpChange);
+    if (isNaN(amount) || amount === 0) return;
 
-    const actualAmount = mode === 'damage' ? -Math.abs(amount) : Math.abs(amount)
-    await adjustHP(characterId, actualAmount)
-    setHpChange('')
-  }
+    const actualAmount =
+      mode === "damage" ? -Math.abs(amount) : Math.abs(amount);
+    await adjustHP(characterId, actualAmount);
+    setHpChange("");
+  };
 
   const handleSetTempHP = async () => {
-    const amount = parseInt(tempHpInput)
-    if (isNaN(amount)) return
+    const amount = parseInt(tempHpInput);
+    if (isNaN(amount)) return;
 
-    await setTempHP(characterId, amount)
-    setTempHpInput('')
-  }
+    await setTempHP(characterId, amount);
+    setTempHpInput("");
+  };
 
   const handleMaxHPChange = (newMax: number) => {
     setLocalCombat({
       max_hp: Math.max(1, newMax),
       current_hp: Math.min(combat.current_hp, Math.max(1, newMax)),
-    })
-  }
+    });
+  };
 
   const handleCurrentHPChange = (newCurrent: number) => {
     setLocalCombat({
       current_hp: Math.max(0, Math.min(newCurrent, combat.max_hp)),
-    })
-  }
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -60,7 +63,9 @@ export default function HPTracker({ characterId }: HPTrackerProps) {
             <input
               type="number"
               value={combat.current_hp}
-              onChange={(e) => handleCurrentHPChange(parseInt(e.target.value) || 0)}
+              onChange={(e) =>
+                handleCurrentHPChange(parseInt(e.target.value) || 0)
+              }
               className="w-16 px-2 py-1 bg-background border border-border rounded text-text text-center font-bold text-lg focus:outline-none focus:border-primary"
             />
             <span className="text-text-muted">/</span>
@@ -94,21 +99,21 @@ export default function HPTracker({ characterId }: HPTrackerProps) {
       <div className="space-y-2">
         <div className="flex gap-2">
           <button
-            onClick={() => setMode('damage')}
+            onClick={() => setMode("damage")}
             className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-              mode === 'damage'
-                ? 'bg-red-500 text-white'
-                : 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+              mode === "damage"
+                ? "bg-red-500 text-white"
+                : "bg-red-500/20 text-red-300 hover:bg-red-500/30"
             }`}
           >
             Damage
           </button>
           <button
-            onClick={() => setMode('heal')}
+            onClick={() => setMode("heal")}
             className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-              mode === 'heal'
-                ? 'bg-emerald-500 text-white'
-                : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+              mode === "heal"
+                ? "bg-emerald-500 text-white"
+                : "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
             }`}
           >
             Heal
@@ -124,16 +129,16 @@ export default function HPTracker({ characterId }: HPTrackerProps) {
             min="1"
             className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary"
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleHPChange()
+              if (e.key === "Enter") handleHPChange();
             }}
           />
           <button
             onClick={handleHPChange}
             disabled={!hpChange}
             className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${
-              mode === 'damage'
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+              mode === "damage"
+                ? "bg-red-500 hover:bg-red-600 text-white"
+                : "bg-emerald-500 hover:bg-emerald-600 text-white"
             }`}
           >
             Apply
@@ -145,14 +150,16 @@ export default function HPTracker({ characterId }: HPTrackerProps) {
           {[1, 5, 10].map((amount) => (
             <button
               key={amount}
-              onClick={() => adjustHP(characterId, mode === 'damage' ? -amount : amount)}
+              onClick={() =>
+                adjustHP(characterId, mode === "damage" ? -amount : amount)
+              }
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                mode === 'damage'
-                  ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
-                  : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                mode === "damage"
+                  ? "bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                  : "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
               }`}
             >
-              {mode === 'damage' ? '-' : '+'}
+              {mode === "damage" ? "-" : "+"}
               {amount}
             </button>
           ))}
@@ -161,7 +168,9 @@ export default function HPTracker({ characterId }: HPTrackerProps) {
 
       {/* Temp HP */}
       <div className="pt-3 border-t border-border">
-        <label className="text-text-muted text-sm mb-2 block">Temporary HP</label>
+        <label className="text-text-muted text-sm mb-2 block">
+          Temporary HP
+        </label>
         <div className="flex gap-2">
           <input
             type="number"
@@ -188,5 +197,5 @@ export default function HPTracker({ characterId }: HPTrackerProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,67 +1,75 @@
-import { useEffect, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Icon from '../../../../common/Icon'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { type Character } from '../../../../../store/characterStore'
-import { logger } from '../../../../../utils/logger'
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import Icon from "../../../../common/Icon";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { type Character } from "../../../../../store/characterStore";
+import { logger } from "../../../../../utils/logger";
 
 interface PlayerCharactersContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
 /**
  * PlayerCharactersContent - Display player characters linked to the campaign.
  */
-export default function PlayerCharactersContent({ campaignId }: PlayerCharactersContentProps) {
-  const navigate = useNavigate() // Still needed for character sheet navigation
-  const { fetchCampaignCharacters, unlinkCharacterFromCampaign } = useCampaignStore()
+export default function PlayerCharactersContent({
+  campaignId,
+}: PlayerCharactersContentProps) {
+  const navigate = useNavigate(); // Still needed for character sheet navigation
+  const { fetchCampaignCharacters, unlinkCharacterFromCampaign } =
+    useCampaignStore();
 
-  const [characters, setCharacters] = useState<Character[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewingCharacter, setViewingCharacter] = useState<Character | null>(null)
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewingCharacter, setViewingCharacter] = useState<Character | null>(
+    null,
+  );
 
   useEffect(() => {
     const loadCharacters = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
         // API returns full Character objects, cast from the store's type
-        const chars = (await fetchCampaignCharacters(campaignId)) as unknown as Character[]
-        setCharacters(chars || [])
+        const chars = (await fetchCampaignCharacters(
+          campaignId,
+        )) as unknown as Character[];
+        setCharacters(chars || []);
       } catch (err) {
-        setError('Failed to load characters')
-        logger.error('Failed to load characters:', err)
+        setError("Failed to load characters");
+        logger.error("Failed to load characters:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    loadCharacters()
-  }, [campaignId, fetchCampaignCharacters])
+    };
+    loadCharacters();
+  }, [campaignId, fetchCampaignCharacters]);
 
   const filteredCharacters = useMemo(() => {
-    if (!searchQuery) return characters
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return characters;
+    const query = searchQuery.toLowerCase();
     return characters.filter(
       (char) =>
-        char.name?.toLowerCase().includes(query) || char.class_info?.toLowerCase().includes(query)
-    )
-  }, [characters, searchQuery])
+        char.name?.toLowerCase().includes(query) ||
+        char.class_info?.toLowerCase().includes(query),
+    );
+  }, [characters, searchQuery]);
 
   const handleUnlink = async (character: Character) => {
     if (window.confirm(`Remove "${character.name}" from this campaign?`)) {
       try {
-        await unlinkCharacterFromCampaign(campaignId, character.id)
-        setCharacters((prev) => prev.filter((c) => c.id !== character.id))
+        await unlinkCharacterFromCampaign(campaignId, character.id);
+        setCharacters((prev) => prev.filter((c) => c.id !== character.id));
         if (viewingCharacter?.id === character.id) {
-          setViewingCharacter(null)
+          setViewingCharacter(null);
         }
       } catch (err) {
-        logger.error('Failed to unlink character:', err)
+        logger.error("Failed to unlink character:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -100,14 +108,19 @@ export default function PlayerCharactersContent({ campaignId }: PlayerCharacters
       {/* Empty State */}
       {!loading && filteredCharacters.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="User" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="User"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching characters' : 'No player characters yet'}
+            {searchQuery
+              ? "No matching characters"
+              : "No player characters yet"}
           </h3>
           <p className="text-text-muted text-sm mb-4">
             {searchQuery
-              ? 'Try adjusting your search.'
-              : 'Link characters from your Guild Roster to this campaign.'}
+              ? "Try adjusting your search."
+              : "Link characters from your Guild Roster to this campaign."}
           </p>
           {/* Empty state CTA removed - will be re-added with proper functionality */}
         </div>
@@ -129,15 +142,17 @@ export default function PlayerCharactersContent({ campaignId }: PlayerCharacters
                   </div>
                   <div className="min-w-0">
                     <h4 className="text-text font-medium truncate">
-                      {character.name || 'Unknown'}
+                      {character.name || "Unknown"}
                     </h4>
-                    <p className="text-text-muted text-sm">Level {character.level || 1}</p>
+                    <p className="text-text-muted text-sm">
+                      Level {character.level || 1}
+                    </p>
                   </div>
                 </div>
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleUnlink(character)
+                    e.stopPropagation();
+                    handleUnlink(character);
                   }}
                   className="p-1 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400"
                   title="Remove from campaign"
@@ -165,20 +180,22 @@ export default function PlayerCharactersContent({ campaignId }: PlayerCharacters
           onClose={() => setViewingCharacter(null)}
           onUnlink={() => handleUnlink(viewingCharacter)}
           onOpenFullSheet={() =>
-            navigate(`/dashboard/gm/characters?character=${viewingCharacter.id}`)
+            navigate(
+              `/dashboard/gm/characters?character=${viewingCharacter.id}`,
+            )
           }
         />
       )}
     </div>
-  )
+  );
 }
 
 // Character Detail Modal
 interface CharacterDetailModalProps {
-  character: Character
-  onClose: () => void
-  onUnlink: () => void
-  onOpenFullSheet: () => void
+  character: Character;
+  onClose: () => void;
+  onUnlink: () => void;
+  onOpenFullSheet: () => void;
 }
 
 function CharacterDetailModal({
@@ -188,10 +205,10 @@ function CharacterDetailModal({
   onOpenFullSheet,
 }: CharacterDetailModalProps) {
   const getModifier = (score: number | undefined) => {
-    if (!score) return '+0'
-    const mod = Math.floor((score - 10) / 2)
-    return mod >= 0 ? `+${mod}` : `${mod}`
-  }
+    if (!score) return "+0";
+    const mod = Math.floor((score - 10) / 2);
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+  };
 
   return (
     <div
@@ -206,7 +223,9 @@ function CharacterDetailModal({
               <Icon name="User" className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-text">{character.name}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {character.name}
+              </h3>
               <div className="flex items-center gap-2 text-sm text-text-muted">
                 <span>Level {character.level || 1}</span>
                 {character.race && (
@@ -239,28 +258,33 @@ function CharacterDetailModal({
             {character.armor_class && (
               <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <p className="text-xs text-text-muted">Armor Class</p>
-                <p className="text-lg font-semibold text-blue-400">{character.armor_class}</p>
+                <p className="text-lg font-semibold text-blue-400">
+                  {character.armor_class}
+                </p>
               </div>
             )}
             {character.max_hp && (
               <div className="px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
                 <p className="text-xs text-text-muted">Hit Points</p>
                 <p className="text-lg font-semibold text-red-400">
-                  {character.current_hp ?? character.max_hp} / {character.max_hp}
+                  {character.current_hp ?? character.max_hp} /{" "}
+                  {character.max_hp}
                 </p>
               </div>
             )}
             {character.speed && (
               <div className="px-4 py-2 bg-background border border-border rounded-lg">
                 <p className="text-xs text-text-muted">Speed</p>
-                <p className="text-lg font-semibold text-text">{character.speed} ft</p>
+                <p className="text-lg font-semibold text-text">
+                  {character.speed} ft
+                </p>
               </div>
             )}
             {character.initiative !== undefined && (
               <div className="px-4 py-2 bg-background border border-border rounded-lg">
                 <p className="text-xs text-text-muted">Initiative</p>
                 <p className="text-lg font-semibold text-text">
-                  {character.initiative >= 0 ? '+' : ''}
+                  {character.initiative >= 0 ? "+" : ""}
                   {character.initiative}
                 </p>
               </div>
@@ -282,20 +306,24 @@ function CharacterDetailModal({
             </h4>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {[
-                { name: 'STR', value: character.strength },
-                { name: 'DEX', value: character.dexterity },
-                { name: 'CON', value: character.constitution },
-                { name: 'INT', value: character.intelligence },
-                { name: 'WIS', value: character.wisdom },
-                { name: 'CHA', value: character.charisma },
+                { name: "STR", value: character.strength },
+                { name: "DEX", value: character.dexterity },
+                { name: "CON", value: character.constitution },
+                { name: "INT", value: character.intelligence },
+                { name: "WIS", value: character.wisdom },
+                { name: "CHA", value: character.charisma },
               ].map((ability) => (
                 <div
                   key={ability.name}
                   className="bg-background border border-border rounded-lg p-3 text-center"
                 >
                   <p className="text-xs text-text-muted mb-1">{ability.name}</p>
-                  <p className="text-xl font-bold text-text">{ability.value || 10}</p>
-                  <p className="text-sm text-text-muted">{getModifier(ability.value)}</p>
+                  <p className="text-xl font-bold text-text">
+                    {ability.value || 10}
+                  </p>
+                  <p className="text-sm text-text-muted">
+                    {getModifier(ability.value)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -328,7 +356,9 @@ function CharacterDetailModal({
               <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
                 Personality Traits
               </h4>
-              <p className="text-text whitespace-pre-wrap">{character.personality_traits}</p>
+              <p className="text-text whitespace-pre-wrap">
+                {character.personality_traits}
+              </p>
             </div>
           )}
 
@@ -338,7 +368,9 @@ function CharacterDetailModal({
               <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
                 Ideals
               </h4>
-              <p className="text-text whitespace-pre-wrap">{character.ideals}</p>
+              <p className="text-text whitespace-pre-wrap">
+                {character.ideals}
+              </p>
             </div>
           )}
 
@@ -368,7 +400,9 @@ function CharacterDetailModal({
               <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
                 Backstory
               </h4>
-              <p className="text-text whitespace-pre-wrap">{character.backstory}</p>
+              <p className="text-text whitespace-pre-wrap">
+                {character.backstory}
+              </p>
             </div>
           )}
 
@@ -391,7 +425,9 @@ function CharacterDetailModal({
             !character.flaws &&
             !character.backstory &&
             !character.notes && (
-              <p className="text-text-muted italic">No additional character details available.</p>
+              <p className="text-text-muted italic">
+                No additional character details available.
+              </p>
             )}
         </div>
 
@@ -422,5 +458,5 @@ function CharacterDetailModal({
         </div>
       </div>
     </div>
-  )
+  );
 }

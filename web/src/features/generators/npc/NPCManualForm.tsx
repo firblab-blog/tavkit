@@ -1,21 +1,23 @@
 // Manual Entry Form for NPCs
 
-import Icon from '@/components/common/Icon'
-import { FormField } from '@/components/ui/FormField'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import { ArrayFieldEditor } from '../components/Fields'
-import { raceOptions, classOptions, type ManualNPCData } from '../schemas/npc'
+import Icon from "@/components/common/Icon";
+import { FormField } from "@/components/ui/FormField";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import { ArrayFieldEditor } from "../components/Fields";
+import { raceOptions, classOptions, type ManualNPCData } from "../schemas/npc";
 
 interface NPCManualFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  manualData: ManualNPCData
-  setManualData: (data: ManualNPCData | ((prev: ManualNPCData) => ManualNPCData)) => void
-  onSave: () => void
-  saving: boolean
-  saved: boolean
-  error: string | null
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  manualData: ManualNPCData;
+  setManualData: (
+    data: ManualNPCData | ((prev: ManualNPCData) => ManualNPCData),
+  ) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  error: string | null;
 }
 
 export function NPCManualForm({
@@ -30,14 +32,19 @@ export function NPCManualForm({
 }: NPCManualFormProps) {
   return (
     <>
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       {/* Basic Information */}
       <FormField label="NPC Name" required>
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., Theron Blackwood, Lady Mira"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -47,7 +54,9 @@ export function NPCManualForm({
         <FormField label="Race">
           <select
             value={manualData.race}
-            onChange={(e) => setManualData({ ...manualData, race: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, race: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {raceOptions.map((opt) => (
@@ -61,7 +70,9 @@ export function NPCManualForm({
         <FormField label="Class">
           <select
             value={manualData.class}
-            onChange={(e) => setManualData({ ...manualData, class: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, class: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {classOptions.map((opt) => (
@@ -77,7 +88,7 @@ export function NPCManualForm({
             type="number"
             min={1}
             max={20}
-            value={manualData.level || ''}
+            value={manualData.level || ""}
             onChange={(e) =>
               setManualData({
                 ...manualData,
@@ -94,7 +105,9 @@ export function NPCManualForm({
         <input
           type="text"
           value={manualData.occupation}
-          onChange={(e) => setManualData({ ...manualData, occupation: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, occupation: e.target.value })
+          }
           placeholder="e.g., Blacksmith, Tavern owner, Merchant"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -106,7 +119,9 @@ export function NPCManualForm({
           <FormField label="Appearance">
             <textarea
               value={manualData.appearance}
-              onChange={(e) => setManualData({ ...manualData, appearance: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, appearance: e.target.value })
+              }
               placeholder="Physical description..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -116,7 +131,9 @@ export function NPCManualForm({
           <FormField label="Personality Summary">
             <textarea
               value={manualData.personality}
-              onChange={(e) => setManualData({ ...manualData, personality: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, personality: e.target.value })
+              }
               placeholder="Brief personality description..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -127,7 +144,9 @@ export function NPCManualForm({
             <input
               type="text"
               value={manualData.voice_notes}
-              onChange={(e) => setManualData({ ...manualData, voice_notes: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, voice_notes: e.target.value })
+              }
               placeholder="e.g., Deep gravelly voice, Speaks quickly"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -136,7 +155,10 @@ export function NPCManualForm({
       </CollapsibleSection>
 
       {/* Personality Traits */}
-      <CollapsibleSection title="Personality Traits (D&D Style)" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Personality Traits (D&D Style)"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <ArrayFieldEditor
             label="Traits"
@@ -149,7 +171,9 @@ export function NPCManualForm({
             <input
               type="text"
               value={manualData.ideals}
-              onChange={(e) => setManualData({ ...manualData, ideals: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, ideals: e.target.value })
+              }
               placeholder="What do they believe in?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -159,7 +183,9 @@ export function NPCManualForm({
             <input
               type="text"
               value={manualData.bonds}
-              onChange={(e) => setManualData({ ...manualData, bonds: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, bonds: e.target.value })
+              }
               placeholder="What/who are they connected to?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -169,7 +195,9 @@ export function NPCManualForm({
             <input
               type="text"
               value={manualData.flaws}
-              onChange={(e) => setManualData({ ...manualData, flaws: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, flaws: e.target.value })
+              }
               placeholder="What are their weaknesses?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -178,12 +206,17 @@ export function NPCManualForm({
       </CollapsibleSection>
 
       {/* Background & Motivation */}
-      <CollapsibleSection title="Background & Motivation" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Background & Motivation"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <FormField label="Backstory">
             <textarea
               value={manualData.backstory}
-              onChange={(e) => setManualData({ ...manualData, backstory: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, backstory: e.target.value })
+              }
               placeholder="Their history..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={3}
@@ -193,7 +226,9 @@ export function NPCManualForm({
           <FormField label="Motivation">
             <textarea
               value={manualData.motivation}
-              onChange={(e) => setManualData({ ...manualData, motivation: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, motivation: e.target.value })
+              }
               placeholder="What drives them?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -215,7 +250,9 @@ export function NPCManualForm({
           <ArrayFieldEditor
             label="Equipment"
             values={manualData.equipment}
-            onChange={(equipment) => setManualData({ ...manualData, equipment })}
+            onChange={(equipment) =>
+              setManualData({ ...manualData, equipment })
+            }
             placeholder="Add equipment..."
           />
         </div>
@@ -226,7 +263,9 @@ export function NPCManualForm({
         <ArrayFieldEditor
           label="Plot Hooks"
           values={manualData.plot_hooks}
-          onChange={(plot_hooks) => setManualData({ ...manualData, plot_hooks })}
+          onChange={(plot_hooks) =>
+            setManualData({ ...manualData, plot_hooks })
+          }
           placeholder="Add a plot hook..."
         />
       </CollapsibleSection>
@@ -264,5 +303,5 @@ export function NPCManualForm({
         </div>
       )}
     </>
-  )
+  );
 }

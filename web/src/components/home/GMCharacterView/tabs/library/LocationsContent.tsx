@@ -1,43 +1,46 @@
-import ContentListLayout from '../../../../common/ContentListLayout'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
-import ContentCard from '../../../../common/ContentCard'
-import ContentDetailModal from '../../../../common/ContentDetailModal'
-import AssignCampaignModal from '../../../../common/AssignCampaignModal'
-import { useLibraryContent } from '../../../../../hooks/useLibraryContent'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useState } from 'react'
-import { logger } from '@/utils/logger'
+import ContentListLayout from "../../../../common/ContentListLayout";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import ContentCard from "../../../../common/ContentCard";
+import ContentDetailModal from "../../../../common/ContentDetailModal";
+import AssignCampaignModal from "../../../../common/AssignCampaignModal";
+import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface Location {
-  id: string
-  name: string
-  campaign_id?: string | null
-  type: string
-  theme?: string
-  description?: string
-  features?: any
-  secrets?: any
-  factions?: any
-  npcs?: any
-  encounters?: any
-  map?: string
-  ai_generated?: boolean
-  created_at: string
+  id: string;
+  name: string;
+  campaign_id?: string | null;
+  type: string;
+  theme?: string;
+  description?: string;
+  features?: any;
+  secrets?: any;
+  factions?: any;
+  npcs?: any;
+  encounters?: any;
+  map?: string;
+  ai_generated?: boolean;
+  created_at: string;
 }
 
 interface LocationsContentProps {
-  campaignId?: string
-  showCampaignFilter?: boolean
+  campaignId?: string;
+  showCampaignFilter?: boolean;
 }
 
-export default function LocationsContent({ campaignId, showCampaignFilter }: LocationsContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const { campaigns } = useCampaignStore()
+export default function LocationsContent({
+  campaignId,
+  showCampaignFilter,
+}: LocationsContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const { campaigns } = useCampaignStore();
   const [assignModalItem, setAssignModalItem] = useState<{
-    id: string
-    name: string
-    currentCampaignId?: string | null
-  } | null>(null)
+    id: string;
+    name: string;
+    currentCampaignId?: string | null;
+  } | null>(null);
 
   const {
     filteredItems,
@@ -52,21 +55,21 @@ export default function LocationsContent({ campaignId, showCampaignFilter }: Loc
     deleteItem,
     refresh,
   } = useLibraryContent<Location>({
-    contentType: 'locations',
+    contentType: "locations",
     campaignId,
     showCampaignFilter,
-    searchFields: ['name', 'type', 'description', 'theme'],
-  })
+    searchFields: ["name", "type", "description", "theme"],
+  });
 
   const handleDelete = async (location: Location) => {
     if (window.confirm(`Delete "${location.name}"? This cannot be undone.`)) {
       try {
-        await deleteItem(location.id)
+        await deleteItem(location.id);
       } catch (err) {
-        logger.error('Failed to delete location:', err)
+        logger.error("Failed to delete location:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -93,7 +96,7 @@ export default function LocationsContent({ campaignId, showCampaignFilter }: Loc
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search locations..."
         addButtonLabel="Add Location"
-        onAddClick={() => openGenerator('location')}
+        onAddClick={() => openGenerator("location")}
         addButtonColor="cyan"
         loading={loading}
         error={error}
@@ -101,7 +104,7 @@ export default function LocationsContent({ campaignId, showCampaignFilter }: Loc
         emptyTitle="No locations yet"
         emptyDescription="Create towns, dungeons, and points of interest."
         emptyCTALabel="Create Your First Location"
-        onEmptyCTAClick={() => openGenerator('location')}
+        onEmptyCTAClick={() => openGenerator("location")}
         hasItems={filteredItems.length > 0}
       >
         <div className="space-y-3">
@@ -151,38 +154,42 @@ export default function LocationsContent({ campaignId, showCampaignFilter }: Loc
         />
       )}
     </div>
-  )
+  );
 }
 
 interface LocationDetailModalProps {
-  location: Location
-  onClose: () => void
-  onDelete: () => void
+  location: Location;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModalProps) {
-  let features: any[] = []
-  let secrets: any[] = []
-  let npcs: any[] = []
+function LocationDetailModal({
+  location,
+  onClose,
+  onDelete,
+}: LocationDetailModalProps) {
+  let features: any[] = [];
+  let secrets: any[] = [];
+  let npcs: any[] = [];
 
   try {
     features = location.features
-      ? typeof location.features === 'string'
+      ? typeof location.features === "string"
         ? JSON.parse(location.features)
         : location.features
-      : []
+      : [];
     secrets = location.secrets
-      ? typeof location.secrets === 'string'
+      ? typeof location.secrets === "string"
         ? JSON.parse(location.secrets)
         : location.secrets
-      : []
+      : [];
     npcs = location.npcs
-      ? typeof location.npcs === 'string'
+      ? typeof location.npcs === "string"
         ? JSON.parse(location.npcs)
         : location.npcs
-      : []
+      : [];
   } catch (err) {
-    logger.error('Failed to parse location data:', err)
+    logger.error("Failed to parse location data:", err);
   }
 
   return (
@@ -192,7 +199,7 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
       icon="MapPin"
       iconColor="cyan"
       title={location.name}
-      subtitle={[location.type, location.theme].filter(Boolean).join(' • ')}
+      subtitle={[location.type, location.theme].filter(Boolean).join(" • ")}
       onDelete={onDelete}
     >
       <div className="space-y-6">
@@ -201,7 +208,9 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Description
             </h4>
-            <p className="text-text leading-relaxed whitespace-pre-wrap">{location.description}</p>
+            <p className="text-text leading-relaxed whitespace-pre-wrap">
+              {location.description}
+            </p>
           </div>
         )}
 
@@ -212,7 +221,9 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
             </h4>
             <ul className="list-disc list-inside text-text space-y-1">
               {features.map((f: any, i: number) => (
-                <li key={i}>{typeof f === 'string' ? f : f.name || f.description}</li>
+                <li key={i}>
+                  {typeof f === "string" ? f : f.name || f.description}
+                </li>
               ))}
             </ul>
           </div>
@@ -225,8 +236,13 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
             </h4>
             <div className="space-y-2">
               {secrets.map((s: any, i: number) => (
-                <div key={i} className="bg-purple-500/10 p-3 rounded-lg border border-purple-500/30">
-                  <p className="text-purple-400">{typeof s === 'string' ? s : s.description}</p>
+                <div
+                  key={i}
+                  className="bg-purple-500/10 p-3 rounded-lg border border-purple-500/30"
+                >
+                  <p className="text-purple-400">
+                    {typeof s === "string" ? s : s.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -245,9 +261,11 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
                   className="bg-background p-3 rounded-lg border border-border flex justify-between items-center"
                 >
                   <span className="text-text font-medium">
-                    {typeof npc === 'string' ? npc : npc.name}
+                    {typeof npc === "string" ? npc : npc.name}
                   </span>
-                  {npc.role && <span className="text-text-muted text-sm">{npc.role}</span>}
+                  {npc.role && (
+                    <span className="text-text-muted text-sm">{npc.role}</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -268,5 +286,5 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
         )}
       </div>
     </ContentDetailModal>
-  )
+  );
 }

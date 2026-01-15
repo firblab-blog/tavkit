@@ -1,19 +1,19 @@
-import { Campaign } from '../../../../store/campaignStore'
-import WorkflowButton from '../components/WorkflowButton'
-import QuickStatsBar from '../../QuickStatsBar/QuickStatsBar'
-import RecentActivity from '../../RecentActivity/RecentActivity'
-import QuickActions from '../../QuickActions/QuickActions'
+import { Campaign } from "../../../../store/campaignStore";
+import WorkflowButton from "../components/WorkflowButton";
+import QuickStatsBar from "../../QuickStatsBar/QuickStatsBar";
+import RecentActivity from "../../RecentActivity/RecentActivity";
+import QuickActions from "../../QuickActions/QuickActions";
 
 interface OverviewTabProps {
-  campaign: Campaign
+  campaign: Campaign;
   gmSettings: {
-    showQuickStats: boolean
-    showRecentActivity: boolean
-    showExternalTools: boolean
-  }
-  onOpenCampaignModal: () => void
-  onOpenCreateModal: () => void
-  onOpenPlayModal: () => void
+    showQuickStats: boolean;
+    showRecentActivity: boolean;
+    showExternalTools: boolean;
+  };
+  onOpenCampaignModal: () => void;
+  onOpenCreateModal: () => void;
+  onOpenPlayModal: () => void;
 }
 
 /**
@@ -67,11 +67,12 @@ export default function OverviewTab({
       {/* Two Column: Recent Activity + External Tools */}
       {(gmSettings.showRecentActivity || gmSettings.showExternalTools) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {gmSettings.showRecentActivity && <RecentActivity campaignId={campaign.id} />}
+          {gmSettings.showRecentActivity && (
+            <RecentActivity campaignId={campaign.id} />
+          )}
           {gmSettings.showExternalTools && <QuickActions />}
         </div>
       )}
-
     </div>
-  )
+  );
 }

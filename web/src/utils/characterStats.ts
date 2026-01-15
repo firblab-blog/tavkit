@@ -8,8 +8,8 @@
  * @returns The calculated modifier
  */
 export function getAbilityModifier(abilityScore: number | undefined): number {
-  if (abilityScore === undefined) return 0
-  return Math.floor((abilityScore - 10) / 2)
+  if (abilityScore === undefined) return 0;
+  return Math.floor((abilityScore - 10) / 2);
 }
 
 /**
@@ -18,8 +18,8 @@ export function getAbilityModifier(abilityScore: number | undefined): number {
  * @returns Formatted string (e.g., "+2", "-1", "+0")
  */
 export function formatModifier(modifier: number): string {
-  if (modifier >= 0) return `+${modifier}`
-  return `${modifier}`
+  if (modifier >= 0) return `+${modifier}`;
+  return `${modifier}`;
 }
 
 /**
@@ -27,8 +27,10 @@ export function formatModifier(modifier: number): string {
  * @param constitution - Constitution ability score
  * @returns The constitution modifier
  */
-export function getConstitutionModifier(constitution: number | undefined): number {
-  return getAbilityModifier(constitution)
+export function getConstitutionModifier(
+  constitution: number | undefined,
+): number {
+  return getAbilityModifier(constitution);
 }
 
 /**
@@ -41,19 +43,19 @@ export function getConstitutionModifier(constitution: number | undefined): numbe
 export function getHPBreakdown(
   baseMaxHP: number | undefined,
   level: number,
-  constitution: number | undefined
+  constitution: number | undefined,
 ): { base: number; conBonus: number; total: number } {
   if (!baseMaxHP) {
-    return { base: 0, conBonus: 0, total: 0 }
+    return { base: 0, conBonus: 0, total: 0 };
   }
 
-  const conMod = getConstitutionModifier(constitution)
-  const conBonus = conMod * level
-  const total = baseMaxHP + conBonus
+  const conMod = getConstitutionModifier(constitution);
+  const conBonus = conMod * level;
+  const total = baseMaxHP + conBonus;
 
   return {
     base: baseMaxHP,
     conBonus,
     total,
-  }
+  };
 }

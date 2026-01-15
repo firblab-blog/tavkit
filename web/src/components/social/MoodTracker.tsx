@@ -1,13 +1,13 @@
-import Icon from '../common/Icon'
+import Icon from "../common/Icon";
 
 interface MoodTrackerProps {
-  currentMood: number
-  startingMood: number
-  successCount: number
-  failureCount: number
-  successThreshold: number
-  onMoodChange: (mood: number) => void
-  disabled?: boolean
+  currentMood: number;
+  startingMood: number;
+  successCount: number;
+  failureCount: number;
+  successThreshold: number;
+  onMoodChange: (mood: number) => void;
+  disabled?: boolean;
 }
 
 export default function MoodTracker({
@@ -20,31 +20,31 @@ export default function MoodTracker({
   disabled = false,
 }: MoodTrackerProps) {
   const getMoodLabel = (mood: number) => {
-    if (mood <= -4) return 'Hostile'
-    if (mood <= -2) return 'Unfriendly'
-    if (mood <= 0) return 'Indifferent'
-    if (mood <= 2) return 'Friendly'
-    return 'Helpful'
-  }
+    if (mood <= -4) return "Hostile";
+    if (mood <= -2) return "Unfriendly";
+    if (mood <= 0) return "Indifferent";
+    if (mood <= 2) return "Friendly";
+    return "Helpful";
+  };
 
   const getMoodColor = (mood: number) => {
-    if (mood <= -4) return 'text-red-500'
-    if (mood <= -2) return 'text-orange-500'
-    if (mood <= 0) return 'text-gray-400'
-    if (mood <= 2) return 'text-emerald-500'
-    return 'text-blue-500'
-  }
+    if (mood <= -4) return "text-red-500";
+    if (mood <= -2) return "text-orange-500";
+    if (mood <= 0) return "text-gray-400";
+    if (mood <= 2) return "text-emerald-500";
+    return "text-blue-500";
+  };
 
   const getMoodEmoji = (mood: number) => {
-    if (mood <= -4) return '😠'
-    if (mood <= -2) return '😒'
-    if (mood <= 0) return '😐'
-    if (mood <= 2) return '🙂'
-    return '😊'
-  }
+    if (mood <= -4) return "😠";
+    if (mood <= -2) return "😒";
+    if (mood <= 0) return "😐";
+    if (mood <= 2) return "🙂";
+    return "😊";
+  };
 
   // Calculate mood bar position (normalized to 0-100%)
-  const moodPosition = ((currentMood + 5) / 10) * 100
+  const moodPosition = ((currentMood + 5) / 10) * 100;
 
   return (
     <div className="bg-background-panel border border-border rounded-xl p-4 space-y-4">
@@ -55,7 +55,7 @@ export default function MoodTracker({
           {getMoodLabel(currentMood)}
         </h3>
         <p className="text-sm text-text-muted">
-          Current Mood: {currentMood > 0 ? '+' : ''}
+          Current Mood: {currentMood > 0 ? "+" : ""}
           {currentMood}
         </p>
       </div>
@@ -110,7 +110,9 @@ export default function MoodTracker({
           <div className="h-2 bg-background rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 transition-all"
-              style={{ width: `${Math.min(100, (successCount / successThreshold) * 100)}%` }}
+              style={{
+                width: `${Math.min(100, (successCount / successThreshold) * 100)}%`,
+              }}
             />
           </div>
         </div>
@@ -132,12 +134,12 @@ export default function MoodTracker({
 
       {/* Starting Mood Reference */}
       <div className="text-xs text-center text-text-muted border-t border-border pt-3">
-        Started at:{' '}
+        Started at:{" "}
         <span className={getMoodColor(startingMood)}>
-          {getMoodLabel(startingMood)} ({startingMood > 0 ? '+' : ''}
+          {getMoodLabel(startingMood)} ({startingMood > 0 ? "+" : ""}
           {startingMood})
         </span>
       </div>
     </div>
-  )
+  );
 }

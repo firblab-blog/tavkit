@@ -1,57 +1,63 @@
-import { useState, useEffect } from 'react'
-import Icon from '../common/Icon'
-import { authFetch } from '@/utils/authFetch'
-import AIConfiguration from '../admin/AIConfiguration'
-import { GAME_SYSTEMS } from '../../constants/gameSystems'
+import { useState, useEffect } from "react";
+import Icon from "../common/Icon";
+import { authFetch } from "@/utils/authFetch";
+import AIConfiguration from "../admin/AIConfiguration";
+import { GAME_SYSTEMS } from "../../constants/gameSystems";
 
 export default function AISettings() {
-  const [gameSystem, setGameSystem] = useState('Dungeons & Dragons 5th Edition')
-  const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState('')
-  const [error, setError] = useState('')
+  const [gameSystem, setGameSystem] = useState(
+    "Dungeons & Dragons 5th Edition",
+  );
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchUserProfile()
-  }, [])
+    fetchUserProfile();
+  }, []);
 
   const fetchUserProfile = async () => {
     try {
-      const res = await authFetch('/api/v1/users/me')
-      const userData = await res.json()
+      const res = await authFetch("/api/v1/users/me");
+      const userData = await res.json();
       if (userData.game_system) {
-        setGameSystem(userData.game_system)
+        setGameSystem(userData.game_system);
       }
     } catch {
       // Use default if fetch fails
     }
-  }
+  };
 
   const handleSaveGameSystem = async () => {
-    setSuccess('')
-    setError('')
-    setSaving(true)
+    setSuccess("");
+    setError("");
+    setSaving(true);
 
     try {
-      const res = await authFetch('/api/v1/users/me', {
-        method: 'PUT',
+      const res = await authFetch("/api/v1/users/me", {
+        method: "PUT",
         body: JSON.stringify({
           game_system: gameSystem,
         }),
-      })
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to save game system')
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save game system");
       }
 
-      setSuccess('Game system saved! This will be applied to all artificer toolkit generators.')
-      setTimeout(() => setSuccess(''), 4000)
+      setSuccess(
+        "Game system saved! This will be applied to all artificer toolkit generators.",
+      );
+      setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save game system')
+      setError(
+        err instanceof Error ? err.message : "Failed to save game system",
+      );
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-8">
@@ -84,8 +90,8 @@ export default function AISettings() {
               onClick={() => setGameSystem(system)}
               className={`w-full px-4 py-3 rounded-lg border text-sm font-medium transition-all text-left ${
                 gameSystem === system
-                  ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                  : 'border-border bg-background hover:border-primary/40 text-text'
+                  ? "border-primary bg-primary/10 text-primary shadow-sm"
+                  : "border-border bg-background hover:border-primary/40 text-text"
               }`}
             >
               {system}
@@ -98,12 +104,12 @@ export default function AISettings() {
           disabled={saving}
           className="mt-4 px-4 py-2 bg-primary hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
         >
-          {saving ? 'Saving...' : 'Save Game System'}
+          {saving ? "Saving..." : "Save Game System"}
         </button>
       </section>
 
       {/* AI Configuration Component */}
       <AIConfiguration />
     </div>
-  )
+  );
 }

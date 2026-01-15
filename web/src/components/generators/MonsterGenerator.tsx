@@ -1,16 +1,24 @@
-import { useState, useEffect, useRef } from 'react'
-import { GeneratorLayout } from './GeneratorLayout'
-import { FormField } from '@/components/ui/FormField'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import CampaignSelector from '../common/CampaignSelector'
-import Icon from '../common/Icon'
-import { useCampaignStore } from '../../store/campaignStore'
-import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
-import { emitContentSaved } from '@/lib/contentEvents'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
-import { ArrayFieldEditor, ObjectArrayEditor } from './shared/fields'
-import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import { useState, useEffect, useRef } from "react";
+import { GeneratorLayout } from "./GeneratorLayout";
+import { FormField } from "@/components/ui/FormField";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import CampaignSelector from "../common/CampaignSelector";
+import Icon from "../common/Icon";
+import { useCampaignStore } from "../../store/campaignStore";
+import AISettings, {
+  AIGenerationSettings,
+  getMaxTokensFromSettings,
+} from "./AISettings";
+import { emitContentSaved } from "@/lib/contentEvents";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { EntryModeToggle, EntryMode } from "./shared/EntryModeToggle";
+import { ArrayFieldEditor, ObjectArrayEditor } from "./shared/fields";
+import {
+  SaveModal,
+  ParseWarning,
+  RawDataViewer,
+  ManualEntryPreview,
+} from "./shared";
 import {
   ManualMonsterData,
   defaultMonsterData,
@@ -18,70 +26,75 @@ import {
   sizeOptions,
   alignmentOptions,
   challengeRatingOptions,
-} from './shared/schemas/monsterSchema'
+} from "./shared/schemas/monsterSchema";
 import {
   generateMonster as generateMonsterApi,
   saveMonster as saveMonsterApi,
   getErrorMessage,
-} from '@/api/generators'
+} from "@/api/generators";
 import {
   normalizeStringArray,
   normalizeActionArray,
   normalizeHitPoints,
   normalizeSpeed,
-} from '@/utils/aiResponseNormalizer'
-import { logger } from '@/utils/logger'
+} from "@/utils/aiResponseNormalizer";
+import { logger } from "@/utils/logger";
 
 interface MonsterData {
-  name: string
-  type: string
-  size: string
-  alignment: string
-  armor_class: number
-  hit_points: { average: number; dice: string }
-  speed: Record<string, number>
+  name: string;
+  type: string;
+  size: string;
+  alignment: string;
+  armor_class: number;
+  hit_points: { average: number; dice: string };
+  speed: Record<string, number>;
   abilities: {
-    STR: number
-    DEX: number
-    CON: number
-    INT: number
-    WIS: number
-    CHA: number
-  }
-  saving_throws?: Record<string, string>
-  skills?: Record<string, string>
-  damage_resistances?: string[]
-  damage_immunities?: string[]
-  condition_immunities?: string[]
-  senses: Record<string, number>
-  languages: string[]
-  challenge_rating: number
-  xp: number
-  traits: Array<{ name: string; description: string }>
-  actions: Array<{ name: string; description: string; attack_bonus?: string; damage?: string }>
-  legendary_actions?: Array<{ name: string; description: string }>
-  lair_actions?: Array<{ name: string; description: string }>
-  lore: string
-  _raw?: Record<string, unknown> // Store unexpected fields like Dialogue does
-  _parseError?: string // Store parse error messages
+    STR: number;
+    DEX: number;
+    CON: number;
+    INT: number;
+    WIS: number;
+    CHA: number;
+  };
+  saving_throws?: Record<string, string>;
+  skills?: Record<string, string>;
+  damage_resistances?: string[];
+  damage_immunities?: string[];
+  condition_immunities?: string[];
+  senses: Record<string, number>;
+  languages: string[];
+  challenge_rating: number;
+  xp: number;
+  traits: Array<{ name: string; description: string }>;
+  actions: Array<{
+    name: string;
+    description: string;
+    attack_bonus?: string;
+    damage?: string;
+  }>;
+  legendary_actions?: Array<{ name: string; description: string }>;
+  lair_actions?: Array<{ name: string; description: string }>;
+  lore: string;
+  _raw?: Record<string, unknown>; // Store unexpected fields like Dialogue does
+  _parseError?: string; // Store parse error messages
 }
 
 /**
  * Normalizes abilities to proper structure with all 6 stats (uppercase keys for Monster)
  */
 function normalizeAbilities(value: unknown): {
-  STR: number
-  DEX: number
-  CON: number
-  INT: number
-  WIS: number
-  CHA: number
+  STR: number;
+  DEX: number;
+  CON: number;
+  INT: number;
+  WIS: number;
+  CHA: number;
 } {
-  const defaults = { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 }
+  const defaults = { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
 
-  if (!value || typeof value !== 'object') return defaults
+  if (!value || typeof value !== "object") return defaults;
 
-  const obj = value as Record<string, unknown>
+  const obj = value as Record<string, unknown>;
   return {
     STR: Number(obj.STR || obj.str || obj.strength || 10),
     DEX: Number(obj.DEX || obj.dex || obj.dexterity || 10),
@@ -89,7 +102,7 @@ function normalizeAbilities(value: unknown): {
     INT: Number(obj.INT || obj.int || obj.intelligence || 10),
     WIS: Number(obj.WIS || obj.wis || obj.wisdom || 10),
     CHA: Number(obj.CHA || obj.cha || obj.charisma || 10),
-  }
+  };
 }
 
 /**
@@ -98,51 +111,53 @@ function normalizeAbilities(value: unknown): {
  */
 function normalizeMonsterResponse(raw: Record<string, unknown>): MonsterData {
   const expectedFields = [
-    'name',
-    'type',
-    'size',
-    'alignment',
-    'armor_class',
-    'hit_points',
-    'speed',
-    'abilities',
-    'saving_throws',
-    'skills',
-    'damage_resistances',
-    'damage_immunities',
-    'condition_immunities',
-    'senses',
-    'languages',
-    'challenge_rating',
-    'cr',
-    'xp',
-    'traits',
-    'actions',
-    'legendary_actions',
-    'lair_actions',
-    'lore',
-    'description',
-    'provider',
-    '_parse_warning',
-  ]
+    "name",
+    "type",
+    "size",
+    "alignment",
+    "armor_class",
+    "hit_points",
+    "speed",
+    "abilities",
+    "saving_throws",
+    "skills",
+    "damage_resistances",
+    "damage_immunities",
+    "condition_immunities",
+    "senses",
+    "languages",
+    "challenge_rating",
+    "cr",
+    "xp",
+    "traits",
+    "actions",
+    "legendary_actions",
+    "lair_actions",
+    "lore",
+    "description",
+    "provider",
+    "_parse_warning",
+  ];
 
   // Collect unexpected fields (for debugging)
-  const unexpectedFields: Record<string, unknown> = {}
+  const unexpectedFields: Record<string, unknown> = {};
   for (const key of Object.keys(raw)) {
     if (!expectedFields.includes(key)) {
-      unexpectedFields[key] = raw[key]
+      unexpectedFields[key] = raw[key];
     }
   }
 
   return {
-    name: String(raw.name || 'Unknown Monster'),
-    type: String(raw.type || raw.creature_type || 'monstrosity'),
-    size: String(raw.size || 'Medium'),
-    alignment: String(raw.alignment || 'unaligned'),
+    name: String(raw.name || "Unknown Monster"),
+    type: String(raw.type || raw.creature_type || "monstrosity"),
+    size: String(raw.size || "Medium"),
+    alignment: String(raw.alignment || "unaligned"),
     armor_class: Number(raw.armor_class || raw.ac || 10),
     hit_points: normalizeHitPoints(raw.hit_points || raw.hp),
     speed: normalizeSpeed(raw.speed),
-    abilities: normalizeAbilities(raw.abilities || raw.ability_scores || raw.stats),
+    abilities: normalizeAbilities(
+      raw.abilities || raw.ability_scores || raw.stats,
+    ),
     saving_throws: raw.saving_throws as Record<string, string> | undefined,
     skills: raw.skills as Record<string, string> | undefined,
     damage_resistances: normalizeStringArray(raw.damage_resistances),
@@ -157,10 +172,13 @@ function normalizeMonsterResponse(raw: Record<string, unknown>): MonsterData {
     legendary_actions: raw.legendary_actions
       ? normalizeActionArray(raw.legendary_actions)
       : undefined,
-    lair_actions: raw.lair_actions ? normalizeActionArray(raw.lair_actions) : undefined,
-    lore: String(raw.lore || raw.description || raw.backstory || ''),
-    _raw: Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
-  }
+    lair_actions: raw.lair_actions
+      ? normalizeActionArray(raw.lair_actions)
+      : undefined,
+    lore: String(raw.lore || raw.description || raw.backstory || ""),
+    _raw:
+      Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
+  };
 }
 
 // ============================================================================
@@ -168,55 +186,56 @@ function normalizeMonsterResponse(raw: Record<string, unknown>): MonsterData {
 // ============================================================================
 
 export default function MonsterGenerator() {
-  const [specialRequests, setSpecialRequests] = useState('')
-  const [cr, setCr] = useState(5)
-  const [type, setType] = useState('aberration')
-  const [size, setSize] = useState('medium')
-  const [environment, setEnvironment] = useState('dungeon')
-  const [campaignId, setCampaignId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [monster, setMonster] = useState<MonsterData | null>(null)
-  const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [cr, setCr] = useState(5);
+  const [type, setType] = useState("aberration");
+  const [size, setSize] = useState("medium");
+  const [environment, setEnvironment] = useState("dungeon");
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [monster, setMonster] = useState<MonsterData | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showRawResponse, setShowRawResponse] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   // Manual entry mode state
-  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
-  const [manualData, setManualData] = useState<ManualMonsterData>(defaultMonsterData)
-  const [manualSaving, setManualSaving] = useState(false)
-  const [manualSaved, setManualSaved] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode>("ai");
+  const [manualData, setManualData] =
+    useState<ManualMonsterData>(defaultMonsterData);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualSaved, setManualSaved] = useState(false);
 
   // Track if user has made an explicit campaign selection
-  const hasUserSelectedCampaign = useRef(false)
+  const hasUserSelectedCampaign = useRef(false);
 
   // AI settings for controlling token generation
   const [aiSettings, setAiSettings] = useState<AIGenerationSettings>({
-    detailLevel: 'high',
+    detailLevel: "high",
     timeout: 120,
-  })
+  });
 
-  const { fetchCampaigns, activeCampaignId } = useCampaignStore()
+  const { fetchCampaigns, activeCampaignId } = useCampaignStore();
 
   // Fetch campaigns on mount
   useEffect(() => {
-    fetchCampaigns()
-  }, [fetchCampaigns])
+    fetchCampaigns();
+  }, [fetchCampaigns]);
 
   // Auto-select active campaign ONLY on initial mount (not after user interaction)
   useEffect(() => {
     if (activeCampaignId && !hasUserSelectedCampaign.current) {
-      setCampaignId(activeCampaignId)
+      setCampaignId(activeCampaignId);
     }
-  }, [activeCampaignId])
+  }, [activeCampaignId]);
 
   const handleSave = async () => {
-    if (!monster) return
+    if (!monster) return;
 
-    setError('')
+    setError("");
 
     try {
-      const activeCampaignId = useCampaignStore.getState().activeCampaignId
+      const activeCampaignId = useCampaignStore.getState().activeCampaignId;
 
       await saveMonsterApi({
         name: monster.name,
@@ -244,26 +263,26 @@ export default function MonsterGenerator() {
           lair_actions: monster.lair_actions,
         },
         lore: monster.lore,
-        tactics: `${monster.traits?.map((t) => t.name).join(', ') || ''} - ${monster.actions?.map((a) => a.name).join(', ') || ''}`,
+        tactics: `${monster.traits?.map((t) => t.name).join(", ") || ""} - ${monster.actions?.map((a) => a.name).join(", ") || ""}`,
         campaign_id: activeCampaignId || undefined,
         ai_generated: true,
-      })
+      });
 
-      setShowSaveModal(false)
-      setIsSaved(true)
-      emitContentSaved()
+      setShowSaveModal(false);
+      setIsSaved(true);
+      emitContentSaved();
     } catch (err) {
-      logger.error('[MonsterGenerator] Save error:', err)
-      setError(getErrorMessage(err))
+      logger.error("[MonsterGenerator] Save error:", err);
+      setError(getErrorMessage(err));
     }
-  }
+  };
 
   const handleGenerate = async () => {
-    setLoading(true)
-    setError('')
-    setMonster(null)
-    setShowRawResponse(false)
-    setIsSaved(false)
+    setLoading(true);
+    setError("");
+    setMonster(null);
+    setShowRawResponse(false);
+    setIsSaved(false);
 
     try {
       const data = await generateMonsterApi(
@@ -277,35 +296,38 @@ export default function MonsterGenerator() {
           max_tokens: getMaxTokensFromSettings(aiSettings),
           timeout: aiSettings.timeout,
         },
-        aiSettings.timeout
-      )
-      logger.debug('[MonsterGenerator] Raw API response:', data)
+        aiSettings.timeout,
+      );
+      logger.debug("[MonsterGenerator] Raw API response:", data);
 
       // CRITICAL: Normalize the response to handle inconsistent AI output
       if (data.monster) {
-        const normalized = normalizeMonsterResponse(data.monster)
+        const normalized = normalizeMonsterResponse(data.monster);
 
         // Check if we got valid content
         if (!hasValidMonsterContent(normalized)) {
           normalized._parseError =
-            'AI response missing essential monster content. Showing raw response.'
-          setShowRawResponse(true)
+            "AI response missing essential monster content. Showing raw response.";
+          setShowRawResponse(true);
         }
 
-        setMonster(normalized)
+        setMonster(normalized);
       } else {
         // AI returned data at root level instead of nested
-        const normalized = normalizeMonsterResponse(data as unknown as Record<string, unknown>)
-        normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
-        setMonster(normalized)
+        const normalized = normalizeMonsterResponse(
+          data as unknown as Record<string, unknown>,
+        );
+        normalized._parseError =
+          "Unexpected response format. Attempting to display.";
+        setShowRawResponse(true);
+        setMonster(normalized);
       }
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Check if monster has valid essential content
@@ -313,115 +335,122 @@ export default function MonsterGenerator() {
   function hasValidMonsterContent(monster: MonsterData): boolean {
     return !!(
       monster.name &&
-      monster.name !== 'Unknown Monster' &&
+      monster.name !== "Unknown Monster" &&
       (monster.lore || monster.traits.length > 0 || monster.actions.length > 0)
-    )
+    );
   }
 
   const handleCopy = () => {
-    if (!monster) return
+    if (!monster) return;
 
-    let text = `${monster.name}\n${monster.size} ${monster.type}${monster.alignment ? `, ${monster.alignment}` : ''}`
+    let text = `${monster.name}\n${monster.size} ${monster.type}${monster.alignment ? `, ${monster.alignment}` : ""}`;
 
-    text += `\n\nArmor Class: ${monster.armor_class}`
-    text += `\nHit Points: ${monster.hit_points.average}${monster.hit_points.dice ? ` (${monster.hit_points.dice})` : ''}`
+    text += `\n\nArmor Class: ${monster.armor_class}`;
+    text += `\nHit Points: ${monster.hit_points.average}${monster.hit_points.dice ? ` (${monster.hit_points.dice})` : ""}`;
 
     if (monster.speed && Object.keys(monster.speed).length > 0) {
       text += `\nSpeed: ${Object.entries(monster.speed)
         .map(([type, speed]) => `${type} ${speed} ft.`)
-        .join(', ')}`
+        .join(", ")}`;
     }
 
     text += `\n\nAbilities:\n${Object.entries(monster.abilities)
       .map(([stat, value]) => `${stat} ${value} (${formatModifier(value)})`)
-      .join(', ')}`
+      .join(", ")}`;
 
-    if (monster.saving_throws && Object.keys(monster.saving_throws).length > 0) {
+    if (
+      monster.saving_throws &&
+      Object.keys(monster.saving_throws).length > 0
+    ) {
       text += `\n\nSaving Throws: ${Object.entries(monster.saving_throws)
         .map(([stat, mod]) => `${stat} ${mod}`)
-        .join(', ')}`
+        .join(", ")}`;
     }
     if (monster.skills && Object.keys(monster.skills).length > 0) {
       text += `\n\nSkills: ${Object.entries(monster.skills)
         .map(([skill, mod]) => `${skill} ${mod}`)
-        .join(', ')}`
+        .join(", ")}`;
     }
     if (monster.damage_resistances && monster.damage_resistances.length > 0) {
-      text += `\n\nDamage Resistances: ${monster.damage_resistances.join(', ')}`
+      text += `\n\nDamage Resistances: ${monster.damage_resistances.join(", ")}`;
     }
     if (monster.damage_immunities && monster.damage_immunities.length > 0) {
-      text += `\n\nDamage Immunities: ${monster.damage_immunities.join(', ')}`
+      text += `\n\nDamage Immunities: ${monster.damage_immunities.join(", ")}`;
     }
-    if (monster.condition_immunities && monster.condition_immunities.length > 0) {
-      text += `\n\nCondition Immunities: ${monster.condition_immunities.join(', ')}`
+    if (
+      monster.condition_immunities &&
+      monster.condition_immunities.length > 0
+    ) {
+      text += `\n\nCondition Immunities: ${monster.condition_immunities.join(", ")}`;
     }
     if (monster.senses && Object.keys(monster.senses).length > 0) {
       text += `\n\nSenses: ${Object.entries(monster.senses)
         .map(([sense, range]) => {
-          if (sense === 'description') return String(range)
-          if (typeof range === 'number') return `${sense} ${range} ft.`
-          return `${sense} ${range}`
+          if (sense === "description") return String(range);
+          if (typeof range === "number") return `${sense} ${range} ft.`;
+          return `${sense} ${range}`;
         })
-        .join(', ')}`
+        .join(", ")}`;
     }
     if (monster.languages && monster.languages.length > 0) {
-      text += `\n\nLanguages: ${monster.languages.join(', ')}`
+      text += `\n\nLanguages: ${monster.languages.join(", ")}`;
     }
-    text += `\n\nChallenge: ${monster.challenge_rating}${monster.xp ? ` (${monster.xp.toLocaleString()} XP)` : ''}`
+    text += `\n\nChallenge: ${monster.challenge_rating}${monster.xp ? ` (${monster.xp.toLocaleString()} XP)` : ""}`;
 
     if (monster.traits && monster.traits.length > 0) {
-      text += '\n\nTraits:'
+      text += "\n\nTraits:";
       monster.traits.forEach((trait) => {
-        text += `\n\n${trait.name}. ${trait.description}`
-      })
+        text += `\n\n${trait.name}. ${trait.description}`;
+      });
     }
 
     if (monster.actions && monster.actions.length > 0) {
-      text += '\n\nActions:'
+      text += "\n\nActions:";
       monster.actions.forEach((action) => {
-        text += `\n\n${action.name}. ${action.description}`
-        if (action.attack_bonus) text += ` Attack: ${action.attack_bonus} to hit.`
-        if (action.damage) text += ` Damage: ${action.damage}.`
-      })
+        text += `\n\n${action.name}. ${action.description}`;
+        if (action.attack_bonus)
+          text += ` Attack: ${action.attack_bonus} to hit.`;
+        if (action.damage) text += ` Damage: ${action.damage}.`;
+      });
     }
 
     if (monster.legendary_actions && monster.legendary_actions.length > 0) {
-      text += '\n\nLegendary Actions:'
+      text += "\n\nLegendary Actions:";
       monster.legendary_actions.forEach((action) => {
-        text += `\n\n${action.name}. ${action.description}`
-      })
+        text += `\n\n${action.name}. ${action.description}`;
+      });
     }
 
     if (monster.lair_actions && monster.lair_actions.length > 0) {
-      text += '\n\nLair Actions:'
+      text += "\n\nLair Actions:";
       monster.lair_actions.forEach((action) => {
-        text += `\n\n${action.name}. ${action.description}`
-      })
+        text += `\n\n${action.name}. ${action.description}`;
+      });
     }
 
-    text += `\n\nLore:\n${monster.lore}`
+    text += `\n\nLore:\n${monster.lore}`;
 
-    navigator.clipboard.writeText(text)
-  }
+    navigator.clipboard.writeText(text);
+  };
 
   const formatModifier = (score: number) => {
-    const mod = Math.floor((score - 10) / 2)
-    return mod >= 0 ? `+${mod}` : `${mod}`
-  }
+    const mod = Math.floor((score - 10) / 2);
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+  };
 
   // Handle manual entry save
   const handleManualSave = async () => {
     if (!manualData.name.trim()) {
-      setError('Monster name is required')
-      return
+      setError("Monster name is required");
+      return;
     }
 
-    setManualSaving(true)
-    setError('')
+    setManualSaving(true);
+    setError("");
 
     try {
       // Parse CR for numeric storage
-      const crValue = parseFloat(manualData.challenge_rating) || 1
+      const crValue = parseFloat(manualData.challenge_rating) || 1;
 
       await saveMonsterApi({
         campaign_id: campaignId || undefined,
@@ -432,7 +461,7 @@ export default function MonsterGenerator() {
           size: manualData.size,
           alignment: manualData.alignment,
           armor_class: manualData.stats.ac || 10,
-          hit_points: { average: manualData.stats.hp || 1, dice: '' },
+          hit_points: { average: manualData.stats.hp || 1, dice: "" },
           speed: manualData.stats.speed
             ? { walk: parseInt(manualData.stats.speed) || 30 }
             : { walk: 30 },
@@ -444,32 +473,40 @@ export default function MonsterGenerator() {
             WIS: manualData.stats.wis || 10,
             CHA: manualData.stats.cha || 10,
           },
-          damage_resistances: manualData.damage_resistances.filter((r) => r.trim()),
-          damage_immunities: manualData.damage_immunities.filter((i) => i.trim()),
-          condition_immunities: manualData.condition_immunities.filter((c) => c.trim()),
+          damage_resistances: manualData.damage_resistances.filter((r) =>
+            r.trim(),
+          ),
+          damage_immunities: manualData.damage_immunities.filter((i) =>
+            i.trim(),
+          ),
+          condition_immunities: manualData.condition_immunities.filter((c) =>
+            c.trim(),
+          ),
           senses: {},
           languages: manualData.languages.filter((l) => l.trim()),
           challenge_rating: crValue,
           xp: 0,
           traits: manualData.traits.filter((t) => t.name.trim()),
           actions: manualData.actions.filter((a) => a.name.trim()),
-          legendary_actions: manualData.legendary_actions.filter((a) => a.name.trim()),
+          legendary_actions: manualData.legendary_actions.filter((a) =>
+            a.name.trim(),
+          ),
         },
-        lore: manualData.lore.trim() || '',
-        tactics: manualData.tactics.trim() || '',
+        lore: manualData.lore.trim() || "",
+        tactics: manualData.tactics.trim() || "",
         ai_generated: false,
-      })
+      });
 
-      setManualSaved(true)
-      emitContentSaved()
+      setManualSaved(true);
+      emitContentSaved();
       // Reset form after successful save
-      setManualData(defaultMonsterData)
+      setManualData(defaultMonsterData);
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setManualSaving(false)
+      setManualSaving(false);
     }
-  }
+  };
 
   // AI generation form content
   const aiFormContent = (
@@ -481,13 +518,16 @@ export default function MonsterGenerator() {
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
       {/* Challenge Rating */}
-      <FormField label="Challenge Rating" description="Determines power level and appropriate XP">
+      <FormField
+        label="Challenge Rating"
+        description="Determines power level and appropriate XP"
+      >
         <input
           type="number"
           min="0"
@@ -569,7 +609,7 @@ export default function MonsterGenerator() {
         />
       </FormField>
     </>
-  )
+  );
 
   // Manual entry form content
   const manualFormContent = (
@@ -577,8 +617,8 @@ export default function MonsterGenerator() {
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -587,7 +627,9 @@ export default function MonsterGenerator() {
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., Shadow Serpent, Flame Horror"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -597,7 +639,9 @@ export default function MonsterGenerator() {
         <FormField label="Creature Type">
           <select
             value={manualData.creature_type}
-            onChange={(e) => setManualData({ ...manualData, creature_type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, creature_type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {creatureTypeOptions.map((opt) => (
@@ -611,7 +655,9 @@ export default function MonsterGenerator() {
         <FormField label="Size">
           <select
             value={manualData.size}
-            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, size: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {sizeOptions.map((opt) => (
@@ -627,7 +673,9 @@ export default function MonsterGenerator() {
         <FormField label="Alignment">
           <select
             value={manualData.alignment}
-            onChange={(e) => setManualData({ ...manualData, alignment: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, alignment: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {alignmentOptions.map((opt) => (
@@ -641,7 +689,9 @@ export default function MonsterGenerator() {
         <FormField label="Challenge Rating">
           <select
             value={manualData.challenge_rating}
-            onChange={(e) => setManualData({ ...manualData, challenge_rating: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, challenge_rating: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {challengeRatingOptions.map((opt) => (
@@ -656,7 +706,9 @@ export default function MonsterGenerator() {
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Physical description of the creature..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={2}
@@ -671,7 +723,7 @@ export default function MonsterGenerator() {
               <input
                 type="number"
                 min={1}
-                value={manualData.stats.ac || ''}
+                value={manualData.stats.ac || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -690,7 +742,7 @@ export default function MonsterGenerator() {
               <input
                 type="number"
                 min={1}
-                value={manualData.stats.hp || ''}
+                value={manualData.stats.hp || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -722,45 +774,56 @@ export default function MonsterGenerator() {
           </div>
 
           <div className="grid grid-cols-6 gap-2">
-            {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((stat) => (
-              <FormField key={stat} label={stat.toUpperCase()}>
-                <input
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={manualData.stats[stat] || ''}
-                  onChange={(e) =>
-                    setManualData({
-                      ...manualData,
-                      stats: {
-                        ...manualData.stats,
-                        [stat]: e.target.value ? parseInt(e.target.value) : null,
-                      },
-                    })
-                  }
-                  placeholder="10"
-                  className="w-full px-2 py-2 bg-background border border-border rounded-lg text-text text-center focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </FormField>
-            ))}
+            {(["str", "dex", "con", "int", "wis", "cha"] as const).map(
+              (stat) => (
+                <FormField key={stat} label={stat.toUpperCase()}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={manualData.stats[stat] || ""}
+                    onChange={(e) =>
+                      setManualData({
+                        ...manualData,
+                        stats: {
+                          ...manualData.stats,
+                          [stat]: e.target.value
+                            ? parseInt(e.target.value)
+                            : null,
+                        },
+                      })
+                    }
+                    placeholder="10"
+                    className="w-full px-2 py-2 bg-background border border-border rounded-lg text-text text-center focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </FormField>
+              ),
+            )}
           </div>
         </div>
       </CollapsibleSection>
 
       {/* Resistances & Immunities */}
-      <CollapsibleSection title="Resistances & Immunities" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Resistances & Immunities"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <ArrayFieldEditor
             label="Damage Resistances"
             values={manualData.damage_resistances}
-            onChange={(damage_resistances) => setManualData({ ...manualData, damage_resistances })}
+            onChange={(damage_resistances) =>
+              setManualData({ ...manualData, damage_resistances })
+            }
             placeholder="Add damage resistance..."
           />
 
           <ArrayFieldEditor
             label="Damage Immunities"
             values={manualData.damage_immunities}
-            onChange={(damage_immunities) => setManualData({ ...manualData, damage_immunities })}
+            onChange={(damage_immunities) =>
+              setManualData({ ...manualData, damage_immunities })
+            }
             placeholder="Add damage immunity..."
           />
 
@@ -788,7 +851,9 @@ export default function MonsterGenerator() {
           <ArrayFieldEditor
             label="Languages"
             values={manualData.languages}
-            onChange={(languages) => setManualData({ ...manualData, languages })}
+            onChange={(languages) =>
+              setManualData({ ...manualData, languages })
+            }
             placeholder="Add a language..."
           />
         </div>
@@ -832,7 +897,9 @@ export default function MonsterGenerator() {
         <ObjectArrayEditor
           label="Legendary Actions"
           values={manualData.legendary_actions}
-          onChange={(legendary_actions) => setManualData({ ...manualData, legendary_actions })}
+          onChange={(legendary_actions) =>
+            setManualData({ ...manualData, legendary_actions })
+          }
           namePlaceholder="Legendary action name"
           descriptionPlaceholder="Legendary action description"
         />
@@ -844,7 +911,9 @@ export default function MonsterGenerator() {
           <FormField label="Tactics">
             <textarea
               value={manualData.tactics}
-              onChange={(e) => setManualData({ ...manualData, tactics: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, tactics: e.target.value })
+              }
               placeholder="How does this creature fight?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -854,7 +923,9 @@ export default function MonsterGenerator() {
           <FormField label="Lore">
             <textarea
               value={manualData.lore}
-              onChange={(e) => setManualData({ ...manualData, lore: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, lore: e.target.value })
+              }
               placeholder="Background, habitat, behavior..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={3}
@@ -889,7 +960,7 @@ export default function MonsterGenerator() {
         </div>
       )}
     </>
-  )
+  );
 
   // Combined form content with mode toggle
   const formContent = (
@@ -897,18 +968,18 @@ export default function MonsterGenerator() {
       <EntryModeToggle
         mode={entryMode}
         onChange={(mode) => {
-          setEntryMode(mode)
-          setManualSaved(false)
-          setError('')
+          setEntryMode(mode);
+          setManualSaved(false);
+          setError("");
         }}
         disabled={loading}
       />
-      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+      {entryMode === "ai" ? aiFormContent : manualFormContent}
     </>
-  )
+  );
 
   // Manual mode preview content (simple message)
-  const manualPreviewContent = <ManualEntryPreview entityType="monster" />
+  const manualPreviewContent = <ManualEntryPreview entityType="monster" />;
 
   const generatedContent = monster ? (
     <div className="space-y-6">
@@ -928,7 +999,9 @@ export default function MonsterGenerator() {
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-background p-3 rounded border border-border">
           <p className="text-xs text-text-muted mb-1">Armor Class</p>
-          <p className="text-xl font-bold text-primary">{monster.armor_class}</p>
+          <p className="text-xl font-bold text-primary">
+            {monster.armor_class}
+          </p>
         </div>
         <div className="bg-background p-3 rounded border border-border">
           <p className="text-xs text-text-muted mb-1">Hit Points</p>
@@ -964,7 +1037,7 @@ export default function MonsterGenerator() {
           <p className="text-text">
             {Object.entries(monster.speed)
               .map(([moveType, speed]) => `${moveType} ${speed} ft.`)
-              .join(', ')}
+              .join(", ")}
           </p>
         </div>
       )}
@@ -992,23 +1065,25 @@ export default function MonsterGenerator() {
       )}
 
       {/* Saving Throws & Skills */}
-      {(monster.saving_throws && Object.keys(monster.saving_throws).length > 0) ||
+      {(monster.saving_throws &&
+        Object.keys(monster.saving_throws).length > 0) ||
       (monster.skills && Object.keys(monster.skills).length > 0) ? (
         <div className="space-y-2">
-          {monster.saving_throws && Object.keys(monster.saving_throws).length > 0 && (
-            <p className="text-text">
-              <strong className="text-primary">Saving Throws:</strong>{' '}
-              {Object.entries(monster.saving_throws)
-                .map(([stat, mod]) => `${stat} ${mod}`)
-                .join(', ')}
-            </p>
-          )}
+          {monster.saving_throws &&
+            Object.keys(monster.saving_throws).length > 0 && (
+              <p className="text-text">
+                <strong className="text-primary">Saving Throws:</strong>{" "}
+                {Object.entries(monster.saving_throws)
+                  .map(([stat, mod]) => `${stat} ${mod}`)
+                  .join(", ")}
+              </p>
+            )}
           {monster.skills && Object.keys(monster.skills).length > 0 && (
             <p className="text-text">
-              <strong className="text-primary">Skills:</strong>{' '}
+              <strong className="text-primary">Skills:</strong>{" "}
               {Object.entries(monster.skills)
                 .map(([skill, mod]) => `${skill} ${mod}`)
-                .join(', ')}
+                .join(", ")}
             </p>
           )}
         </div>
@@ -1019,24 +1094,29 @@ export default function MonsterGenerator() {
         monster.damage_immunities?.length ||
         monster.condition_immunities?.length) && (
         <div className="space-y-2">
-          {monster.damage_resistances && monster.damage_resistances.length > 0 && (
-            <p className="text-text">
-              <strong className="text-blue-400">Damage Resistances:</strong>{' '}
-              {monster.damage_resistances.join(', ')}
-            </p>
-          )}
-          {monster.damage_immunities && monster.damage_immunities.length > 0 && (
-            <p className="text-text">
-              <strong className="text-purple-400">Damage Immunities:</strong>{' '}
-              {monster.damage_immunities.join(', ')}
-            </p>
-          )}
-          {monster.condition_immunities && monster.condition_immunities.length > 0 && (
-            <p className="text-text">
-              <strong className="text-green-400">Condition Immunities:</strong>{' '}
-              {monster.condition_immunities.join(', ')}
-            </p>
-          )}
+          {monster.damage_resistances &&
+            monster.damage_resistances.length > 0 && (
+              <p className="text-text">
+                <strong className="text-blue-400">Damage Resistances:</strong>{" "}
+                {monster.damage_resistances.join(", ")}
+              </p>
+            )}
+          {monster.damage_immunities &&
+            monster.damage_immunities.length > 0 && (
+              <p className="text-text">
+                <strong className="text-purple-400">Damage Immunities:</strong>{" "}
+                {monster.damage_immunities.join(", ")}
+              </p>
+            )}
+          {monster.condition_immunities &&
+            monster.condition_immunities.length > 0 && (
+              <p className="text-text">
+                <strong className="text-green-400">
+                  Condition Immunities:
+                </strong>{" "}
+                {monster.condition_immunities.join(", ")}
+              </p>
+            )}
         </div>
       )}
 
@@ -1044,19 +1124,20 @@ export default function MonsterGenerator() {
       <div className="space-y-2">
         {monster.senses && Object.keys(monster.senses).length > 0 && (
           <p className="text-text">
-            <strong className="text-primary">Senses:</strong>{' '}
+            <strong className="text-primary">Senses:</strong>{" "}
             {Object.entries(monster.senses)
               .map(([sense, range]) => {
-                if (sense === 'description') return String(range)
-                if (typeof range === 'number') return `${sense} ${range} ft.`
-                return `${sense} ${range}`
+                if (sense === "description") return String(range);
+                if (typeof range === "number") return `${sense} ${range} ft.`;
+                return `${sense} ${range}`;
               })
-              .join(', ')}
+              .join(", ")}
           </p>
         )}
         {monster.languages && monster.languages.length > 0 && (
           <p className="text-text">
-            <strong className="text-primary">Languages:</strong> {monster.languages.join(', ')}
+            <strong className="text-primary">Languages:</strong>{" "}
+            {monster.languages.join(", ")}
           </p>
         )}
       </div>
@@ -1070,7 +1151,10 @@ export default function MonsterGenerator() {
           </h3>
           <div className="space-y-3">
             {monster.traits.map((trait, i) => (
-              <div key={i} className="bg-background p-4 rounded border border-primary/30">
+              <div
+                key={i}
+                className="bg-background p-4 rounded border border-primary/30"
+              >
                 <h4 className="font-medium text-primary mb-2">{trait.name}</h4>
                 <p className="text-text text-sm">{trait.description}</p>
               </div>
@@ -1088,12 +1172,17 @@ export default function MonsterGenerator() {
           </h3>
           <div className="space-y-3">
             {monster.actions.map((action, i) => (
-              <div key={i} className="bg-background p-4 rounded border border-red-500/30">
+              <div
+                key={i}
+                className="bg-background p-4 rounded border border-red-500/30"
+              >
                 <h4 className="font-medium text-red-400 mb-2">{action.name}</h4>
                 <p className="text-text text-sm">{action.description}</p>
                 {(action.attack_bonus || action.damage) && (
                   <p className="text-text-muted text-xs mt-2">
-                    {action.attack_bonus && <span>Attack: {action.attack_bonus} to hit. </span>}
+                    {action.attack_bonus && (
+                      <span>Attack: {action.attack_bonus} to hit. </span>
+                    )}
                     {action.damage && <span>Damage: {action.damage}</span>}
                   </p>
                 )}
@@ -1112,8 +1201,13 @@ export default function MonsterGenerator() {
           </h3>
           <div className="space-y-3">
             {monster.legendary_actions.map((action, i) => (
-              <div key={i} className="bg-amber-500/10 p-4 rounded border border-amber-500/30">
-                <h4 className="font-medium text-amber-400 mb-2">{action.name}</h4>
+              <div
+                key={i}
+                className="bg-amber-500/10 p-4 rounded border border-amber-500/30"
+              >
+                <h4 className="font-medium text-amber-400 mb-2">
+                  {action.name}
+                </h4>
                 <p className="text-text text-sm">{action.description}</p>
               </div>
             ))}
@@ -1130,8 +1224,13 @@ export default function MonsterGenerator() {
           </h3>
           <div className="space-y-3">
             {monster.lair_actions.map((action, i) => (
-              <div key={i} className="bg-purple-500/10 p-4 rounded border border-purple-500/30">
-                <h4 className="font-medium text-purple-400 mb-2">{action.name}</h4>
+              <div
+                key={i}
+                className="bg-purple-500/10 p-4 rounded border border-purple-500/30"
+              >
+                <h4 className="font-medium text-purple-400 mb-2">
+                  {action.name}
+                </h4>
                 <p className="text-text text-sm">{action.description}</p>
               </div>
             ))}
@@ -1153,7 +1252,9 @@ export default function MonsterGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {monster._raw && <RawDataViewer data={monster._raw} defaultExpanded={showRawResponse} />}
+      {monster._raw && (
+        <RawDataViewer data={monster._raw} defaultExpanded={showRawResponse} />
+      )}
 
       {/* Actions */}
       <ActionsBar
@@ -1163,7 +1264,7 @@ export default function MonsterGenerator() {
         isSaved={isSaved}
       />
     </div>
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -1173,14 +1274,18 @@ export default function MonsterGenerator() {
         icon="Skull"
         formTitle="Monster Details"
         formIcon="Settings"
-        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Monster'}
+        resultsTitle={
+          entryMode === "manual" ? "Manual Entry" : "Generated Monster"
+        }
         formContent={formContent}
-        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
+        generatedContent={
+          entryMode === "manual" ? manualPreviewContent : generatedContent
+        }
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Monster"
         error={error}
-        hideGenerateButton={entryMode === 'manual'}
+        hideGenerateButton={entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -1188,9 +1293,9 @@ export default function MonsterGenerator() {
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={handleSave}
-        entityName={monster?.name || 'Monster'}
+        entityName={monster?.name || "Monster"}
         campaignId={campaignId}
       />
     </>
-  )
+  );
 }

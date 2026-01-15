@@ -1,22 +1,22 @@
 // NPC Result Renderer
 // Displays generated NPC data in a structured format
 
-import Icon from '@/components/common/Icon'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { RawDataViewer, ParseWarning } from '../components'
-import type { GeneratedNPCData } from '../normalizers/npc'
+import Icon from "@/components/common/Icon";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { RawDataViewer, ParseWarning } from "../components";
+import type { GeneratedNPCData } from "../normalizers/npc";
 
 interface NPCRendererProps {
-  npc: GeneratedNPCData
-  showRawResponse: boolean
-  isSaved: boolean
-  onSave: () => void
-  onCopy: () => void
+  npc: GeneratedNPCData;
+  showRawResponse: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onCopy: () => void;
 }
 
 function getModifier(score: number): string {
-  const mod = Math.floor((score - 10) / 2)
-  return mod >= 0 ? `+${mod}` : `${mod}`
+  const mod = Math.floor((score - 10) / 2);
+  return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 
 export function NPCRenderer({
@@ -65,7 +65,7 @@ export function NPCRenderer({
             {npc.personality.traits.length > 0 && (
               <div className="bg-background p-3 rounded border border-primary/30">
                 <p className="text-xs text-text-muted mb-1">Traits</p>
-                <p className="text-text">{npc.personality.traits.join(', ')}</p>
+                <p className="text-text">{npc.personality.traits.join(", ")}</p>
               </div>
             )}
             {npc.personality.ideals && (
@@ -120,7 +120,10 @@ export function NPCRenderer({
         </h3>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {Object.entries(npc.abilities).map(([stat, value]) => (
-            <div key={stat} className="bg-background p-2 rounded border border-border text-center">
+            <div
+              key={stat}
+              className="bg-background p-2 rounded border border-border text-center"
+            >
               <p className="text-xs text-text-muted mb-1">{stat}</p>
               <p className="text-lg font-bold text-text">{value}</p>
               <p className="text-xs text-primary">{getModifier(value)}</p>
@@ -140,19 +143,25 @@ export function NPCRenderer({
             {npc.combat.ac !== undefined && (
               <div className="bg-background p-3 rounded border border-border">
                 <p className="text-xs text-text-muted mb-1">Armor Class</p>
-                <p className="text-xl font-bold text-primary">{npc.combat.ac}</p>
+                <p className="text-xl font-bold text-primary">
+                  {npc.combat.ac}
+                </p>
               </div>
             )}
             {npc.combat.hp !== undefined && (
               <div className="bg-background p-3 rounded border border-border">
                 <p className="text-xs text-text-muted mb-1">Hit Points</p>
-                <p className="text-xl font-bold text-red-400">{npc.combat.hp}</p>
+                <p className="text-xl font-bold text-red-400">
+                  {npc.combat.hp}
+                </p>
               </div>
             )}
             {npc.combat.speed && (
               <div className="bg-background p-3 rounded border border-border">
                 <p className="text-xs text-text-muted mb-1">Speed</p>
-                <p className="text-xl font-bold text-blue-400">{npc.combat.speed}</p>
+                <p className="text-xl font-bold text-blue-400">
+                  {npc.combat.speed}
+                </p>
               </div>
             )}
           </div>
@@ -166,7 +175,7 @@ export function NPCRenderer({
             <Icon name="ListChecks" className="w-5 h-5 text-primary" />
             Skills
           </h3>
-          <p className="text-text">{npc.skills.join(', ')}</p>
+          <p className="text-text">{npc.skills.join(", ")}</p>
         </div>
       )}
 
@@ -195,7 +204,7 @@ export function NPCRenderer({
             <Icon name="Users" className="w-5 h-5 text-primary" />
             Role
           </h3>
-          <p className="text-text capitalize">{npc.role.replace(/_/g, ' ')}</p>
+          <p className="text-text capitalize">{npc.role.replace(/_/g, " ")}</p>
         </div>
       )}
 
@@ -208,7 +217,10 @@ export function NPCRenderer({
           </h3>
           <div className="space-y-2">
             {npc.plot_hooks.map((hook, i) => (
-              <div key={i} className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+              <div
+                key={i}
+                className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3"
+              >
                 <p className="text-text">{hook}</p>
               </div>
             ))}
@@ -217,7 +229,9 @@ export function NPCRenderer({
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {npc._raw && <RawDataViewer data={npc._raw} defaultExpanded={showRawResponse} />}
+      {npc._raw && (
+        <RawDataViewer data={npc._raw} defaultExpanded={showRawResponse} />
+      )}
 
       <ActionsBar
         onCopy={onCopy}
@@ -226,37 +240,37 @@ export function NPCRenderer({
         isSaved={isSaved}
       />
     </div>
-  )
+  );
 }
 
 // Helper to format NPC for clipboard
 export function formatNPCForClipboard(npc: GeneratedNPCData): string {
-  const traits = npc.personality.traits.join(', ') || 'N/A'
+  const traits = npc.personality.traits.join(", ") || "N/A";
   const abilities = Object.entries(npc.abilities)
     .map(([stat, value]) => `${stat} ${value}`)
-    .join(', ')
+    .join(", ");
 
   return `${npc.name}
 ${npc.race} ${npc.class} ${npc.level}, ${npc.alignment}
 
-Appearance: ${npc.appearance || 'N/A'}
+Appearance: ${npc.appearance || "N/A"}
 
 Personality:
 Traits: ${traits}
-Ideals: ${npc.personality.ideals || 'N/A'}
-Bonds: ${npc.personality.bonds || 'N/A'}
-Flaws: ${npc.personality.flaws || 'N/A'}
+Ideals: ${npc.personality.ideals || "N/A"}
+Bonds: ${npc.personality.bonds || "N/A"}
+Flaws: ${npc.personality.flaws || "N/A"}
 
-Background: ${npc.background || 'N/A'}
+Background: ${npc.background || "N/A"}
 
-Motivation: ${npc.motivation || 'N/A'}
+Motivation: ${npc.motivation || "N/A"}
 
 Abilities: ${abilities}
 
-Skills: ${npc.skills.join(', ') || 'N/A'}
+Skills: ${npc.skills.join(", ") || "N/A"}
 
-Equipment: ${npc.equipment.join(', ') || 'N/A'}
+Equipment: ${npc.equipment.join(", ") || "N/A"}
 
-Role: ${npc.role || 'N/A'}
-${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).join('\n')}` : ''}`
+Role: ${npc.role || "N/A"}
+${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).join("\n")}` : ""}`;
 }

@@ -1,31 +1,32 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useCampaignStore } from '../../../store/campaignStore'
-import ActivityItem from './ActivityItem'
-import Icon from '../../common/Icon'
-import { logger } from '@/utils/logger'
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCampaignStore } from "../../../store/campaignStore";
+import ActivityItem from "./ActivityItem";
+import Icon from "../../common/Icon";
+import { logger } from "@/utils/logger";
 
 interface RecentActivityProps {
-  campaignId: string
+  campaignId: string;
 }
 
 export default function RecentActivity({ campaignId }: RecentActivityProps) {
-  const { recentActivity, activityLoading, fetchRecentActivity } = useCampaignStore()
-  const navigate = useNavigate()
+  const { recentActivity, activityLoading, fetchRecentActivity } =
+    useCampaignStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    logger.debug('RecentActivity mounting, fetching for campaign:', campaignId)
-    fetchRecentActivity(campaignId)
-  }, [campaignId, fetchRecentActivity])
+    logger.debug("RecentActivity mounting, fetching for campaign:", campaignId);
+    fetchRecentActivity(campaignId);
+  }, [campaignId, fetchRecentActivity]);
 
   const handleRefresh = () => {
-    logger.debug('Manual refresh triggered')
-    fetchRecentActivity(campaignId)
-  }
+    logger.debug("Manual refresh triggered");
+    fetchRecentActivity(campaignId);
+  };
 
   const handleViewAll = () => {
-    navigate('/dashboard/gm/saved')
-  }
+    navigate("/dashboard/gm/saved");
+  };
 
   if (activityLoading) {
     return (
@@ -37,26 +38,32 @@ export default function RecentActivity({ campaignId }: RecentActivityProps) {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   if (recentActivity.length === 0) {
-    logger.debug('RecentActivity: No activity found, showing empty state')
+    logger.debug("RecentActivity: No activity found, showing empty state");
     return (
       <div className="bg-background-panel border border-border rounded-lg p-6 text-center">
-        <Icon name="Clock" className="w-12 h-12 text-text-muted mx-auto mb-3 opacity-50" />
-        <h3 className="text-lg font-semibold text-text mb-2">No Activity Yet</h3>
+        <Icon
+          name="Clock"
+          className="w-12 h-12 text-text-muted mx-auto mb-3 opacity-50"
+        />
+        <h3 className="text-lg font-semibold text-text mb-2">
+          No Activity Yet
+        </h3>
         <p className="text-text-muted text-sm">
-          Generate content using the Artificer's Toolkit to see your recent activity here
+          Generate content using the Artificer's Toolkit to see your recent
+          activity here
         </p>
       </div>
-    )
+    );
   }
 
-  logger.debug('RecentActivity rendering with activity:', {
+  logger.debug("RecentActivity rendering with activity:", {
     count: recentActivity.length,
     items: recentActivity.slice(0, 5),
-  })
+  });
 
   return (
     <div className="bg-background-panel border border-border rounded-lg p-6">
@@ -70,7 +77,7 @@ export default function RecentActivity({ campaignId }: RecentActivityProps) {
         >
           <Icon
             name="RefreshCw"
-            className={`w-5 h-5 text-text-muted hover:text-primary ${activityLoading ? 'animate-spin' : ''}`}
+            className={`w-5 h-5 text-text-muted hover:text-primary ${activityLoading ? "animate-spin" : ""}`}
           />
         </button>
       </div>
@@ -92,5 +99,5 @@ export default function RecentActivity({ campaignId }: RecentActivityProps) {
         /> */}
       </button>
     </div>
-  )
+  );
 }

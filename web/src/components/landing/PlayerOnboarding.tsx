@@ -1,15 +1,15 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Icon from '../common/Icon'
-import { useContextStore } from '../../store/contextStore'
-import { useCampaignStore } from '../../store/campaignStore'
-import { GAME_SYSTEMS } from '../../constants/gameSystems'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Icon from "../common/Icon";
+import { useContextStore } from "../../store/contextStore";
+import { useCampaignStore } from "../../store/campaignStore";
+import { GAME_SYSTEMS } from "../../constants/gameSystems";
 
 interface PlayerOnboardingProps {
-  onBack: () => void
+  onBack: () => void;
 }
 
-type OnboardingPath = 'select' | 'join' | 'track'
+type OnboardingPath = "select" | "join" | "track";
 
 /**
  * PlayerOnboarding - Flow for setting up a player campaign.
@@ -19,101 +19,109 @@ type OnboardingPath = 'select' | 'join' | 'track'
  * 2. Track External Game - Create local campaign for games not in TavKit
  */
 export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
-  const navigate = useNavigate()
-  const { completeOnboarding, updateContext } = useContextStore()
-  const { addCampaign, setActiveCampaign, joinCampaign } = useCampaignStore()
+  const navigate = useNavigate();
+  const { completeOnboarding, updateContext } = useContextStore();
+  const { addCampaign, setActiveCampaign, joinCampaign } = useCampaignStore();
 
-  const [path, setPath] = useState<OnboardingPath>('select')
+  const [path, setPath] = useState<OnboardingPath>("select");
 
   // Join path state
-  const [inviteCode, setInviteCode] = useState('')
-  const [isJoining, setIsJoining] = useState(false)
-  const [joinError, setJoinError] = useState<string | null>(null)
+  const [inviteCode, setInviteCode] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   // Track path state
-  const [campaignName, setCampaignName] = useState('')
-  const [gameSystem, setGameSystem] = useState('Dungeons & Dragons 5th Edition')
-  const [characterName, setCharacterName] = useState('')
-  const [isCreating, setIsCreating] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
+  const [campaignName, setCampaignName] = useState("");
+  const [gameSystem, setGameSystem] = useState(
+    "Dungeons & Dragons 5th Edition",
+  );
+  const [characterName, setCharacterName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleJoinCampaign = async () => {
     if (!inviteCode.trim()) {
-      setJoinError('Please enter an invite code')
-      return
+      setJoinError("Please enter an invite code");
+      return;
     }
 
-    setIsJoining(true)
-    setJoinError(null)
+    setIsJoining(true);
+    setJoinError(null);
 
     try {
       // Join the campaign via invite code
-      const campaign = await joinCampaign(inviteCode.trim())
+      const campaign = await joinCampaign(inviteCode.trim());
 
       // Set as active campaign
-      await setActiveCampaign(campaign.id)
+      await setActiveCampaign(campaign.id);
 
       // Complete onboarding
-      await completeOnboarding()
+      await completeOnboarding();
 
       // Update context to player campaign
       await updateContext({
-        last_context_type: 'player_campaign',
+        last_context_type: "player_campaign",
         last_campaign_id: campaign.id,
-      })
+      });
 
       // Navigate to player home
-      navigate('/dashboard/player')
+      navigate("/dashboard/player");
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : 'Failed to join campaign')
-      setIsJoining(false)
+      setJoinError(
+        err instanceof Error ? err.message : "Failed to join campaign",
+      );
+      setIsJoining(false);
     }
-  }
+  };
 
   const handleCreateTracking = async () => {
     if (!campaignName.trim()) {
-      setCreateError('Please enter a campaign name')
-      return
+      setCreateError("Please enter a campaign name");
+      return;
     }
     if (!characterName.trim()) {
-      setCreateError('Please enter your character name')
-      return
+      setCreateError("Please enter your character name");
+      return;
     }
 
-    setIsCreating(true)
-    setCreateError(null)
+    setIsCreating(true);
+    setCreateError(null);
 
     try {
       // Create the campaign with player role
       const campaign = await addCampaign({
         name: campaignName.trim(),
         game_system: gameSystem,
-        role: 'player',
+        role: "player",
         is_active: true,
-      })
+      });
 
       // Set as active campaign
-      await setActiveCampaign(campaign.id)
+      await setActiveCampaign(campaign.id);
 
       // Complete onboarding
-      await completeOnboarding()
+      await completeOnboarding();
 
       // Update context to player campaign
       await updateContext({
-        last_context_type: 'player_campaign',
+        last_context_type: "player_campaign",
         last_campaign_id: campaign.id,
-      })
+      });
 
       // Navigate to player home - character creation will happen there
-      navigate('/dashboard/player', { state: { createCharacter: characterName.trim() } })
+      navigate("/dashboard/player", {
+        state: { createCharacter: characterName.trim() },
+      });
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create campaign')
-      setIsCreating(false)
+      setCreateError(
+        err instanceof Error ? err.message : "Failed to create campaign",
+      );
+      setIsCreating(false);
     }
-  }
+  };
 
   // Path Selection View
-  if (path === 'select') {
+  if (path === "select") {
     return (
       <div className="h-full flex flex-col items-center justify-center px-4 py-12 bg-background relative overflow-auto">
         {/* Decorative background glow */}
@@ -137,24 +145,30 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
             <div className="w-16 h-16 rounded-2xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center mx-auto mb-4">
               <Icon name="Sword" className="w-8 h-8 text-blue-400" />
             </div>
-            <h1 className="text-2xl font-bold text-text mb-2">How are you playing?</h1>
-            <p className="text-text-muted">Choose how you want to set up your player experience</p>
+            <h1 className="text-2xl font-bold text-text mb-2">
+              How are you playing?
+            </h1>
+            <p className="text-text-muted">
+              Choose how you want to set up your player experience
+            </p>
           </div>
 
           {/* Path Selection Cards */}
           <div className="grid md:grid-cols-2 gap-4">
             {/* Join TavKit Campaign */}
             <button
-              onClick={() => setPath('join')}
+              onClick={() => setPath("join")}
               className="group p-6 bg-background-panel border border-border rounded-xl hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-left"
             >
               <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Icon name="Link" className="w-6 h-6 text-blue-400" />
               </div>
-              <h3 className="text-lg font-semibold text-text mb-2">Join TavKit Campaign</h3>
+              <h3 className="text-lg font-semibold text-text mb-2">
+                Join TavKit Campaign
+              </h3>
               <p className="text-sm text-text-muted mb-4">
-                Your GM uses TavKit and gave you an invite code. Join their campaign to see shared
-                content and collaborate.
+                Your GM uses TavKit and gave you an invite code. Join their
+                campaign to see shared content and collaborate.
               </p>
               <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
                 <span>Enter invite code</span>
@@ -167,16 +181,18 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
 
             {/* Track External Game */}
             <button
-              onClick={() => setPath('track')}
+              onClick={() => setPath("track")}
               className="group p-6 bg-background-panel border border-border rounded-xl hover:border-amber-500/50 hover:bg-amber-500/5 transition-all text-left"
             >
               <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Icon name="BookOpen" className="w-6 h-6 text-amber-400" />
               </div>
-              <h3 className="text-lg font-semibold text-text mb-2">Track External Game</h3>
+              <h3 className="text-lg font-semibold text-text mb-2">
+                Track External Game
+              </h3>
               <p className="text-sm text-text-muted mb-4">
-                Your GM doesn't use TavKit, but you want to track your character, take notes, and
-                use player tools.
+                Your GM doesn't use TavKit, but you want to track your
+                character, take notes, and use player tools.
               </p>
               <div className="flex items-center gap-2 text-amber-400 text-sm font-medium">
                 <span>Create local tracker</span>
@@ -189,11 +205,11 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Join TavKit Campaign View
-  if (path === 'join') {
+  if (path === "join") {
     return (
       <div className="h-full flex flex-col items-center justify-center px-4 py-12 bg-background relative overflow-auto">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -203,7 +219,7 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
         <div className="relative z-10 w-full max-w-lg">
           {/* Back Button */}
           <button
-            onClick={() => setPath('select')}
+            onClick={() => setPath("select")}
             className="flex items-center gap-2 text-text-muted hover:text-text mb-6 transition-colors"
           >
             <Icon name="ArrowLeft" className="w-4 h-4" />
@@ -215,15 +231,22 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
             <div className="w-16 h-16 rounded-2xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center mx-auto mb-4">
               <Icon name="Link" className="w-8 h-8 text-blue-400" />
             </div>
-            <h1 className="text-2xl font-bold text-text mb-2">Join TavKit Campaign</h1>
-            <p className="text-text-muted">Enter the invite code your GM shared with you</p>
+            <h1 className="text-2xl font-bold text-text mb-2">
+              Join TavKit Campaign
+            </h1>
+            <p className="text-text-muted">
+              Enter the invite code your GM shared with you
+            </p>
           </div>
 
           {/* Form */}
           <div className="bg-background-panel border border-border rounded-xl p-6 space-y-6">
             {/* Invite Code */}
             <div>
-              <label htmlFor="inviteCode" className="block text-sm font-medium text-text mb-2">
+              <label
+                htmlFor="inviteCode"
+                className="block text-sm font-medium text-text mb-2"
+              >
                 Invite Code
               </label>
               <input
@@ -270,7 +293,10 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
 
           {/* Info */}
           <div className="mt-6 p-4 bg-background-panel border border-border rounded-xl flex items-start gap-3">
-            <Icon name="Info" className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+            <Icon
+              name="Info"
+              className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5"
+            />
             <div className="text-sm">
               <p className="text-text font-medium mb-1">When you join:</p>
               <ul className="text-text-muted space-y-1">
@@ -282,7 +308,7 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Track External Game View
@@ -295,7 +321,7 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
       <div className="relative z-10 w-full max-w-lg">
         {/* Back Button */}
         <button
-          onClick={() => setPath('select')}
+          onClick={() => setPath("select")}
           className="flex items-center gap-2 text-text-muted hover:text-text mb-6 transition-colors"
         >
           <Icon name="ArrowLeft" className="w-4 h-4" />
@@ -307,7 +333,9 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
           <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto mb-4">
             <Icon name="BookOpen" className="w-8 h-8 text-amber-400" />
           </div>
-          <h1 className="text-2xl font-bold text-text mb-2">Track Your Campaign</h1>
+          <h1 className="text-2xl font-bold text-text mb-2">
+            Track Your Campaign
+          </h1>
           <p className="text-text-muted">
             Set up a local tracker for your character and campaign notes
           </p>
@@ -317,7 +345,10 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
         <div className="bg-background-panel border border-border rounded-xl p-6 space-y-6">
           {/* Campaign Name */}
           <div>
-            <label htmlFor="campaignName" className="block text-sm font-medium text-text mb-2">
+            <label
+              htmlFor="campaignName"
+              className="block text-sm font-medium text-text mb-2"
+            >
               Campaign Name
             </label>
             <input
@@ -329,12 +360,17 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
               className="w-full px-4 py-3 bg-background border border-border rounded-lg text-text placeholder:text-text-muted/50 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20"
               autoFocus
             />
-            <p className="text-xs text-text-muted mt-2">What does your GM call the campaign?</p>
+            <p className="text-xs text-text-muted mt-2">
+              What does your GM call the campaign?
+            </p>
           </div>
 
           {/* Game System */}
           <div>
-            <label htmlFor="gameSystem" className="block text-sm font-medium text-text mb-2">
+            <label
+              htmlFor="gameSystem"
+              className="block text-sm font-medium text-text mb-2"
+            >
               Game System
             </label>
             <select
@@ -353,7 +389,10 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
 
           {/* Character Name */}
           <div>
-            <label htmlFor="characterName" className="block text-sm font-medium text-text mb-2">
+            <label
+              htmlFor="characterName"
+              className="block text-sm font-medium text-text mb-2"
+            >
               Your Character's Name
             </label>
             <input
@@ -379,7 +418,9 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
           {/* Create Button */}
           <button
             onClick={handleCreateTracking}
-            disabled={isCreating || !campaignName.trim() || !characterName.trim()}
+            disabled={
+              isCreating || !campaignName.trim() || !characterName.trim()
+            }
             className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/50 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
           >
             {isCreating ? (
@@ -398,7 +439,10 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
 
         {/* Info */}
         <div className="mt-6 p-4 bg-background-panel border border-border rounded-xl flex items-start gap-3">
-          <Icon name="Info" className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <Icon
+            name="Info"
+            className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5"
+          />
           <div className="text-sm">
             <p className="text-text font-medium mb-1">What you can do:</p>
             <ul className="text-text-muted space-y-1">
@@ -411,5 +455,5 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

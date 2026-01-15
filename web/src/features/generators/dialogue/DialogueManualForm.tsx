@@ -1,26 +1,30 @@
 // Manual Entry Form for Dialogues
 
-import Icon from '@/components/common/Icon'
-import { FormField } from '@/components/ui/FormField'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import { ArrayFieldEditor } from '../components/Fields'
+import Icon from "@/components/common/Icon";
+import { FormField } from "@/components/ui/FormField";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import { ArrayFieldEditor } from "../components/Fields";
 import {
   moodOptions,
   commonSkills,
   type ManualDialogueData,
   type ManualSkillCheck,
-} from '../schemas/dialogue'
+} from "../schemas/dialogue";
 
 interface DialogueManualFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  manualData: ManualDialogueData
-  setManualData: (data: ManualDialogueData | ((prev: ManualDialogueData) => ManualDialogueData)) => void
-  onSave: () => void
-  saving: boolean
-  saved: boolean
-  error: string | null
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  manualData: ManualDialogueData;
+  setManualData: (
+    data:
+      | ManualDialogueData
+      | ((prev: ManualDialogueData) => ManualDialogueData),
+  ) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  error: string | null;
 }
 
 export function DialogueManualForm({
@@ -35,9 +39,9 @@ export function DialogueManualForm({
 }: DialogueManualFormProps) {
   // Helper to update a specific dialogue tree branch
   const updateDialogueTreeBranch = (
-    branch: 'friendly' | 'neutral' | 'hostile',
-    field: 'player_option' | 'npc_response' | 'outcome',
-    value: string
+    branch: "friendly" | "neutral" | "hostile",
+    field: "player_option" | "npc_response" | "outcome",
+    value: string,
   ) => {
     setManualData({
       ...manualData,
@@ -48,39 +52,42 @@ export function DialogueManualForm({
           [field]: value,
         },
       },
-    })
-  }
+    });
+  };
 
   // Helper to update a skill check
   const updateSkillCheck = (
     index: number,
     field: keyof ManualSkillCheck,
-    value: string | number | null
+    value: string | number | null,
   ) => {
-    const newChecks = [...manualData.skill_checks]
-    newChecks[index] = { ...newChecks[index], [field]: value }
-    setManualData({ ...manualData, skill_checks: newChecks })
-  }
+    const newChecks = [...manualData.skill_checks];
+    newChecks[index] = { ...newChecks[index], [field]: value };
+    setManualData({ ...manualData, skill_checks: newChecks });
+  };
 
   // Helper to add a new skill check
   const addSkillCheck = () => {
     setManualData({
       ...manualData,
-      skill_checks: [...manualData.skill_checks, { skill: '', dc: 10, success: '', failure: '' }],
-    })
-  }
+      skill_checks: [
+        ...manualData.skill_checks,
+        { skill: "", dc: 10, success: "", failure: "" },
+      ],
+    });
+  };
 
   // Helper to remove a skill check
   const removeSkillCheck = (index: number) => {
-    const newChecks = manualData.skill_checks.filter((_, i) => i !== index)
-    setManualData({ ...manualData, skill_checks: newChecks })
-  }
+    const newChecks = manualData.skill_checks.filter((_, i) => i !== index);
+    setManualData({ ...manualData, skill_checks: newChecks });
+  };
 
   // Render a dialogue option editor
   const renderDialogueOptionEditor = (
-    branch: 'friendly' | 'neutral' | 'hostile',
+    branch: "friendly" | "neutral" | "hostile",
     label: string,
-    colorClass: string
+    colorClass: string,
   ) => (
     <div
       className={`bg-${colorClass}-500/10 border border-${colorClass}-500/30 rounded-lg p-4 space-y-3`}
@@ -90,7 +97,9 @@ export function DialogueManualForm({
         <input
           type="text"
           value={manualData.dialogue_tree[branch].player_option}
-          onChange={(e) => updateDialogueTreeBranch(branch, 'player_option', e.target.value)}
+          onChange={(e) =>
+            updateDialogueTreeBranch(branch, "player_option", e.target.value)
+          }
           placeholder="What the player might say..."
           className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -98,7 +107,9 @@ export function DialogueManualForm({
       <FormField label="NPC Response">
         <textarea
           value={manualData.dialogue_tree[branch].npc_response}
-          onChange={(e) => updateDialogueTreeBranch(branch, 'npc_response', e.target.value)}
+          onChange={(e) =>
+            updateDialogueTreeBranch(branch, "npc_response", e.target.value)
+          }
           placeholder="How the NPC responds..."
           className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={2}
@@ -108,24 +119,31 @@ export function DialogueManualForm({
         <input
           type="text"
           value={manualData.dialogue_tree[branch].outcome}
-          onChange={(e) => updateDialogueTreeBranch(branch, 'outcome', e.target.value)}
+          onChange={(e) =>
+            updateDialogueTreeBranch(branch, "outcome", e.target.value)
+          }
           placeholder="What happens as a result..."
           className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </FormField>
     </div>
-  )
+  );
 
   return (
     <>
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       {/* Basic Information */}
       <FormField label="Character Name" required>
         <input
           type="text"
           value={manualData.character_name}
-          onChange={(e) => setManualData({ ...manualData, character_name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, character_name: e.target.value })
+          }
           placeholder="e.g., Grim the Merchant"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -135,7 +153,9 @@ export function DialogueManualForm({
         <input
           type="text"
           value={manualData.scene_setting}
-          onChange={(e) => setManualData({ ...manualData, scene_setting: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, scene_setting: e.target.value })
+          }
           placeholder="e.g., A dusty market stall at dawn"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -144,7 +164,9 @@ export function DialogueManualForm({
       <FormField label="Mood">
         <select
           value={manualData.mood}
-          onChange={(e) => setManualData({ ...manualData, mood: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, mood: e.target.value })
+          }
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">Select mood...</option>
@@ -159,7 +181,9 @@ export function DialogueManualForm({
       <FormField label="Opening Line">
         <textarea
           value={manualData.opening_line}
-          onChange={(e) => setManualData({ ...manualData, opening_line: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, opening_line: e.target.value })
+          }
           placeholder="The NPC's first words to the party..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={2}
@@ -169,7 +193,9 @@ export function DialogueManualForm({
       <FormField label="Body Language">
         <textarea
           value={manualData.body_language}
-          onChange={(e) => setManualData({ ...manualData, body_language: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, body_language: e.target.value })
+          }
           placeholder="How the NPC carries themselves, gestures, etc."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={2}
@@ -179,9 +205,9 @@ export function DialogueManualForm({
       {/* Dialogue Options */}
       <CollapsibleSection title="Dialogue Options" defaultExpanded={true}>
         <div className="space-y-4">
-          {renderDialogueOptionEditor('friendly', 'Friendly Approach', 'green')}
-          {renderDialogueOptionEditor('neutral', 'Neutral Approach', 'blue')}
-          {renderDialogueOptionEditor('hostile', 'Hostile Approach', 'red')}
+          {renderDialogueOptionEditor("friendly", "Friendly Approach", "green")}
+          {renderDialogueOptionEditor("neutral", "Neutral Approach", "blue")}
+          {renderDialogueOptionEditor("hostile", "Hostile Approach", "red")}
         </div>
       </CollapsibleSection>
 
@@ -194,7 +220,9 @@ export function DialogueManualForm({
               className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 space-y-3"
             >
               <div className="flex justify-between items-center">
-                <h4 className="text-amber-400 font-semibold">Skill Check {index + 1}</h4>
+                <h4 className="text-amber-400 font-semibold">
+                  Skill Check {index + 1}
+                </h4>
                 <button
                   type="button"
                   onClick={() => removeSkillCheck(index)}
@@ -207,7 +235,9 @@ export function DialogueManualForm({
                 <FormField label="Skill">
                   <select
                     value={check.skill}
-                    onChange={(e) => updateSkillCheck(index, 'skill', e.target.value)}
+                    onChange={(e) =>
+                      updateSkillCheck(index, "skill", e.target.value)
+                    }
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select skill...</option>
@@ -221,12 +251,12 @@ export function DialogueManualForm({
                 <FormField label="DC">
                   <input
                     type="number"
-                    value={check.dc ?? ''}
+                    value={check.dc ?? ""}
                     onChange={(e) =>
                       updateSkillCheck(
                         index,
-                        'dc',
-                        e.target.value ? parseInt(e.target.value) : null
+                        "dc",
+                        e.target.value ? parseInt(e.target.value) : null,
                       )
                     }
                     placeholder="10"
@@ -240,7 +270,9 @@ export function DialogueManualForm({
                 <input
                   type="text"
                   value={check.success}
-                  onChange={(e) => updateSkillCheck(index, 'success', e.target.value)}
+                  onChange={(e) =>
+                    updateSkillCheck(index, "success", e.target.value)
+                  }
                   placeholder="What happens on success..."
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -249,7 +281,9 @@ export function DialogueManualForm({
                 <input
                   type="text"
                   value={check.failure}
-                  onChange={(e) => updateSkillCheck(index, 'failure', e.target.value)}
+                  onChange={(e) =>
+                    updateSkillCheck(index, "failure", e.target.value)
+                  }
                   placeholder="What happens on failure..."
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -268,19 +302,26 @@ export function DialogueManualForm({
       </CollapsibleSection>
 
       {/* Additional Information */}
-      <CollapsibleSection title="Additional Information" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Additional Information"
+        defaultExpanded={false}
+      >
         <div className="space-y-4">
           <ArrayFieldEditor
             label="Information Revealed"
             values={manualData.information_revealed}
-            onChange={(values) => setManualData({ ...manualData, information_revealed: values })}
+            onChange={(values) =>
+              setManualData({ ...manualData, information_revealed: values })
+            }
             placeholder="Add information the NPC might reveal..."
           />
 
           <ArrayFieldEditor
             label="Potential Quests"
             values={manualData.potential_quests}
-            onChange={(values) => setManualData({ ...manualData, potential_quests: values })}
+            onChange={(values) =>
+              setManualData({ ...manualData, potential_quests: values })
+            }
             placeholder="Add quest hooks from this dialogue..."
           />
         </div>
@@ -319,5 +360,5 @@ export function DialogueManualForm({
         </div>
       )}
     </>
-  )
+  );
 }

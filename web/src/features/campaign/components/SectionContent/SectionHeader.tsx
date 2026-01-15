@@ -1,21 +1,21 @@
 // Section header with title, description, and action buttons
 
-import Icon, { type IconName } from '@/components/common/Icon'
+import Icon, { type IconName } from "@/components/common/Icon";
 
 interface SectionHeaderProps {
-  name: string
-  icon: IconName
-  description: string
-  subsection: string | null
-  searchQuery: string
-  onSearchChange: (query: string) => void
-  onCreateNew: () => void
-  onImportFile: () => void
-  onImportFromRoster?: () => void
-  uploading: boolean
-  showPCsImport: boolean
-  fileInputRef: React.RefObject<HTMLInputElement | null>
-  acceptedFileTypes: string
+  name: string;
+  icon: IconName;
+  description: string;
+  subsection: string | null;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  onCreateNew: () => void;
+  onImportFile: () => void;
+  onImportFromRoster?: () => void;
+  uploading: boolean;
+  showPCsImport: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  acceptedFileTypes: string;
 }
 
 export function SectionHeader({
@@ -42,8 +42,12 @@ export function SectionHeader({
             <Icon name={icon} className="w-6 h-6 text-primary flex-shrink-0" />
             <h2 className="text-xl sm:text-2xl font-bold text-text">{name}</h2>
           </div>
-          {subsection && <p className="text-sm text-text-muted ml-9">{subsection}</p>}
-          <p className="text-sm text-text-muted mt-2 ml-9 hidden sm:block">{description}</p>
+          {subsection && (
+            <p className="text-sm text-text-muted ml-9">{subsection}</p>
+          )}
+          <p className="text-sm text-text-muted mt-2 ml-9 hidden sm:block">
+            {description}
+          </p>
         </div>
 
         {/* Action buttons - icons only on mobile */}
@@ -76,7 +80,9 @@ export function SectionHeader({
             title="Import File"
           >
             <Icon name="Upload" className="w-4 h-4" />
-            <span className="hidden sm:inline">{uploading ? 'Importing...' : 'Import File'}</span>
+            <span className="hidden sm:inline">
+              {uploading ? "Importing..." : "Import File"}
+            </span>
           </label>
 
           {/* New entry */}
@@ -106,7 +112,7 @@ export function SectionHeader({
         />
         {searchQuery && (
           <button
-            onClick={() => onSearchChange('')}
+            onClick={() => onSearchChange("")}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-surface rounded transition-colors"
           >
             <Icon name="X" className="w-3 h-3 text-text-muted" />
@@ -114,5 +120,5 @@ export function SectionHeader({
         )}
       </div>
     </div>
-  )
+  );
 }

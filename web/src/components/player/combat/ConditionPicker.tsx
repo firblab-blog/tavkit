@@ -1,55 +1,59 @@
-import { useState } from 'react'
-import Icon from '../../common/Icon'
+import { useState } from "react";
+import Icon from "../../common/Icon";
 import {
   usePlayerCombatStore,
   CONDITION_INFO,
   ConditionType,
   ActiveCondition,
-} from '../../../store/playerCombatStore'
+} from "../../../store/playerCombatStore";
 
 interface ConditionPickerProps {
-  characterId: string
-  onClose: () => void
+  characterId: string;
+  onClose: () => void;
 }
 
 const ALL_CONDITIONS: ConditionType[] = [
-  'blinded',
-  'charmed',
-  'deafened',
-  'frightened',
-  'grappled',
-  'incapacitated',
-  'invisible',
-  'paralyzed',
-  'petrified',
-  'poisoned',
-  'prone',
-  'restrained',
-  'stunned',
-  'unconscious',
-  'exhaustion',
-]
+  "blinded",
+  "charmed",
+  "deafened",
+  "frightened",
+  "grappled",
+  "incapacitated",
+  "invisible",
+  "paralyzed",
+  "petrified",
+  "poisoned",
+  "prone",
+  "restrained",
+  "stunned",
+  "unconscious",
+  "exhaustion",
+];
 
-export default function ConditionPicker({ characterId, onClose }: ConditionPickerProps) {
-  const { combat, addCondition, loading } = usePlayerCombatStore()
-  const [selectedCondition, setSelectedCondition] = useState<ConditionType | null>(null)
-  const [source, setSource] = useState('')
-  const [duration, setDuration] = useState('')
+export default function ConditionPicker({
+  characterId,
+  onClose,
+}: ConditionPickerProps) {
+  const { combat, addCondition, loading } = usePlayerCombatStore();
+  const [selectedCondition, setSelectedCondition] =
+    useState<ConditionType | null>(null);
+  const [source, setSource] = useState("");
+  const [duration, setDuration] = useState("");
 
-  const activeConditionTypes = new Set(combat.conditions.map((c) => c.type))
+  const activeConditionTypes = new Set(combat.conditions.map((c) => c.type));
 
   const handleAdd = async () => {
-    if (!selectedCondition) return
+    if (!selectedCondition) return;
 
     const condition: ActiveCondition = {
       type: selectedCondition,
       source: source.trim() || undefined,
       duration: duration.trim() || undefined,
-    }
+    };
 
-    await addCondition(characterId, condition)
-    onClose()
-  }
+    await addCondition(characterId, condition);
+    onClose();
+  };
 
   return (
     <div
@@ -76,9 +80,9 @@ export default function ConditionPicker({ characterId, onClose }: ConditionPicke
           {/* Condition Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
             {ALL_CONDITIONS.map((type) => {
-              const info = CONDITION_INFO[type]
-              const isActive = activeConditionTypes.has(type)
-              const isSelected = selectedCondition === type
+              const info = CONDITION_INFO[type];
+              const isActive = activeConditionTypes.has(type);
+              const isSelected = selectedCondition === type;
 
               return (
                 <button
@@ -87,22 +91,24 @@ export default function ConditionPicker({ characterId, onClose }: ConditionPicke
                   disabled={isActive}
                   className={`p-3 rounded-lg border text-left transition-colors ${
                     isActive
-                      ? 'border-gray-500/30 bg-gray-500/10 text-gray-500 cursor-not-allowed'
+                      ? "border-gray-500/30 bg-gray-500/10 text-gray-500 cursor-not-allowed"
                       : isSelected
-                        ? 'border-amber-500 bg-amber-500/20'
-                        : 'border-border hover:border-amber-500/50 bg-background'
+                        ? "border-amber-500 bg-amber-500/20"
+                        : "border-border hover:border-amber-500/50 bg-background"
                   }`}
                 >
                   <span
-                    className={`font-medium ${isActive ? 'text-gray-500' : isSelected ? 'text-amber-300' : 'text-text'}`}
+                    className={`font-medium ${isActive ? "text-gray-500" : isSelected ? "text-amber-300" : "text-text"}`}
                   >
                     {info.name}
                   </span>
                   {isActive && (
-                    <span className="text-xs text-gray-500 block mt-1">Already active</span>
+                    <span className="text-xs text-gray-500 block mt-1">
+                      Already active
+                    </span>
                   )}
                 </button>
-              )
+              );
             })}
           </div>
 
@@ -162,11 +168,13 @@ export default function ConditionPicker({ characterId, onClose }: ConditionPicke
             disabled={!selectedCondition || loading}
             className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            {loading && <Icon name="Loader2" className="w-4 h-4 animate-spin" />}
+            {loading && (
+              <Icon name="Loader2" className="w-4 h-4 animate-spin" />
+            )}
             Add Condition
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

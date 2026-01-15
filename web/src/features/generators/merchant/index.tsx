@@ -1,40 +1,59 @@
 // Merchant Generator
 // Rebuilt using the generator framework pattern
 
-import { useState, useCallback } from 'react'
-import { useGenerator, type GeneratorConfig } from '../hooks/useGenerator'
-import { GeneratorLayout, EntryModeToggle, ManualEntryPreview, SaveModal } from '../components'
-import { MerchantRenderer, formatMerchantForClipboard } from '../renderers/MerchantRenderer'
+import { useState, useCallback } from "react";
+import { useGenerator, type GeneratorConfig } from "../hooks/useGenerator";
+import {
+  GeneratorLayout,
+  EntryModeToggle,
+  ManualEntryPreview,
+  SaveModal,
+} from "../components";
+import {
+  MerchantRenderer,
+  formatMerchantForClipboard,
+} from "../renderers/MerchantRenderer";
 import {
   normalizeMerchantResponse,
   hasValidMerchantContent,
   type GeneratedMerchantData,
-} from '../normalizers/merchant'
-import { defaultMerchantData, type ManualMerchantData } from '../schemas/merchant'
-import { MerchantAIForm } from './MerchantAIForm'
-import { MerchantManualForm } from './MerchantManualForm'
-import { generateMerchant, saveMerchant, type MerchantGenerationRequest } from '@/api/generators'
+} from "../normalizers/merchant";
+import {
+  defaultMerchantData,
+  type ManualMerchantData,
+} from "../schemas/merchant";
+import { MerchantAIForm } from "./MerchantAIForm";
+import { MerchantManualForm } from "./MerchantManualForm";
+import {
+  generateMerchant,
+  saveMerchant,
+  type MerchantGenerationRequest,
+} from "@/api/generators";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-type MerchantParams = MerchantGenerationRequest
+type MerchantParams = MerchantGenerationRequest;
 
-const merchantConfig: GeneratorConfig<GeneratedMerchantData, ManualMerchantData, MerchantParams> = {
+const merchantConfig: GeneratorConfig<
+  GeneratedMerchantData,
+  ManualMerchantData,
+  MerchantParams
+> = {
   generateApi: generateMerchant as unknown as (
     params: MerchantParams,
-    timeout: number
+    timeout: number,
   ) => Promise<Record<string, unknown>>,
   saveApi: (data) => saveMerchant(data as Record<string, unknown>),
   normalizeResponse: normalizeMerchantResponse,
   hasValidContent: hasValidMerchantContent,
-  entityKey: 'merchant',
+  entityKey: "merchant",
   defaultManualData: defaultMerchantData,
 
   buildSavePayload: (merchant, campaignId) => ({
-    name: merchant.name || 'Unnamed Shop',
-    shop_type: merchant.shop_type || 'general_store',
+    name: merchant.name || "Unnamed Shop",
+    shop_type: merchant.shop_type || "general_store",
     atmosphere: merchant.atmosphere,
     description: merchant.description,
     location: merchant.location,
@@ -56,44 +75,48 @@ const merchantConfig: GeneratorConfig<GeneratedMerchantData, ManualMerchantData,
     campaign_id: campaignId || undefined,
     name: data.name.trim(),
     shop_type: data.merchant_type,
-    atmosphere: '',
-    description: data.description.trim() || '',
-    location: '',
+    atmosphere: "",
+    description: data.description.trim() || "",
+    location: "",
     owner_name: data.name.trim(),
-    owner_personality: data.personality.trim() || '',
-    owner_description: data.appearance.trim() || '',
+    owner_personality: data.personality.trim() || "",
+    owner_description: data.appearance.trim() || "",
     inventory: data.inventory
       .filter((i) => i.name.trim())
-      .map((i) => ({ name: i.name, description: i.description, price: i.price })),
+      .map((i) => ({
+        name: i.name,
+        description: i.description,
+        price: i.price,
+      })),
     services: data.services
       .filter((s) => s.trim())
-      .map((s) => ({ name: s, description: '', price: 'varies' })),
+      .map((s) => ({ name: s, description: "", price: "varies" })),
     special_items: data.specialties
       .filter((s) => s.trim())
-      .map((s) => ({ name: s, description: '', price: 'varies' })),
+      .map((s) => ({ name: s, description: "", price: "varies" })),
     rumors: data.rumors.filter((r) => r.trim()),
     recently_sold: [],
-    special_notes: data.quirks.filter((q) => q.trim()).join('; '),
-    haggle_willingness: '',
+    special_notes: data.quirks.filter((q) => q.trim()).join("; "),
+    haggle_willingness: "",
     ai_generated: false,
   }),
-}
+};
 
 // ============================================================================
 // Component
 // ============================================================================
 
 export function MerchantGenerator() {
-  const state = useGenerator(merchantConfig)
+  const state = useGenerator(merchantConfig);
 
   // AI form state
   const [formData, setFormData] = useState({
-    shop_type: 'general_store',
-    quality: 'average',
-    size: 'medium',
+    shop_type: "general_store",
+    quality: "average",
+    size: "medium",
     party_level: 5,
-    special_requests: '',
-  })
+    special_requests: "",
+  });
 
   // Handle AI generation
   const handleGenerate = useCallback(() => {
@@ -104,19 +127,21 @@ export function MerchantGenerator() {
       size: formData.size,
       party_level: String(formData.party_level),
       special_requests: formData.special_requests || undefined,
-    })
-  }, [state, formData])
+    });
+  }, [state, formData]);
 
   // Handle copy to clipboard
   const handleCopy = useCallback(() => {
     if (state.generatedData) {
-      navigator.clipboard.writeText(formatMerchantForClipboard(state.generatedData))
+      navigator.clipboard.writeText(
+        formatMerchantForClipboard(state.generatedData),
+      );
     }
-  }, [state.generatedData])
+  }, [state.generatedData]);
 
   // Build form content based on entry mode
   const formContent =
-    state.entryMode === 'ai' ? (
+    state.entryMode === "ai" ? (
       <>
         <EntryModeToggle mode={state.entryMode} onChange={state.setEntryMode} />
         <MerchantAIForm
@@ -142,7 +167,7 @@ export function MerchantGenerator() {
           error={state.error}
         />
       </>
-    )
+    );
 
   // Build result content
   const resultContent = state.generatedData ? (
@@ -153,9 +178,9 @@ export function MerchantGenerator() {
       onSave={() => state.setShowSaveModal(true)}
       onCopy={handleCopy}
     />
-  ) : state.entryMode === 'manual' ? (
+  ) : state.entryMode === "manual" ? (
     <ManualEntryPreview entityType="Merchant" />
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -163,17 +188,21 @@ export function MerchantGenerator() {
         title="Merchant & Shop Generator"
         description="Generate merchants, shops, and trading posts for your campaign"
         icon="Package"
-        formTitle={state.entryMode === 'ai' ? 'Shop Details' : 'Manual Entry'}
-        formIcon={state.entryMode === 'ai' ? 'Sparkles' : 'Edit'}
-        resultsTitle={state.entryMode === 'ai' ? 'Generated Merchant' : 'Preview'}
+        formTitle={state.entryMode === "ai" ? "Shop Details" : "Manual Entry"}
+        formIcon={state.entryMode === "ai" ? "Sparkles" : "Edit"}
+        resultsTitle={
+          state.entryMode === "ai" ? "Generated Merchant" : "Preview"
+        }
         formContent={formContent}
         generatedContent={resultContent}
         isGenerating={state.loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Merchant"
         generateButtonIcon="Sparkles"
-        error={state.entryMode === 'ai' ? state.error ?? undefined : undefined}
-        hideGenerateButton={state.entryMode === 'manual'}
+        error={
+          state.entryMode === "ai" ? (state.error ?? undefined) : undefined
+        }
+        hideGenerateButton={state.entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -187,7 +216,7 @@ export function MerchantGenerator() {
         />
       )}
     </>
-  )
+  );
 }
 
-export default MerchantGenerator
+export default MerchantGenerator;

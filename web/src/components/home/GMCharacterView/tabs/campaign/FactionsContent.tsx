@@ -1,76 +1,81 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../../../../common/Icon'
-import { useCampaignStore, type CampaignContent } from '../../../../../store/campaignStore'
-import { logger } from '../../../../../utils/logger'
-import CampaignContentEditorModal from '../../../../campaign/CampaignContentEditorModal'
+import { useEffect, useState, useMemo, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../../../../common/Icon";
+import {
+  useCampaignStore,
+  type CampaignContent,
+} from "../../../../../store/campaignStore";
+import { logger } from "../../../../../utils/logger";
+import CampaignContentEditorModal from "../../../../campaign/CampaignContentEditorModal";
 
 interface FactionsContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
 /**
  * FactionsContent - Display factions from the campaign.
  */
 export default function FactionsContent({ campaignId }: FactionsContentProps) {
-  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore()
+  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore();
 
-  const [factions, setFactions] = useState<CampaignContent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewingFaction, setViewingFaction] = useState<CampaignContent | null>(null)
-  const [showEditorModal, setShowEditorModal] = useState(false)
+  const [factions, setFactions] = useState<CampaignContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewingFaction, setViewingFaction] = useState<CampaignContent | null>(
+    null,
+  );
+  const [showEditorModal, setShowEditorModal] = useState(false);
 
   useEffect(() => {
     const loadFactions = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const content = await fetchCampaignContent(campaignId, 'factions')
-        setFactions(content)
+        const content = await fetchCampaignContent(campaignId, "factions");
+        setFactions(content);
       } catch (err) {
-        setError('Failed to load factions')
-        logger.error('Failed to load factions:', err)
+        setError("Failed to load factions");
+        logger.error("Failed to load factions:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    loadFactions()
-  }, [campaignId, fetchCampaignContent])
+    };
+    loadFactions();
+  }, [campaignId, fetchCampaignContent]);
 
   const refreshContent = useCallback(async () => {
     try {
-      const content = await fetchCampaignContent(campaignId, 'factions')
-      setFactions(content)
+      const content = await fetchCampaignContent(campaignId, "factions");
+      setFactions(content);
     } catch (err) {
-      logger.error('Failed to refresh content:', err)
+      logger.error("Failed to refresh content:", err);
     }
-  }, [campaignId, fetchCampaignContent])
+  }, [campaignId, fetchCampaignContent]);
 
   const filteredFactions = useMemo(() => {
-    if (!searchQuery) return factions
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return factions;
+    const query = searchQuery.toLowerCase();
     return factions.filter(
       (faction) =>
         faction.title.toLowerCase().includes(query) ||
-        faction.content?.toLowerCase().includes(query)
-    )
-  }, [factions, searchQuery])
+        faction.content?.toLowerCase().includes(query),
+    );
+  }, [factions, searchQuery]);
 
   const handleDelete = async (faction: CampaignContent) => {
     if (window.confirm(`Delete "${faction.title}"? This cannot be undone.`)) {
       try {
-        await deleteCampaignContent(campaignId, faction.id)
-        setFactions((prev) => prev.filter((f) => f.id !== faction.id))
+        await deleteCampaignContent(campaignId, faction.id);
+        setFactions((prev) => prev.filter((f) => f.id !== faction.id));
         if (viewingFaction?.id === faction.id) {
-          setViewingFaction(null)
+          setViewingFaction(null);
         }
       } catch (err) {
-        logger.error('Failed to delete faction:', err)
+        logger.error("Failed to delete faction:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -115,14 +120,17 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
       {/* Empty State */}
       {!loading && filteredFactions.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="Shield" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="Shield"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching factions' : 'No factions yet'}
+            {searchQuery ? "No matching factions" : "No factions yet"}
           </h3>
           <p className="text-text-muted text-sm mb-4">
             {searchQuery
-              ? 'Try adjusting your search.'
-              : 'Add organizations, guilds, and power groups to your campaign.'}
+              ? "Try adjusting your search."
+              : "Add organizations, guilds, and power groups to your campaign."}
           </p>
           {!searchQuery && (
             <button
@@ -161,8 +169,8 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
                 </div>
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(faction)
+                    e.stopPropagation();
+                    handleDelete(faction);
                   }}
                   className="p-1.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400 flex-shrink-0"
                 >
@@ -191,17 +199,21 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
         onSaved={refreshContent}
       />
     </div>
-  )
+  );
 }
 
 // Faction Detail Modal
 interface FactionDetailModalProps {
-  faction: CampaignContent
-  onClose: () => void
-  onDelete: () => void
+  faction: CampaignContent;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function FactionDetailModal({ faction, onClose, onDelete }: FactionDetailModalProps) {
+function FactionDetailModal({
+  faction,
+  onClose,
+  onDelete,
+}: FactionDetailModalProps) {
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
@@ -215,7 +227,9 @@ function FactionDetailModal({ faction, onClose, onDelete }: FactionDetailModalPr
               <Icon name="Shield" className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-text">{faction.title}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {faction.title}
+              </h3>
             </div>
           </div>
           <button
@@ -230,7 +244,9 @@ function FactionDetailModal({ faction, onClose, onDelete }: FactionDetailModalPr
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {faction.content ? (
             <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>{faction.content.replace(/\\n/g, '\n')}</ReactMarkdown>
+              <ReactMarkdown>
+                {faction.content.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
           ) : (
             <p className="text-text-muted italic">No content</p>
@@ -255,5 +271,5 @@ function FactionDetailModal({ faction, onClose, onDelete }: FactionDetailModalPr
         </div>
       </div>
     </div>
-  )
+  );
 }

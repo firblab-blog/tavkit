@@ -1,55 +1,56 @@
 // Location content detail view
 
 interface Feature {
-  description?: string
+  description?: string;
 }
 
 interface Secret {
-  description?: string
+  description?: string;
 }
 
 interface NPC {
-  name?: string
+  name?: string;
 }
 
 interface Encounter {
-  description?: string
+  description?: string;
 }
 
 interface LocationData {
-  name: string
-  type: string
-  theme?: string
-  description?: string
-  features?: string | (string | Feature)[]
-  secrets?: string | (string | Secret)[]
-  factions?: string | string[]
-  npcs?: string | (string | NPC)[]
-  encounters?: string | (string | Encounter)[]
+  name: string;
+  type: string;
+  theme?: string;
+  description?: string;
+  features?: string | (string | Feature)[];
+  secrets?: string | (string | Secret)[];
+  factions?: string | string[];
+  npcs?: string | (string | NPC)[];
+  encounters?: string | (string | Encounter)[];
 }
 
 interface LocationDetailProps {
-  location: LocationData
+  location: LocationData;
 }
 
 function parseJSON<T>(value: string | T | undefined): T | null {
-  if (!value) return null
-  if (typeof value === 'string') {
+  if (!value) return null;
+  if (typeof value === "string") {
     try {
-      return JSON.parse(value)
+      return JSON.parse(value);
     } catch {
-      return null
+      return null;
     }
   }
-  return value
+  return value;
 }
 
 export function LocationDetail({ location }: LocationDetailProps) {
-  const features = parseJSON<(string | Feature)[]>(location.features) || []
-  const secrets = parseJSON<(string | Secret)[]>(location.secrets) || []
-  const factions = parseJSON<string[]>(location.factions) || []
-  const npcs = parseJSON<(string | NPC)[]>(location.npcs) || []
-  const encounters = parseJSON<(string | Encounter)[]>(location.encounters) || []
+  const features = parseJSON<(string | Feature)[]>(location.features) || [];
+  const secrets = parseJSON<(string | Secret)[]>(location.secrets) || [];
+  const factions = parseJSON<string[]>(location.factions) || [];
+  const npcs = parseJSON<(string | NPC)[]>(location.npcs) || [];
+  const encounters =
+    parseJSON<(string | Encounter)[]>(location.encounters) || [];
 
   return (
     <div className="space-y-6">
@@ -71,19 +72,25 @@ export function LocationDetail({ location }: LocationDetailProps) {
       {/* Description */}
       {location.description && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-2">Description</h3>
-          <p className="text-text leading-relaxed whitespace-pre-wrap">{location.description}</p>
+          <h3 className="text-lg font-semibold text-primary mb-2">
+            Description
+          </h3>
+          <p className="text-text leading-relaxed whitespace-pre-wrap">
+            {location.description}
+          </p>
         </div>
       )}
 
       {/* Notable Features */}
       {features.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">Notable Features</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            Notable Features
+          </h3>
           <ul className="list-disc list-inside space-y-2 text-text">
             {features.map((feature, idx) => (
               <li key={idx}>
-                {typeof feature === 'string' ? feature : feature.description}
+                {typeof feature === "string" ? feature : feature.description}
               </li>
             ))}
           </ul>
@@ -93,12 +100,17 @@ export function LocationDetail({ location }: LocationDetailProps) {
       {/* Secrets & Clues */}
       {secrets.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">Secrets & Clues</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            Secrets & Clues
+          </h3>
           <div className="space-y-2">
             {secrets.map((secret, idx) => (
-              <div key={idx} className="bg-surface p-3 rounded-lg border border-border">
+              <div
+                key={idx}
+                className="bg-surface p-3 rounded-lg border border-border"
+              >
                 <p className="text-text text-sm">
-                  {typeof secret === 'string' ? secret : secret.description}
+                  {typeof secret === "string" ? secret : secret.description}
                 </p>
               </div>
             ))}
@@ -109,7 +121,9 @@ export function LocationDetail({ location }: LocationDetailProps) {
       {/* Factions */}
       {factions.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">Factions Present</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            Factions Present
+          </h3>
           <div className="flex flex-wrap gap-2">
             {factions.map((faction, idx) => (
               <span
@@ -133,7 +147,7 @@ export function LocationDetail({ location }: LocationDetailProps) {
                 key={idx}
                 className="px-3 py-1 bg-surface text-text rounded-full text-sm"
               >
-                {typeof npc === 'string' ? npc : npc?.name || 'Unnamed NPC'}
+                {typeof npc === "string" ? npc : npc?.name || "Unnamed NPC"}
               </span>
             ))}
           </div>
@@ -143,16 +157,20 @@ export function LocationDetail({ location }: LocationDetailProps) {
       {/* Encounter Hooks */}
       {encounters.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">Encounter Hooks</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            Encounter Hooks
+          </h3>
           <ul className="list-disc list-inside space-y-2 text-text">
             {encounters.map((encounter, idx) => (
               <li key={idx}>
-                {typeof encounter === 'string' ? encounter : encounter.description}
+                {typeof encounter === "string"
+                  ? encounter
+                  : encounter.description}
               </li>
             ))}
           </ul>
         </div>
       )}
     </div>
-  )
+  );
 }

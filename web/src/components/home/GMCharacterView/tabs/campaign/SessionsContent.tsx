@@ -1,76 +1,81 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../../../../common/Icon'
-import { useCampaignStore, type CampaignContent } from '../../../../../store/campaignStore'
-import CampaignContentEditorModal from '../../../../campaign/CampaignContentEditorModal'
-import { logger } from '../../../../../utils/logger'
+import { useEffect, useState, useMemo, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../../../../common/Icon";
+import {
+  useCampaignStore,
+  type CampaignContent,
+} from "../../../../../store/campaignStore";
+import CampaignContentEditorModal from "../../../../campaign/CampaignContentEditorModal";
+import { logger } from "../../../../../utils/logger";
 
 interface SessionsContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
 /**
  * SessionsContent - Display session notes from the campaign.
  */
 export default function SessionsContent({ campaignId }: SessionsContentProps) {
-  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore()
+  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore();
 
-  const [sessions, setSessions] = useState<CampaignContent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewingSession, setViewingSession] = useState<CampaignContent | null>(null)
-  const [showEditorModal, setShowEditorModal] = useState(false)
+  const [sessions, setSessions] = useState<CampaignContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewingSession, setViewingSession] = useState<CampaignContent | null>(
+    null,
+  );
+  const [showEditorModal, setShowEditorModal] = useState(false);
 
   useEffect(() => {
     const loadSessions = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const content = await fetchCampaignContent(campaignId, 'sessions')
-        setSessions(content)
+        const content = await fetchCampaignContent(campaignId, "sessions");
+        setSessions(content);
       } catch (err) {
-        setError('Failed to load sessions')
-        logger.error('Failed to load sessions:', err)
+        setError("Failed to load sessions");
+        logger.error("Failed to load sessions:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    loadSessions()
-  }, [campaignId, fetchCampaignContent])
+    };
+    loadSessions();
+  }, [campaignId, fetchCampaignContent]);
 
   const refreshSessions = useCallback(async () => {
     try {
-      const content = await fetchCampaignContent(campaignId, 'sessions')
-      setSessions(content)
+      const content = await fetchCampaignContent(campaignId, "sessions");
+      setSessions(content);
     } catch (err) {
-      logger.error('Failed to refresh sessions:', err)
+      logger.error("Failed to refresh sessions:", err);
     }
-  }, [campaignId, fetchCampaignContent])
+  }, [campaignId, fetchCampaignContent]);
 
   const filteredSessions = useMemo(() => {
-    if (!searchQuery) return sessions
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return sessions;
+    const query = searchQuery.toLowerCase();
     return sessions.filter(
       (session) =>
         session.title.toLowerCase().includes(query) ||
-        session.content?.toLowerCase().includes(query)
-    )
-  }, [sessions, searchQuery])
+        session.content?.toLowerCase().includes(query),
+    );
+  }, [sessions, searchQuery]);
 
   const handleDelete = async (session: CampaignContent) => {
     if (window.confirm(`Delete "${session.title}"? This cannot be undone.`)) {
       try {
-        await deleteCampaignContent(campaignId, session.id)
-        setSessions((prev) => prev.filter((s) => s.id !== session.id))
+        await deleteCampaignContent(campaignId, session.id);
+        setSessions((prev) => prev.filter((s) => s.id !== session.id));
         if (viewingSession?.id === session.id) {
-          setViewingSession(null)
+          setViewingSession(null);
         }
       } catch (err) {
-        logger.error('Failed to delete session:', err)
+        logger.error("Failed to delete session:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -115,14 +120,17 @@ export default function SessionsContent({ campaignId }: SessionsContentProps) {
       {/* Empty State */}
       {!loading && filteredSessions.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="Calendar" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="Calendar"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching sessions' : 'No sessions yet'}
+            {searchQuery ? "No matching sessions" : "No sessions yet"}
           </h3>
           <p className="text-text-muted text-sm mb-4">
             {searchQuery
-              ? 'Try adjusting your search.'
-              : 'Add session notes to track your campaign progress.'}
+              ? "Try adjusting your search."
+              : "Add session notes to track your campaign progress."}
           </p>
           {!searchQuery && (
             <button
@@ -164,8 +172,8 @@ export default function SessionsContent({ campaignId }: SessionsContentProps) {
                 </div>
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(session)
+                    e.stopPropagation();
+                    handleDelete(session);
                   }}
                   className="p-1.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400 flex-shrink-0"
                 >
@@ -195,17 +203,21 @@ export default function SessionsContent({ campaignId }: SessionsContentProps) {
         onSaved={refreshSessions}
       />
     </div>
-  )
+  );
 }
 
 // Session Detail Modal
 interface SessionDetailModalProps {
-  session: CampaignContent
-  onClose: () => void
-  onDelete: () => void
+  session: CampaignContent;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function SessionDetailModal({ session, onClose, onDelete }: SessionDetailModalProps) {
+function SessionDetailModal({
+  session,
+  onClose,
+  onDelete,
+}: SessionDetailModalProps) {
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
@@ -219,7 +231,9 @@ function SessionDetailModal({ session, onClose, onDelete }: SessionDetailModalPr
               <Icon name="Calendar" className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-text">{session.title}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {session.title}
+              </h3>
               <p className="text-sm text-text-muted">
                 {new Date(session.created_at).toLocaleDateString()}
               </p>
@@ -237,7 +251,9 @@ function SessionDetailModal({ session, onClose, onDelete }: SessionDetailModalPr
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {session.content ? (
             <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>{session.content.replace(/\\n/g, '\n')}</ReactMarkdown>
+              <ReactMarkdown>
+                {session.content.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
           ) : (
             <p className="text-text-muted italic">No content</p>
@@ -262,5 +278,5 @@ function SessionDetailModal({ session, onClose, onDelete }: SessionDetailModalPr
         </div>
       </div>
     </div>
-  )
+  );
 }

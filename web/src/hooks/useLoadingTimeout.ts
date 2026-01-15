@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from "react";
 
 interface UseLoadingTimeoutOptions {
   /** Timeout duration in milliseconds (default: 10000) */
-  timeoutMs?: number
+  timeoutMs?: number;
   /** Whether loading is currently happening */
-  isLoading: boolean
+  isLoading: boolean;
 }
 
 interface UseLoadingTimeoutResult {
   /** True if loading has exceeded the timeout duration */
-  isTimedOut: boolean
+  isTimedOut: boolean;
   /** Number of seconds elapsed since loading started */
-  elapsedSeconds: number
+  elapsedSeconds: number;
 }
 
 /**
@@ -39,47 +39,49 @@ export function useLoadingTimeout({
   isLoading,
   timeoutMs = 10000,
 }: UseLoadingTimeoutOptions): UseLoadingTimeoutResult {
-  const [isTimedOut, setIsTimedOut] = useState(false)
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
-  const startTimeRef = useRef<number | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isLoading) {
       // Start tracking
-      startTimeRef.current = Date.now()
-      setIsTimedOut(false)
-      setElapsedSeconds(0)
+      startTimeRef.current = Date.now();
+      setIsTimedOut(false);
+      setElapsedSeconds(0);
 
       // Set timeout for the warning
       const timeoutId = setTimeout(() => {
-        setIsTimedOut(true)
-      }, timeoutMs)
+        setIsTimedOut(true);
+      }, timeoutMs);
 
       // Update elapsed seconds every second
       intervalRef.current = setInterval(() => {
         if (startTimeRef.current) {
-          setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
+          setElapsedSeconds(
+            Math.floor((Date.now() - startTimeRef.current) / 1000),
+          );
         }
-      }, 1000)
+      }, 1000);
 
       return () => {
-        clearTimeout(timeoutId)
+        clearTimeout(timeoutId);
         if (intervalRef.current) {
-          clearInterval(intervalRef.current)
+          clearInterval(intervalRef.current);
         }
-      }
+      };
     } else {
       // Reset when loading stops
-      startTimeRef.current = null
-      setIsTimedOut(false)
-      setElapsedSeconds(0)
+      startTimeRef.current = null;
+      setIsTimedOut(false);
+      setElapsedSeconds(0);
       if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     }
-  }, [isLoading, timeoutMs])
+  }, [isLoading, timeoutMs]);
 
-  return { isTimedOut, elapsedSeconds }
+  return { isTimedOut, elapsedSeconds };
 }

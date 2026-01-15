@@ -1,16 +1,16 @@
-import { useState } from 'react'
-import Icon from './Icon'
-import { useCampaignStore } from '../../store/campaignStore'
-import { apiClient } from '@/api/client'
+import { useState } from "react";
+import Icon from "./Icon";
+import { useCampaignStore } from "../../store/campaignStore";
+import { apiClient } from "@/api/client";
 
 interface AssignCampaignModalProps {
-  isOpen: boolean
-  onClose: () => void
-  contentType: string
-  contentId: string
-  contentName: string
-  currentCampaignId?: string | null
-  onSuccess: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  contentType: string;
+  contentId: string;
+  contentName: string;
+  currentCampaignId?: string | null;
+  onSuccess: () => void;
 }
 
 export default function AssignCampaignModal({
@@ -23,39 +23,43 @@ export default function AssignCampaignModal({
   onSuccess,
 }: AssignCampaignModalProps) {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>(
-    currentCampaignId || 'library'
-  )
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const { campaigns } = useCampaignStore()
+    currentCampaignId || "library",
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { campaigns } = useCampaignStore();
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   const handleAssign = async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
 
     try {
       // "library" means set campaign_id to null (Personal Library)
-      const campaignId = selectedCampaignId === 'library' ? null : selectedCampaignId
+      const campaignId =
+        selectedCampaignId === "library" ? null : selectedCampaignId;
 
       await apiClient.patch(`/${contentType}/${contentId}/campaign`, {
         campaign_id: campaignId,
-      })
+      });
 
-      onSuccess()
-      onClose()
+      onSuccess();
+      onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to assign campaign')
+      setError(
+        err.response?.data?.error || err.message || "Failed to assign campaign",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Check if the selected campaign is different from current
   const hasChanged =
-    (selectedCampaignId === 'library' && currentCampaignId !== null) ||
-    (selectedCampaignId !== 'library' && selectedCampaignId !== currentCampaignId)
+    (selectedCampaignId === "library" && currentCampaignId !== null) ||
+    (selectedCampaignId !== "library" &&
+      selectedCampaignId !== currentCampaignId);
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -64,7 +68,9 @@ export default function AssignCampaignModal({
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Icon name="FolderInput" className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-text">Assign to Campaign</h2>
+            <h2 className="text-lg font-semibold text-text">
+              Assign to Campaign
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -77,8 +83,8 @@ export default function AssignCampaignModal({
         {/* Content */}
         <div className="p-4 space-y-4">
           <p className="text-text-muted">
-            Assign <span className="text-text font-medium">{contentName}</span> to a campaign or
-            your Personal Library.
+            Assign <span className="text-text font-medium">{contentName}</span>{" "}
+            to a campaign or your Personal Library.
           </p>
 
           {error && (
@@ -120,8 +126,8 @@ export default function AssignCampaignModal({
             disabled={loading || !hasChanged}
             className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
               hasChanged
-                ? 'bg-primary text-white hover:bg-primary/80'
-                : 'bg-background text-text-muted cursor-not-allowed'
+                ? "bg-primary text-white hover:bg-primary/80"
+                : "bg-background text-text-muted cursor-not-allowed"
             }`}
           >
             {loading ? (
@@ -139,5 +145,5 @@ export default function AssignCampaignModal({
         </div>
       </div>
     </div>
-  )
+  );
 }

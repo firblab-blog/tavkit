@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react'
-import Icon from '../common/Icon'
-import ItemReference from '../common/ItemReference'
-import { useItemStore } from '../../store/itemStore'
+import { useState, useEffect } from "react";
+import Icon from "../common/Icon";
+import ItemReference from "../common/ItemReference";
+import { useItemStore } from "../../store/itemStore";
 
 interface TreasureItem {
-  item_id: string
-  quantity: number
-  notes?: string
+  item_id: string;
+  quantity: number;
+  notes?: string;
 }
 
 interface LocationTreasureProps {
-  treasure: TreasureItem[]
-  onChange: (treasure: TreasureItem[]) => void
-  isEditing?: boolean
+  treasure: TreasureItem[];
+  onChange: (treasure: TreasureItem[]) => void;
+  isEditing?: boolean;
 }
 
 /**
@@ -24,38 +24,40 @@ export default function LocationTreasure({
   onChange,
   isEditing = false,
 }: LocationTreasureProps) {
-  const { items, fetchItems } = useItemStore()
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
-  const [newQuantity, setNewQuantity] = useState(1)
-  const [newNotes, setNewNotes] = useState('')
+  const { items, fetchItems } = useItemStore();
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [newQuantity, setNewQuantity] = useState(1);
+  const [newNotes, setNewNotes] = useState("");
 
   useEffect(() => {
     // Fetch items if not loaded
     if (items.length === 0) {
-      fetchItems()
+      fetchItems();
     }
-  }, [items.length, fetchItems])
+  }, [items.length, fetchItems]);
 
   const handleRemoveItem = (itemId: string) => {
-    onChange(treasure.filter((item) => item.item_id !== itemId))
-  }
+    onChange(treasure.filter((item) => item.item_id !== itemId));
+  };
 
   const handleAddItem = () => {
-    if (!selectedItemId) return
+    if (!selectedItemId) return;
 
     // Check if item already exists
-    const existingIndex = treasure.findIndex((i) => i.item_id === selectedItemId)
+    const existingIndex = treasure.findIndex(
+      (i) => i.item_id === selectedItemId,
+    );
     if (existingIndex >= 0) {
       // Update quantity
-      const updated = [...treasure]
+      const updated = [...treasure];
       updated[existingIndex] = {
         ...updated[existingIndex],
         quantity: updated[existingIndex].quantity + newQuantity,
         notes: newNotes || updated[existingIndex].notes,
-      }
-      onChange(updated)
+      };
+      onChange(updated);
     } else {
       // Add new item
       onChange([
@@ -65,23 +67,27 @@ export default function LocationTreasure({
           quantity: newQuantity,
           notes: newNotes || undefined,
         },
-      ])
+      ]);
     }
 
     // Reset modal
-    setShowAddModal(false)
-    setSelectedItemId(null)
-    setNewQuantity(1)
-    setNewNotes('')
-    setSearchQuery('')
-  }
+    setShowAddModal(false);
+    setSelectedItemId(null);
+    setNewQuantity(1);
+    setNewNotes("");
+    setSearchQuery("");
+  };
 
   const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   if (treasure.length === 0 && !isEditing) {
-    return <div className="text-text-muted text-sm italic">No treasure at this location</div>
+    return (
+      <div className="text-text-muted text-sm italic">
+        No treasure at this location
+      </div>
+    );
   }
 
   return (
@@ -94,7 +100,11 @@ export default function LocationTreasure({
             itemId={treasureItem.item_id}
             quantity={treasureItem.quantity}
             notes={treasureItem.notes}
-            onRemove={isEditing ? () => handleRemoveItem(treasureItem.item_id) : undefined}
+            onRemove={
+              isEditing
+                ? () => handleRemoveItem(treasureItem.item_id)
+                : undefined
+            }
           />
         ))}
 
@@ -124,7 +134,9 @@ export default function LocationTreasure({
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Icon name="Gem" className="w-5 h-5 text-amber-400" />
-                <h3 className="text-lg font-semibold text-text">Add Treasure</h3>
+                <h3 className="text-lg font-semibold text-text">
+                  Add Treasure
+                </h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -163,14 +175,14 @@ export default function LocationTreasure({
                       onClick={() => setSelectedItemId(item.id)}
                       className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors ${
                         selectedItemId === item.id
-                          ? 'bg-amber-500/20 border border-amber-500/50'
-                          : 'hover:bg-tavern-dark border border-transparent'
+                          ? "bg-amber-500/20 border border-amber-500/50"
+                          : "hover:bg-tavern-dark border border-transparent"
                       }`}
                     >
                       <Icon name="Gem" className="w-4 h-4 text-amber-400" />
                       <span className="flex-1 text-text">{item.name}</span>
                       <span className="text-xs text-text-muted capitalize">
-                        {item.rarity?.replace(/_/g, ' ')}
+                        {item.rarity?.replace(/_/g, " ")}
                       </span>
                     </button>
                   ))
@@ -181,17 +193,23 @@ export default function LocationTreasure({
               {selectedItemId && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-text-muted block mb-1">Quantity</label>
+                    <label className="text-xs text-text-muted block mb-1">
+                      Quantity
+                    </label>
                     <input
                       type="number"
                       min={1}
                       value={newQuantity}
-                      onChange={(e) => setNewQuantity(parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        setNewQuantity(parseInt(e.target.value) || 1)
+                      }
                       className="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-text"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-text-muted block mb-1">Notes (optional)</label>
+                    <label className="text-xs text-text-muted block mb-1">
+                      Notes (optional)
+                    </label>
                     <input
                       type="text"
                       value={newNotes}
@@ -223,5 +241,5 @@ export default function LocationTreasure({
         </div>
       )}
     </div>
-  )
+  );
 }

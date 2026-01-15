@@ -1,95 +1,104 @@
-import { useEffect, useState, useMemo } from 'react'
-import Icon from '../../../../common/Icon'
-import { useCampaignStore, type CampaignContent } from '../../../../../store/campaignStore'
-import { logger } from '../../../../../utils/logger'
+import { useEffect, useState, useMemo } from "react";
+import Icon from "../../../../common/Icon";
+import {
+  useCampaignStore,
+  type CampaignContent,
+} from "../../../../../store/campaignStore";
+import { logger } from "../../../../../utils/logger";
 
 interface MapsArtContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
-type MediaType = 'all' | 'maps' | 'art'
+type MediaType = "all" | "maps" | "art";
 
 /**
  * MapsArtContent - Display maps and art from the campaign.
  */
 export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
-  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore()
+  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore();
 
-  const [maps, setMaps] = useState<CampaignContent[]>([])
-  const [art, setArt] = useState<CampaignContent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [mediaFilter, setMediaFilter] = useState<MediaType>('all')
-  const [viewingMedia, setViewingMedia] = useState<CampaignContent | null>(null)
+  const [maps, setMaps] = useState<CampaignContent[]>([]);
+  const [art, setArt] = useState<CampaignContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mediaFilter, setMediaFilter] = useState<MediaType>("all");
+  const [viewingMedia, setViewingMedia] = useState<CampaignContent | null>(
+    null,
+  );
 
   useEffect(() => {
     const loadMedia = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
         const [mapsContent, artContent] = await Promise.all([
-          fetchCampaignContent(campaignId, 'maps'),
-          fetchCampaignContent(campaignId, 'art'),
-        ])
-        setMaps(mapsContent)
-        setArt(artContent)
+          fetchCampaignContent(campaignId, "maps"),
+          fetchCampaignContent(campaignId, "art"),
+        ]);
+        setMaps(mapsContent);
+        setArt(artContent);
       } catch (err) {
-        setError('Failed to load maps and art')
-        logger.error('Failed to load maps and art:', err)
+        setError("Failed to load maps and art");
+        logger.error("Failed to load maps and art:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    loadMedia()
-  }, [campaignId, fetchCampaignContent])
+    };
+    loadMedia();
+  }, [campaignId, fetchCampaignContent]);
 
   const allMedia = useMemo(() => {
     const combined = [
-      ...maps.map((m) => ({ ...m, mediaType: 'maps' as const })),
-      ...art.map((a) => ({ ...a, mediaType: 'art' as const })),
-    ]
+      ...maps.map((m) => ({ ...m, mediaType: "maps" as const })),
+      ...art.map((a) => ({ ...a, mediaType: "art" as const })),
+    ];
     return combined.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )
-  }, [maps, art])
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+  }, [maps, art]);
 
   const filteredMedia = useMemo(() => {
-    let filtered = allMedia
-    if (mediaFilter !== 'all') {
-      filtered = filtered.filter((m) => m.mediaType === mediaFilter)
+    let filtered = allMedia;
+    if (mediaFilter !== "all") {
+      filtered = filtered.filter((m) => m.mediaType === mediaFilter);
     }
-    if (!searchQuery) return filtered
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return filtered;
+    const query = searchQuery.toLowerCase();
     return filtered.filter(
       (media) =>
-        media.title.toLowerCase().includes(query) || media.content?.toLowerCase().includes(query)
-    )
-  }, [allMedia, searchQuery, mediaFilter])
+        media.title.toLowerCase().includes(query) ||
+        media.content?.toLowerCase().includes(query),
+    );
+  }, [allMedia, searchQuery, mediaFilter]);
 
-  const handleDelete = async (media: CampaignContent & { mediaType: 'maps' | 'art' }) => {
+  const handleDelete = async (
+    media: CampaignContent & { mediaType: "maps" | "art" },
+  ) => {
     if (window.confirm(`Delete "${media.title}"? This cannot be undone.`)) {
       try {
-        await deleteCampaignContent(campaignId, media.id)
-        if (media.mediaType === 'maps') {
-          setMaps((prev) => prev.filter((m) => m.id !== media.id))
+        await deleteCampaignContent(campaignId, media.id);
+        if (media.mediaType === "maps") {
+          setMaps((prev) => prev.filter((m) => m.id !== media.id));
         } else {
-          setArt((prev) => prev.filter((a) => a.id !== media.id))
+          setArt((prev) => prev.filter((a) => a.id !== media.id));
         }
         if (viewingMedia?.id === media.id) {
-          setViewingMedia(null)
+          setViewingMedia(null);
         }
       } catch (err) {
-        logger.error('Failed to delete media:', err)
+        logger.error("Failed to delete media:", err);
       }
     }
-  }
+  };
 
   const isImageFile = (filename?: string) => {
-    if (!filename) return false
-    const ext = filename.toLowerCase().split('.').pop()
-    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '')
-  }
+    if (!filename) return false;
+    const ext = filename.toLowerCase().split(".").pop();
+    return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext || "");
+  };
 
   return (
     <div className="space-y-4">
@@ -139,14 +148,19 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
       {/* Empty State */}
       {!loading && filteredMedia.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="Image" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="Image"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery || mediaFilter !== 'all' ? 'No matching media' : 'No maps or art yet'}
+            {searchQuery || mediaFilter !== "all"
+              ? "No matching media"
+              : "No maps or art yet"}
           </h3>
           <p className="text-text-muted text-sm mb-4">
-            {searchQuery || mediaFilter !== 'all'
-              ? 'Try adjusting your search or filter.'
-              : 'Add battle maps, world maps, character art, and visuals.'}
+            {searchQuery || mediaFilter !== "all"
+              ? "Try adjusting your search or filter."
+              : "Add battle maps, world maps, character art, and visuals."}
           </p>
           {/* Empty state CTA removed - will be re-added with proper functionality */}
         </div>
@@ -160,9 +174,9 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
               key={media.id}
               onClick={() => setViewingMedia(media)}
               className={`bg-background-panel border rounded-xl overflow-hidden hover:border-opacity-70 transition-colors cursor-pointer ${
-                media.mediaType === 'maps'
-                  ? 'border-teal-500/30 hover:border-teal-500/50'
-                  : 'border-pink-500/30 hover:border-pink-500/50'
+                media.mediaType === "maps"
+                  ? "border-teal-500/30 hover:border-teal-500/50"
+                  : "border-pink-500/30 hover:border-pink-500/50"
               }`}
             >
               {/* Thumbnail area */}
@@ -170,15 +184,17 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
                 {isImageFile(media.file_name) ? (
                   <div className="w-full h-full flex items-center justify-center text-text-muted">
                     <Icon
-                      name={media.mediaType === 'maps' ? 'Map' : 'Image'}
+                      name={media.mediaType === "maps" ? "Map" : "Image"}
                       className="w-12 h-12"
                     />
                   </div>
                 ) : (
                   <Icon
-                    name={media.mediaType === 'maps' ? 'Map' : 'Image'}
+                    name={media.mediaType === "maps" ? "Map" : "Image"}
                     className={`w-12 h-12 ${
-                      media.mediaType === 'maps' ? 'text-teal-400' : 'text-pink-400'
+                      media.mediaType === "maps"
+                        ? "text-teal-400"
+                        : "text-pink-400"
                     }`}
                   />
                 )}
@@ -187,13 +203,17 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
               <div className="p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-text font-medium text-sm truncate">{media.title}</h4>
-                    <p className="text-text-muted text-xs capitalize">{media.mediaType}</p>
+                    <h4 className="text-text font-medium text-sm truncate">
+                      {media.title}
+                    </h4>
+                    <p className="text-text-muted text-xs capitalize">
+                      {media.mediaType}
+                    </p>
                   </div>
                   <button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      handleDelete(media)
+                      e.stopPropagation();
+                      handleDelete(media);
                     }}
                     className="p-1 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400 flex-shrink-0"
                   >
@@ -212,23 +232,25 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
           media={viewingMedia}
           onClose={() => setViewingMedia(null)}
           onDelete={() =>
-            handleDelete(viewingMedia as CampaignContent & { mediaType: 'maps' | 'art' })
+            handleDelete(
+              viewingMedia as CampaignContent & { mediaType: "maps" | "art" },
+            )
           }
         />
       )}
     </div>
-  )
+  );
 }
 
 // Media Detail Modal
 interface MediaDetailModalProps {
-  media: CampaignContent
-  onClose: () => void
-  onDelete: () => void
+  media: CampaignContent;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
 function MediaDetailModal({ media, onClose, onDelete }: MediaDetailModalProps) {
-  const isMap = media.section === 'maps' || (media as any).mediaType === 'maps'
+  const isMap = media.section === "maps" || (media as any).mediaType === "maps";
 
   return (
     <div
@@ -241,17 +263,21 @@ function MediaDetailModal({ media, onClose, onDelete }: MediaDetailModalProps) {
           <div className="flex items-center gap-3">
             <div
               className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                isMap ? 'bg-teal-500/10' : 'bg-pink-500/10'
+                isMap ? "bg-teal-500/10" : "bg-pink-500/10"
               }`}
             >
               <Icon
-                name={isMap ? 'Map' : 'Image'}
-                className={`w-5 h-5 ${isMap ? 'text-teal-400' : 'text-pink-400'}`}
+                name={isMap ? "Map" : "Image"}
+                className={`w-5 h-5 ${isMap ? "text-teal-400" : "text-pink-400"}`}
               />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-text">{media.title}</h3>
-              <p className="text-sm text-text-muted capitalize">{isMap ? 'Map' : 'Art'}</p>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {media.title}
+              </h3>
+              <p className="text-sm text-text-muted capitalize">
+                {isMap ? "Map" : "Art"}
+              </p>
             </div>
           </div>
           <button
@@ -267,20 +293,22 @@ function MediaDetailModal({ media, onClose, onDelete }: MediaDetailModalProps) {
           {media.content ? (
             <div className="text-center">
               <Icon
-                name={isMap ? 'Map' : 'Image'}
-                className={`w-24 h-24 mx-auto mb-4 ${isMap ? 'text-teal-400' : 'text-pink-400'}`}
+                name={isMap ? "Map" : "Image"}
+                className={`w-24 h-24 mx-auto mb-4 ${isMap ? "text-teal-400" : "text-pink-400"}`}
               />
               <p className="text-text">{media.content}</p>
             </div>
           ) : (
             <div className="text-center">
               <Icon
-                name={isMap ? 'Map' : 'Image'}
-                className={`w-24 h-24 mx-auto mb-4 ${isMap ? 'text-teal-400' : 'text-pink-400'}`}
+                name={isMap ? "Map" : "Image"}
+                className={`w-24 h-24 mx-auto mb-4 ${isMap ? "text-teal-400" : "text-pink-400"}`}
               />
               <p className="text-text-muted italic">No preview available</p>
               {media.file_name && (
-                <p className="text-text-muted text-sm mt-2">File: {media.file_name}</p>
+                <p className="text-text-muted text-sm mt-2">
+                  File: {media.file_name}
+                </p>
               )}
             </div>
           )}
@@ -304,5 +332,5 @@ function MediaDetailModal({ media, onClose, onDelete }: MediaDetailModalProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

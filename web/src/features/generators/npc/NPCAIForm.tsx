@@ -1,27 +1,27 @@
 // AI Generation Form for NPCs
 
-import { Dispatch, SetStateAction } from 'react'
-import { FormField } from '@/components/ui/FormField'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import AISettings from '@/components/generators/AISettings'
-import type { AIGenerationSettings } from '../hooks/useGenerator'
+import { Dispatch, SetStateAction } from "react";
+import { FormField } from "@/components/ui/FormField";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import AISettings from "@/components/generators/AISettings";
+import type { AIGenerationSettings } from "../hooks/useGenerator";
 
 export interface NPCFormData {
-  race: string
-  class: string
-  level: number
-  role: string
-  personality: string
-  special_requests: string
+  race: string;
+  class: string;
+  level: number;
+  role: string;
+  personality: string;
+  special_requests: string;
 }
 
 interface NPCAIFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  formData: NPCFormData
-  setFormData: Dispatch<SetStateAction<NPCFormData>>
-  aiSettings: AIGenerationSettings
-  setAiSettings: (settings: AIGenerationSettings) => void
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  formData: NPCFormData;
+  setFormData: Dispatch<SetStateAction<NPCFormData>>;
+  aiSettings: AIGenerationSettings;
+  setAiSettings: (settings: AIGenerationSettings) => void;
 }
 
 export function NPCAIForm({
@@ -34,12 +34,17 @@ export function NPCAIForm({
   return (
     <>
       <AISettings generatorType="npc" onSettingsChange={setAiSettings} />
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       <FormField label="Race">
         <select
           value={formData.race}
-          onChange={(e) => setFormData((prev) => ({ ...prev, race: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, race: e.target.value }))
+          }
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="human">Human</option>
@@ -60,7 +65,9 @@ export function NPCAIForm({
       <FormField label="Class">
         <select
           value={formData.class}
-          onChange={(e) => setFormData((prev) => ({ ...prev, class: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, class: e.target.value }))
+          }
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="commoner">Commoner</option>
@@ -80,13 +87,21 @@ export function NPCAIForm({
         </select>
       </FormField>
 
-      <FormField label="Level" description="Determines abilities, stats, and power level">
+      <FormField
+        label="Level"
+        description="Determines abilities, stats, and power level"
+      >
         <input
           type="number"
           min="1"
           max="20"
           value={formData.level}
-          onChange={(e) => setFormData((prev) => ({ ...prev, level: parseInt(e.target.value) || 1 }))}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              level: parseInt(e.target.value) || 1,
+            }))
+          }
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </FormField>
@@ -94,7 +109,9 @@ export function NPCAIForm({
       <FormField label="Role">
         <select
           value={formData.role}
-          onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, role: e.target.value }))
+          }
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="merchant">Merchant/Shopkeeper</option>
@@ -116,7 +133,9 @@ export function NPCAIForm({
       <FormField label="Personality">
         <select
           value={formData.personality}
-          onChange={(e) => setFormData((prev) => ({ ...prev, personality: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, personality: e.target.value }))
+          }
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="balanced">Balanced (mixed traits)</option>
@@ -135,12 +154,17 @@ export function NPCAIForm({
       <FormField label="Special Requests" description="(optional)">
         <textarea
           value={formData.special_requests}
-          onChange={(e) => setFormData((prev) => ({ ...prev, special_requests: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              special_requests: e.target.value,
+            }))
+          }
           placeholder="e.g., 'Has a clockwork pet owl' or 'Searching for their missing sibling'"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={3}
         />
       </FormField>
     </>
-  )
+  );
 }

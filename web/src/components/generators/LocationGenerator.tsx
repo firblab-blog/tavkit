@@ -1,45 +1,53 @@
-import { useState, useEffect, useRef } from 'react'
-import { GeneratorLayout } from './GeneratorLayout'
-import { FormField } from '@/components/ui/FormField'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import Icon from '../common/Icon'
-import CampaignSelector from '../common/CampaignSelector'
-import { useCampaignStore } from '../../store/campaignStore'
-import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
-import { emitContentSaved } from '@/lib/contentEvents'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
-import { ArrayFieldEditor } from './shared/fields'
-import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import { useState, useEffect, useRef } from "react";
+import { GeneratorLayout } from "./GeneratorLayout";
+import { FormField } from "@/components/ui/FormField";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import Icon from "../common/Icon";
+import CampaignSelector from "../common/CampaignSelector";
+import { useCampaignStore } from "../../store/campaignStore";
+import AISettings, {
+  AIGenerationSettings,
+  getMaxTokensFromSettings,
+} from "./AISettings";
+import { emitContentSaved } from "@/lib/contentEvents";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { EntryModeToggle, EntryMode } from "./shared/EntryModeToggle";
+import { ArrayFieldEditor } from "./shared/fields";
+import {
+  SaveModal,
+  ParseWarning,
+  RawDataViewer,
+  ManualEntryPreview,
+} from "./shared";
 import {
   ManualLocationData,
   defaultLocationData,
   locationTypeOptions,
   sizeOptions,
-} from './shared/schemas/locationSchema'
+} from "./shared/schemas/locationSchema";
 import {
   generateLocation as generateLocationApi,
   saveLocation as saveLocationApi,
   getErrorMessage,
-} from '@/api/generators'
-import { normalizeToStringArray } from '@/utils/aiResponseNormalizer'
-import { logger } from '@/utils/logger'
+} from "@/api/generators";
+import { normalizeToStringArray } from "@/utils/aiResponseNormalizer";
+import { logger } from "@/utils/logger";
 
 interface LocationData {
-  name: string
-  type: string
-  size?: string
-  danger_level?: string
-  theme: string
-  description: string
-  features: string[]
-  secrets: string[]
-  factions: string[]
-  npcs: string[]
-  encounters: string[]
-  map?: string
-  _raw?: Record<string, unknown>
-  _parseError?: string
+  name: string;
+  type: string;
+  size?: string;
+  danger_level?: string;
+  theme: string;
+  description: string;
+  features: string[];
+  secrets: string[];
+  factions: string[];
+  npcs: string[];
+  encounters: string[];
+  map?: string;
+  _raw?: Record<string, unknown>;
+  _parseError?: string;
 }
 
 /**
@@ -47,174 +55,210 @@ interface LocationData {
  * This is the frontend safety net (backend should also validate)
  */
 function normalizeLocationResponse(raw: Record<string, unknown>): LocationData {
-  logger.debug('[LocationGenerator] normalizeLocationResponse input:', JSON.stringify(raw, null, 2))
+  logger.debug(
+    "[LocationGenerator] normalizeLocationResponse input:",
+    JSON.stringify(raw, null, 2),
+  );
 
-  let processedRaw = raw
+  let processedRaw = raw;
 
   // First, check if the raw data has a nested location object (properly structured response)
-  if (raw.location && typeof raw.location === 'object') {
-    logger.debug('[LocationGenerator] Found nested location object')
-    processedRaw = raw.location as Record<string, unknown>
+  if (raw.location && typeof raw.location === "object") {
+    logger.debug("[LocationGenerator] Found nested location object");
+    processedRaw = raw.location as Record<string, unknown>;
   }
 
   // Handle case where description contains the entire JSON response
   // (happens when backend JSON parse fails and puts raw content in description)
-  if (processedRaw.description && typeof processedRaw.description === 'string') {
-    const descStr = (processedRaw.description as string).trim()
+  if (
+    processedRaw.description &&
+    typeof processedRaw.description === "string"
+  ) {
+    const descStr = (processedRaw.description as string).trim();
     logger.debug(
-      '[LocationGenerator] Description field (first 300 chars):',
-      descStr.substring(0, 300)
-    )
+      "[LocationGenerator] Description field (first 300 chars):",
+      descStr.substring(0, 300),
+    );
 
     // Check if description looks like JSON
-    if (descStr.startsWith('{')) {
+    if (descStr.startsWith("{")) {
       try {
         // Try to parse the whole description as JSON directly
-        const parsedLocation = JSON.parse(descStr)
-        logger.debug('[LocationGenerator] Successfully parsed JSON from description!')
-        logger.debug('[LocationGenerator] Parsed name:', parsedLocation.name)
-        logger.debug('[LocationGenerator] Parsed keys:', Object.keys(parsedLocation))
+        const parsedLocation = JSON.parse(descStr);
+        logger.debug(
+          "[LocationGenerator] Successfully parsed JSON from description!",
+        );
+        logger.debug("[LocationGenerator] Parsed name:", parsedLocation.name);
+        logger.debug(
+          "[LocationGenerator] Parsed keys:",
+          Object.keys(parsedLocation),
+        );
         // Use parsed values - they're the REAL data, not the fallbacks
-        processedRaw = parsedLocation
+        processedRaw = parsedLocation;
       } catch (e) {
-        logger.warn('[LocationGenerator] Failed to parse description as JSON:', e)
+        logger.warn(
+          "[LocationGenerator] Failed to parse description as JSON:",
+          e,
+        );
         // Try to find just the first complete JSON object using a more careful approach
-        let braceCount = 0
-        let jsonEndIndex = -1
-        let inString = false
-        let escaped = false
+        let braceCount = 0;
+        let jsonEndIndex = -1;
+        let inString = false;
+        let escaped = false;
 
         for (let i = 0; i < descStr.length; i++) {
-          const char = descStr[i]
+          const char = descStr[i];
 
           if (escaped) {
-            escaped = false
-            continue
+            escaped = false;
+            continue;
           }
 
-          if (char === '\\' && inString) {
-            escaped = true
-            continue
+          if (char === "\\" && inString) {
+            escaped = true;
+            continue;
           }
 
           if (char === '"' && !escaped) {
-            inString = !inString
-            continue
+            inString = !inString;
+            continue;
           }
 
           if (!inString) {
-            if (char === '{') braceCount++
-            if (char === '}') {
-              braceCount--
+            if (char === "{") braceCount++;
+            if (char === "}") {
+              braceCount--;
               if (braceCount === 0) {
-                jsonEndIndex = i
-                break
+                jsonEndIndex = i;
+                break;
               }
             }
           }
         }
 
         if (jsonEndIndex > 0) {
-          const jsonSubstring = descStr.substring(0, jsonEndIndex + 1)
+          const jsonSubstring = descStr.substring(0, jsonEndIndex + 1);
           try {
-            const parsedLocation = JSON.parse(jsonSubstring)
-            logger.debug('[LocationGenerator] Parsed JSON using brace matching!')
-            processedRaw = parsedLocation
+            const parsedLocation = JSON.parse(jsonSubstring);
+            logger.debug(
+              "[LocationGenerator] Parsed JSON using brace matching!",
+            );
+            processedRaw = parsedLocation;
           } catch (e2) {
-            logger.warn('[LocationGenerator] Brace-matched JSON also failed:', e2)
+            logger.warn(
+              "[LocationGenerator] Brace-matched JSON also failed:",
+              e2,
+            );
           }
         }
       }
     }
   }
 
-  logger.debug('[LocationGenerator] processedRaw.name:', processedRaw.name)
-  logger.debug('[LocationGenerator] processedRaw.summary:', processedRaw.summary)
+  logger.debug("[LocationGenerator] processedRaw.name:", processedRaw.name);
   logger.debug(
-    '[LocationGenerator] processedRaw.description type:',
-    typeof processedRaw.description
-  )
+    "[LocationGenerator] processedRaw.summary:",
+    processedRaw.summary,
+  );
+  logger.debug(
+    "[LocationGenerator] processedRaw.description type:",
+    typeof processedRaw.description,
+  );
 
   // Build description from available fields (AI may use different field names)
-  let description = ''
+  let description = "";
 
   // Check for summary field (AI sometimes uses this)
-  if (processedRaw.summary && typeof processedRaw.summary === 'string') {
-    description = processedRaw.summary
+  if (processedRaw.summary && typeof processedRaw.summary === "string") {
+    description = processedRaw.summary;
   }
 
   // Add main description if different from summary
-  if (processedRaw.description && typeof processedRaw.description === 'string') {
-    const descText = processedRaw.description
+  if (
+    processedRaw.description &&
+    typeof processedRaw.description === "string"
+  ) {
+    const descText = processedRaw.description;
     // Only add if it's not JSON and not already included
-    if (!descText.trim().startsWith('{') && descText !== description) {
-      description = description ? `${description}\n\n${descText}` : descText
+    if (!descText.trim().startsWith("{") && descText !== description) {
+      description = description ? `${description}\n\n${descText}` : descText;
     }
   }
 
   // Build extra info section from fields AI might include
-  const extraInfo: string[] = []
-  if (processedRaw.region) extraInfo.push(`Region: ${processedRaw.region}`)
-  if (processedRaw.population) extraInfo.push(`Population: ${processedRaw.population}`)
-  if (processedRaw.government) extraInfo.push(`Government: ${processedRaw.government}`)
-  if (processedRaw.established) extraInfo.push(`Established: ${processedRaw.established}`)
-  if (processedRaw.atmosphere) extraInfo.push(`Atmosphere: ${processedRaw.atmosphere}`)
+  const extraInfo: string[] = [];
+  if (processedRaw.region) extraInfo.push(`Region: ${processedRaw.region}`);
+  if (processedRaw.population)
+    extraInfo.push(`Population: ${processedRaw.population}`);
+  if (processedRaw.government)
+    extraInfo.push(`Government: ${processedRaw.government}`);
+  if (processedRaw.established)
+    extraInfo.push(`Established: ${processedRaw.established}`);
+  if (processedRaw.atmosphere)
+    extraInfo.push(`Atmosphere: ${processedRaw.atmosphere}`);
 
   if (extraInfo.length > 0) {
-    description = extraInfo.join('\n') + '\n\n' + description
+    description = extraInfo.join("\n") + "\n\n" + description;
   }
 
   // Collect unexpected fields for debugging
   const expectedFields = [
-    'name',
-    'type',
-    'theme',
-    'description',
-    'features',
-    'secrets',
-    'factions',
-    'npcs',
-    'encounters',
-    'map',
-    'provider',
-    '_parse_warning',
-    'summary',
-    'region',
-    'population',
-    'government',
-    'established',
-    'atmosphere',
-    'notable_features',
-    'notable_npcs',
-    'encounter_hooks',
-    'adventure_hooks',
-  ]
-  const unexpectedFields: Record<string, unknown> = {}
+    "name",
+    "type",
+    "theme",
+    "description",
+    "features",
+    "secrets",
+    "factions",
+    "npcs",
+    "encounters",
+    "map",
+    "provider",
+    "_parse_warning",
+    "summary",
+    "region",
+    "population",
+    "government",
+    "established",
+    "atmosphere",
+    "notable_features",
+    "notable_npcs",
+    "encounter_hooks",
+    "adventure_hooks",
+  ];
+  const unexpectedFields: Record<string, unknown> = {};
   for (const key of Object.keys(processedRaw)) {
     if (!expectedFields.includes(key)) {
-      unexpectedFields[key] = processedRaw[key]
+      unexpectedFields[key] = processedRaw[key];
     }
   }
 
   const result: LocationData = {
-    name: String(processedRaw.name || 'Unknown Location'),
-    type: String(processedRaw.type || ''),
-    theme: String(processedRaw.theme || ''),
-    description: description || 'No description available.',
+    name: String(processedRaw.name || "Unknown Location"),
+    type: String(processedRaw.type || ""),
+    theme: String(processedRaw.theme || ""),
+    description: description || "No description available.",
     // Handle alternative field names AI might use
-    features: normalizeToStringArray(processedRaw.features || processedRaw.notable_features),
+    features: normalizeToStringArray(
+      processedRaw.features || processedRaw.notable_features,
+    ),
     secrets: normalizeToStringArray(processedRaw.secrets),
     factions: normalizeToStringArray(processedRaw.factions),
-    npcs: normalizeToStringArray(processedRaw.npcs || processedRaw.notable_npcs),
+    npcs: normalizeToStringArray(
+      processedRaw.npcs || processedRaw.notable_npcs,
+    ),
     encounters: normalizeToStringArray(
-      processedRaw.encounters || processedRaw.encounter_hooks || processedRaw.adventure_hooks
+      processedRaw.encounters ||
+        processedRaw.encounter_hooks ||
+        processedRaw.adventure_hooks,
     ),
     map: processedRaw.map ? String(processedRaw.map) : undefined,
-    _raw: Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
-  }
+    _raw:
+      Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
+  };
 
-  logger.debug('[LocationGenerator] Final normalized result:', result)
-  return result
+  logger.debug("[LocationGenerator] Final normalized result:", result);
+  return result;
 }
 
 // ============================================================================
@@ -222,52 +266,53 @@ function normalizeLocationResponse(raw: Record<string, unknown>): LocationData {
 // ============================================================================
 
 export default function LocationGenerator() {
-  const [specialRequests, setSpecialRequests] = useState('')
-  const [type, setType] = useState('city')
-  const [size, setSize] = useState('medium')
-  const [danger, setDanger] = useState('moderate')
-  const [theme, setTheme] = useState('fantasy')
-  const [campaignId, setCampaignId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [location, setLocation] = useState<LocationData | null>(null)
-  const [showSaveModal, setShowSaveModal] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [type, setType] = useState("city");
+  const [size, setSize] = useState("medium");
+  const [danger, setDanger] = useState("moderate");
+  const [theme, setTheme] = useState("fantasy");
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [location, setLocation] = useState<LocationData | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   // Manual entry mode state
-  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
-  const [manualData, setManualData] = useState<ManualLocationData>(defaultLocationData)
-  const [manualSaving, setManualSaving] = useState(false)
-  const [manualSaved, setManualSaved] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode>("ai");
+  const [manualData, setManualData] =
+    useState<ManualLocationData>(defaultLocationData);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualSaved, setManualSaved] = useState(false);
 
   // Track if user has made an explicit campaign selection
-  const hasUserSelectedCampaign = useRef(false)
+  const hasUserSelectedCampaign = useRef(false);
 
   // AI settings for controlling token generation
   const [aiSettings, setAiSettings] = useState<AIGenerationSettings>({
-    detailLevel: 'high',
+    detailLevel: "high",
     timeout: 120,
-  })
+  });
 
-  const { fetchCampaigns, activeCampaignId } = useCampaignStore()
+  const { fetchCampaigns, activeCampaignId } = useCampaignStore();
 
   // Fetch campaigns on mount
   useEffect(() => {
-    fetchCampaigns()
-  }, [fetchCampaigns])
+    fetchCampaigns();
+  }, [fetchCampaigns]);
 
   // Auto-select active campaign ONLY on initial mount (not after user interaction)
   useEffect(() => {
     if (activeCampaignId && !hasUserSelectedCampaign.current) {
-      setCampaignId(activeCampaignId)
+      setCampaignId(activeCampaignId);
     }
-  }, [activeCampaignId])
+  }, [activeCampaignId]);
 
   const handleGenerate = async () => {
-    setLoading(true)
-    setError('')
-    setLocation(null)
-    setIsSaved(false)
+    setLoading(true);
+    setError("");
+    setLocation(null);
+    setIsSaved(false);
 
     try {
       const data = await generateLocationApi(
@@ -281,33 +326,36 @@ export default function LocationGenerator() {
           max_tokens: getMaxTokensFromSettings(aiSettings),
           timeout: aiSettings.timeout,
         },
-        aiSettings.timeout
-      )
-      logger.debug('[LocationGenerator] Raw API response:', data)
+        aiSettings.timeout,
+      );
+      logger.debug("[LocationGenerator] Raw API response:", data);
 
       // CRITICAL: Normalize the response to handle inconsistent AI output
       if (data.location) {
-        const normalized = normalizeLocationResponse(data.location)
+        const normalized = normalizeLocationResponse(data.location);
 
         // Check if we got valid content
         if (!hasValidLocationContent(normalized)) {
           normalized._parseError =
-            'AI response missing essential location content. Showing raw response.'
+            "AI response missing essential location content. Showing raw response.";
         }
 
-        setLocation(normalized)
+        setLocation(normalized);
       } else {
         // AI returned data at root level instead of nested
-        const normalized = normalizeLocationResponse(data as unknown as Record<string, unknown>)
-        normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setLocation(normalized)
+        const normalized = normalizeLocationResponse(
+          data as unknown as Record<string, unknown>,
+        );
+        normalized._parseError =
+          "Unexpected response format. Attempting to display.";
+        setLocation(normalized);
       }
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Check if location has valid essential content
@@ -315,22 +363,24 @@ export default function LocationGenerator() {
   function hasValidLocationContent(location: LocationData): boolean {
     return !!(
       location.name &&
-      location.name !== 'Unknown Location' &&
-      (location.description || location.features.length > 0 || location.secrets.length > 0)
-    )
+      location.name !== "Unknown Location" &&
+      (location.description ||
+        location.features.length > 0 ||
+        location.secrets.length > 0)
+    );
   }
 
   const handleSave = async () => {
-    if (!location) return
+    if (!location) return;
 
-    setError('')
+    setError("");
 
     try {
-      const activeCampaignId = useCampaignStore.getState().activeCampaignId
+      const activeCampaignId = useCampaignStore.getState().activeCampaignId;
 
       await saveLocationApi({
-        name: location.name || 'Unnamed Location',
-        type: location.type || type || 'dungeon',
+        name: location.name || "Unnamed Location",
+        type: location.type || type || "dungeon",
         theme: location.theme || theme,
         description: location.description,
         features: location.features || [],
@@ -340,94 +390,94 @@ export default function LocationGenerator() {
         encounters: location.encounters || [],
         campaign_id: activeCampaignId || undefined,
         ai_generated: true,
-      })
+      });
 
-      setShowSaveModal(false)
-      setIsSaved(true)
-      emitContentSaved()
+      setShowSaveModal(false);
+      setIsSaved(true);
+      emitContentSaved();
     } catch (err) {
-      logger.error('[LocationGenerator] Save error:', err)
-      setError(getErrorMessage(err))
+      logger.error("[LocationGenerator] Save error:", err);
+      setError(getErrorMessage(err));
     }
-  }
+  };
 
   const handleCopy = () => {
-    if (!location) return
-    let text = `${location.name}\n${location.type}${location.theme ? ` • ${location.theme}` : ''}\n\n${location.description}`
+    if (!location) return;
+    let text = `${location.name}\n${location.type}${location.theme ? ` • ${location.theme}` : ""}\n\n${location.description}`;
 
     if (location.features && location.features.length > 0) {
-      text += '\n\nFeatures:\n'
+      text += "\n\nFeatures:\n";
       location.features.forEach((feature) => {
-        text += `- ${feature}\n`
-      })
+        text += `- ${feature}\n`;
+      });
     }
 
     if (location.secrets && location.secrets.length > 0) {
-      text += '\nSecrets:\n'
+      text += "\nSecrets:\n";
       location.secrets.forEach((secret) => {
-        text += `- ${secret}\n`
-      })
+        text += `- ${secret}\n`;
+      });
     }
 
     if (location.npcs && location.npcs.length > 0) {
-      text += '\nNotable NPCs:\n'
+      text += "\nNotable NPCs:\n";
       location.npcs.forEach((npc) => {
-        text += `- ${npc}\n`
-      })
+        text += `- ${npc}\n`;
+      });
     }
 
     if (location.encounters && location.encounters.length > 0) {
-      text += '\nEncounter Hooks:\n'
+      text += "\nEncounter Hooks:\n";
       location.encounters.forEach((encounter) => {
-        text += `- ${encounter}\n`
-      })
+        text += `- ${encounter}\n`;
+      });
     }
 
     if (location.factions && location.factions.length > 0) {
-      text += '\nFactions:\n'
+      text += "\nFactions:\n";
       location.factions.forEach((faction) => {
-        text += `- ${faction}\n`
-      })
+        text += `- ${faction}\n`;
+      });
     }
 
-    navigator.clipboard.writeText(text)
-  }
+    navigator.clipboard.writeText(text);
+  };
 
   // Handle manual entry save
   const handleManualSave = async () => {
     if (!manualData.name.trim()) {
-      setError('Location name is required')
-      return
+      setError("Location name is required");
+      return;
     }
 
-    setManualSaving(true)
-    setError('')
+    setManualSaving(true);
+    setError("");
 
     try {
       await saveLocationApi({
         campaign_id: campaignId || undefined,
         name: manualData.name.trim(),
         type: manualData.location_type,
-        theme: '', // manual entries don't have theme
-        description: manualData.description.trim() || '',
+        theme: "", // manual entries don't have theme
+        description: manualData.description.trim() || "",
         features: manualData.notable_features.filter((f) => f.trim()),
         secrets: manualData.secrets.filter((s) => s.trim()),
         factions: [], // not in manual schema
         npcs: manualData.inhabitants.filter((i) => i.trim()),
         encounters: manualData.hazards.filter((h) => h.trim()),
         ai_generated: false,
-      })
+      });
 
-      setManualSaved(true)
-      emitContentSaved()
+      setManualSaved(true);
+      emitContentSaved();
       // Reset form after successful save
-      setManualData(defaultLocationData)
+      setManualData(defaultLocationData);
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setManualSaving(false)
+      setManualSaving(false);
     }
-  }
+  };
 
   // AI generation form content
   const aiFormContent = (
@@ -439,8 +489,8 @@ export default function LocationGenerator() {
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -527,7 +577,7 @@ export default function LocationGenerator() {
         />
       </FormField>
     </>
-  )
+  );
 
   // Manual entry form content
   const manualFormContent = (
@@ -535,8 +585,8 @@ export default function LocationGenerator() {
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -545,7 +595,9 @@ export default function LocationGenerator() {
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., The Sunken Crypt, Willowbrook Village"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -555,7 +607,9 @@ export default function LocationGenerator() {
         <FormField label="Location Type">
           <select
             value={manualData.location_type}
-            onChange={(e) => setManualData({ ...manualData, location_type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, location_type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {locationTypeOptions.map((opt) => (
@@ -569,7 +623,9 @@ export default function LocationGenerator() {
         <FormField label="Size">
           <select
             value={manualData.size}
-            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, size: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {sizeOptions.map((opt) => (
@@ -584,7 +640,9 @@ export default function LocationGenerator() {
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Describe the location..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={3}
@@ -595,7 +653,9 @@ export default function LocationGenerator() {
         <input
           type="text"
           value={manualData.atmosphere}
-          onChange={(e) => setManualData({ ...manualData, atmosphere: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, atmosphere: e.target.value })
+          }
           placeholder="e.g., Dark and foreboding, Peaceful and serene"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -606,7 +666,9 @@ export default function LocationGenerator() {
         <ArrayFieldEditor
           label="Features"
           values={manualData.notable_features}
-          onChange={(notable_features) => setManualData({ ...manualData, notable_features })}
+          onChange={(notable_features) =>
+            setManualData({ ...manualData, notable_features })
+          }
           placeholder="Add a notable feature..."
         />
       </CollapsibleSection>
@@ -616,7 +678,9 @@ export default function LocationGenerator() {
         <ArrayFieldEditor
           label="Inhabitants"
           values={manualData.inhabitants}
-          onChange={(inhabitants) => setManualData({ ...manualData, inhabitants })}
+          onChange={(inhabitants) =>
+            setManualData({ ...manualData, inhabitants })
+          }
           placeholder="Add an inhabitant or NPC..."
         />
       </CollapsibleSection>
@@ -652,11 +716,16 @@ export default function LocationGenerator() {
       </CollapsibleSection>
 
       {/* Connections */}
-      <CollapsibleSection title="Connections to Other Locations" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Connections to Other Locations"
+        defaultExpanded={false}
+      >
         <ArrayFieldEditor
           label="Connections"
           values={manualData.connections}
-          onChange={(connections) => setManualData({ ...manualData, connections })}
+          onChange={(connections) =>
+            setManualData({ ...manualData, connections })
+          }
           placeholder="Add a connection..."
         />
       </CollapsibleSection>
@@ -666,7 +735,9 @@ export default function LocationGenerator() {
         <FormField label="History">
           <textarea
             value={manualData.history}
-            onChange={(e) => setManualData({ ...manualData, history: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, history: e.target.value })
+            }
             placeholder="Historical background of this location..."
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             rows={3}
@@ -700,7 +771,7 @@ export default function LocationGenerator() {
         </div>
       )}
     </>
-  )
+  );
 
   // Combined form content with mode toggle
   const formContent = (
@@ -708,18 +779,18 @@ export default function LocationGenerator() {
       <EntryModeToggle
         mode={entryMode}
         onChange={(mode) => {
-          setEntryMode(mode)
-          setManualSaved(false)
-          setError('')
+          setEntryMode(mode);
+          setManualSaved(false);
+          setError("");
         }}
         disabled={loading}
       />
-      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+      {entryMode === "ai" ? aiFormContent : manualFormContent}
     </>
-  )
+  );
 
   // Manual mode preview content (simple message)
-  const manualPreviewContent = <ManualEntryPreview entityType="location" />
+  const manualPreviewContent = <ManualEntryPreview entityType="location" />;
 
   const generatedContent = location ? (
     <div className="space-y-6">
@@ -745,7 +816,9 @@ export default function LocationGenerator() {
             Description
           </h3>
           <div className="bg-background p-4 rounded border border-border">
-            <p className="text-text whitespace-pre-line">{location.description}</p>
+            <p className="text-text whitespace-pre-line">
+              {location.description}
+            </p>
           </div>
         </div>
       )}
@@ -759,7 +832,10 @@ export default function LocationGenerator() {
           </h3>
           <div className="space-y-2">
             {location.features.map((feature, i) => (
-              <div key={i} className="bg-background p-3 rounded border border-primary/30">
+              <div
+                key={i}
+                className="bg-background p-3 rounded border border-primary/30"
+              >
                 <p className="text-text">{feature}</p>
               </div>
             ))}
@@ -776,7 +852,10 @@ export default function LocationGenerator() {
           </h3>
           <div className="space-y-2">
             {location.secrets.map((secret, i) => (
-              <div key={i} className="bg-amber-500/10 p-3 rounded border border-amber-500/30">
+              <div
+                key={i}
+                className="bg-amber-500/10 p-3 rounded border border-amber-500/30"
+              >
                 <p className="text-text">{secret}</p>
               </div>
             ))}
@@ -793,7 +872,10 @@ export default function LocationGenerator() {
           </h3>
           <div className="space-y-2">
             {location.npcs.map((npc, i) => (
-              <div key={i} className="bg-background p-3 rounded border border-border">
+              <div
+                key={i}
+                className="bg-background p-3 rounded border border-border"
+              >
                 <p className="text-text">{npc}</p>
               </div>
             ))}
@@ -810,7 +892,10 @@ export default function LocationGenerator() {
           </h3>
           <div className="space-y-2">
             {location.encounters.map((encounter, i) => (
-              <div key={i} className="bg-red-500/10 p-3 rounded border border-red-500/30">
+              <div
+                key={i}
+                className="bg-red-500/10 p-3 rounded border border-red-500/30"
+              >
                 <p className="text-text">{encounter}</p>
               </div>
             ))}
@@ -827,7 +912,10 @@ export default function LocationGenerator() {
           </h3>
           <div className="space-y-2">
             {location.factions.map((faction, i) => (
-              <div key={i} className="bg-background p-3 rounded border border-purple-500/30">
+              <div
+                key={i}
+                className="bg-background p-3 rounded border border-purple-500/30"
+              >
                 <p className="text-text">{faction}</p>
               </div>
             ))}
@@ -845,7 +933,7 @@ export default function LocationGenerator() {
         isSaved={isSaved}
       />
     </div>
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -855,14 +943,18 @@ export default function LocationGenerator() {
         icon="Map"
         formTitle="Location Parameters"
         formIcon="Settings"
-        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Location'}
+        resultsTitle={
+          entryMode === "manual" ? "Manual Entry" : "Generated Location"
+        }
         formContent={formContent}
-        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
+        generatedContent={
+          entryMode === "manual" ? manualPreviewContent : generatedContent
+        }
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Location"
         error={error}
-        hideGenerateButton={entryMode === 'manual'}
+        hideGenerateButton={entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -870,9 +962,9 @@ export default function LocationGenerator() {
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={handleSave}
-        entityName={location?.name || 'Location'}
+        entityName={location?.name || "Location"}
         campaignId={campaignId}
       />
     </>
-  )
+  );
 }

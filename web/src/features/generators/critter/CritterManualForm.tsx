@@ -1,27 +1,33 @@
 // Manual Entry Form for Critters
 
-import Icon from '@/components/common/Icon'
-import { FormField } from '@/components/ui/FormField'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import { ArrayFieldEditor, ObjectArrayEditor, AbilityScoresEditor } from '../components/Fields'
+import Icon from "@/components/common/Icon";
+import { FormField } from "@/components/ui/FormField";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import {
+  ArrayFieldEditor,
+  ObjectArrayEditor,
+  AbilityScoresEditor,
+} from "../components/Fields";
 import {
   critterTypeOptions,
   critterSizeOptions,
   temperamentOptions,
   habitatOptions,
   type ManualCritterData,
-} from '../schemas/critter'
+} from "../schemas/critter";
 
 interface CritterManualFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  manualData: ManualCritterData
-  setManualData: (data: ManualCritterData | ((prev: ManualCritterData) => ManualCritterData)) => void
-  onSave: () => void
-  saving: boolean
-  saved: boolean
-  error: string | null
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  manualData: ManualCritterData;
+  setManualData: (
+    data: ManualCritterData | ((prev: ManualCritterData) => ManualCritterData),
+  ) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  error: string | null;
 }
 
 export function CritterManualForm({
@@ -36,24 +42,34 @@ export function CritterManualForm({
 }: CritterManualFormProps) {
   return (
     <>
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       {/* Basic Information */}
       <FormField label="Critter Name" required>
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., 'Glimmerwing', 'Forest Prowler'"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </FormField>
 
-      <FormField label="Species" description="Scientific or common species name">
+      <FormField
+        label="Species"
+        description="Scientific or common species name"
+      >
         <input
           type="text"
           value={manualData.species}
-          onChange={(e) => setManualData({ ...manualData, species: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, species: e.target.value })
+          }
           placeholder="e.g., 'Felis luminosa', 'Giant Beetle'"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -63,7 +79,9 @@ export function CritterManualForm({
         <FormField label="Type">
           <select
             value={manualData.critter_type}
-            onChange={(e) => setManualData({ ...manualData, critter_type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, critter_type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {critterTypeOptions.map((opt) => (
@@ -77,7 +95,9 @@ export function CritterManualForm({
         <FormField label="Size">
           <select
             value={manualData.size}
-            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, size: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {critterSizeOptions.map((opt) => (
@@ -93,7 +113,9 @@ export function CritterManualForm({
         <FormField label="Temperament">
           <select
             value={manualData.temperament}
-            onChange={(e) => setManualData({ ...manualData, temperament: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, temperament: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {temperamentOptions.map((opt) => (
@@ -107,7 +129,9 @@ export function CritterManualForm({
         <FormField label="Habitat">
           <select
             value={manualData.habitat}
-            onChange={(e) => setManualData({ ...manualData, habitat: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, habitat: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {habitatOptions.map((opt) => (
@@ -122,7 +146,9 @@ export function CritterManualForm({
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Physical appearance, coloring, distinguishing features..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={3}
@@ -132,7 +158,9 @@ export function CritterManualForm({
       <FormField label="Behavior">
         <textarea
           value={manualData.behavior}
-          onChange={(e) => setManualData({ ...manualData, behavior: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, behavior: e.target.value })
+          }
           placeholder="How it acts, hunting patterns, social structure..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={2}
@@ -146,7 +174,7 @@ export function CritterManualForm({
             <FormField label="AC">
               <input
                 type="number"
-                value={manualData.stats.ac ?? ''}
+                value={manualData.stats.ac ?? ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -163,7 +191,7 @@ export function CritterManualForm({
             <FormField label="HP">
               <input
                 type="number"
-                value={manualData.stats.hp ?? ''}
+                value={manualData.stats.hp ?? ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -196,14 +224,21 @@ export function CritterManualForm({
           <AbilityScoresEditor
             values={manualData.stats}
             onChange={(stats) =>
-              setManualData({ ...manualData, stats: { ...manualData.stats, ...stats } })
+              setManualData({
+                ...manualData,
+                stats: { ...manualData.stats, ...stats },
+              })
             }
           />
         </div>
       </CollapsibleSection>
 
       {/* Special Abilities */}
-      <CollapsibleSection title="Special Abilities" icon="Sparkles" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Special Abilities"
+        icon="Sparkles"
+        defaultExpanded={false}
+      >
         <ObjectArrayEditor
           label=""
           values={manualData.special_abilities.map((a) => ({
@@ -227,7 +262,11 @@ export function CritterManualForm({
       </CollapsibleSection>
 
       {/* Uses */}
-      <CollapsibleSection title="Potential Uses" icon="Wrench" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Potential Uses"
+        icon="Wrench"
+        defaultExpanded={false}
+      >
         <ArrayFieldEditor
           label=""
           values={manualData.uses}
@@ -238,14 +277,21 @@ export function CritterManualForm({
       </CollapsibleSection>
 
       {/* Additional Details */}
-      <CollapsibleSection title="Additional Details" icon="FileText" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Additional Details"
+        icon="FileText"
+        defaultExpanded={false}
+      >
         <div className="space-y-4">
           <FormField label="Training Difficulty">
             <input
               type="text"
               value={manualData.training_difficulty}
               onChange={(e) =>
-                setManualData({ ...manualData, training_difficulty: e.target.value })
+                setManualData({
+                  ...manualData,
+                  training_difficulty: e.target.value,
+                })
               }
               placeholder="e.g., 'Easy', 'Moderate', 'Nearly Impossible'"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
@@ -256,7 +302,9 @@ export function CritterManualForm({
             <input
               type="text"
               value={manualData.diet}
-              onChange={(e) => setManualData({ ...manualData, diet: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, diet: e.target.value })
+              }
               placeholder="e.g., 'Carnivore', 'Omnivore', 'Magical energy'"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -266,7 +314,9 @@ export function CritterManualForm({
             <input
               type="text"
               value={manualData.lifespan}
-              onChange={(e) => setManualData({ ...manualData, lifespan: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, lifespan: e.target.value })
+              }
               placeholder="e.g., '5-10 years', 'Centuries', 'Unknown'"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -275,14 +325,21 @@ export function CritterManualForm({
           <ArrayFieldEditor
             label="Interesting Facts"
             values={manualData.interesting_facts}
-            onChange={(facts) => setManualData({ ...manualData, interesting_facts: facts })}
+            onChange={(facts) =>
+              setManualData({ ...manualData, interesting_facts: facts })
+            }
             placeholder="Add a fact..."
           />
 
           <FormField label="Encounter Notes">
             <textarea
               value={manualData.encounter_notes}
-              onChange={(e) => setManualData({ ...manualData, encounter_notes: e.target.value })}
+              onChange={(e) =>
+                setManualData({
+                  ...manualData,
+                  encounter_notes: e.target.value,
+                })
+              }
               placeholder="DM notes for encounters..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -324,5 +381,5 @@ export function CritterManualForm({
         </div>
       )}
     </>
-  )
+  );
 }

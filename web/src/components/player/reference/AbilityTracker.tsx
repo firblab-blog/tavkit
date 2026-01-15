@@ -1,32 +1,32 @@
-import { useEffect, useState } from 'react'
-import Icon from '../../common/Icon'
+import { useEffect, useState } from "react";
+import Icon from "../../common/Icon";
 import {
   useAbilityTrackingStore,
   TrackedAbility,
   CreateAbilityRequest,
   COMMON_CLASS_FEATURES,
   RechargeType,
-} from '../../../store/abilityTrackingStore'
+} from "../../../store/abilityTrackingStore";
 
 interface AbilityTrackerProps {
-  characterId?: string
+  characterId?: string;
 }
 
 const RECHARGE_LABELS: Record<RechargeType, string> = {
-  short_rest: 'Short Rest',
-  long_rest: 'Long Rest',
-  daily: 'Daily',
-  dawn: 'At Dawn',
-  per_turn: 'Per Turn',
-}
+  short_rest: "Short Rest",
+  long_rest: "Long Rest",
+  daily: "Daily",
+  dawn: "At Dawn",
+  per_turn: "Per Turn",
+};
 
 const RECHARGE_COLORS: Record<RechargeType, string> = {
-  short_rest: 'text-blue-400',
-  long_rest: 'text-purple-400',
-  daily: 'text-amber-400',
-  dawn: 'text-orange-400',
-  per_turn: 'text-emerald-400',
-}
+  short_rest: "text-blue-400",
+  long_rest: "text-purple-400",
+  daily: "text-amber-400",
+  dawn: "text-orange-400",
+  per_turn: "text-emerald-400",
+};
 
 export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
   const {
@@ -40,113 +40,121 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
     resetAbility,
     shortRest,
     longRest,
-  } = useAbilityTrackingStore()
+  } = useAbilityTrackingStore();
 
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false);
   const [newAbility, setNewAbility] = useState<CreateAbilityRequest>({
-    ability_name: '',
-    ability_type: 'class_feature',
+    ability_name: "",
+    ability_type: "class_feature",
     max_uses: 1,
-    recharge_type: 'long_rest',
-  })
-  const [selectedClass, setSelectedClass] = useState<string | null>(null)
+    recharge_type: "long_rest",
+  });
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
 
   useEffect(() => {
     if (characterId) {
-      fetchAbilities(characterId)
+      fetchAbilities(characterId);
     }
-  }, [characterId, fetchAbilities])
+  }, [characterId, fetchAbilities]);
 
   const handleUse = (abilityId: string) => {
     if (characterId) {
-      useAbility(characterId, abilityId)
+      useAbility(characterId, abilityId);
     }
-  }
+  };
 
   const handleReset = (abilityId: string) => {
     if (characterId) {
-      resetAbility(characterId, abilityId)
+      resetAbility(characterId, abilityId);
     }
-  }
+  };
 
   const handleDelete = (abilityId: string) => {
-    if (characterId && window.confirm('Remove this ability from tracking?')) {
-      deleteAbility(characterId, abilityId)
+    if (characterId && window.confirm("Remove this ability from tracking?")) {
+      deleteAbility(characterId, abilityId);
     }
-  }
+  };
 
   const handleAddAbility = async () => {
-    if (!characterId || !newAbility.ability_name.trim()) return
+    if (!characterId || !newAbility.ability_name.trim()) return;
 
     try {
-      await createAbility(characterId, newAbility)
-      setShowAddModal(false)
+      await createAbility(characterId, newAbility);
+      setShowAddModal(false);
       setNewAbility({
-        ability_name: '',
-        ability_type: 'class_feature',
+        ability_name: "",
+        ability_type: "class_feature",
         max_uses: 1,
-        recharge_type: 'long_rest',
-      })
-      setSelectedClass(null)
+        recharge_type: "long_rest",
+      });
+      setSelectedClass(null);
     } catch {
       // Error handled by store
     }
-  }
+  };
 
   const handleAddClassFeature = async (feature: {
-    name: string
-    maxUses: number
-    recharge: RechargeType
+    name: string;
+    maxUses: number;
+    recharge: RechargeType;
   }) => {
-    if (!characterId) return
+    if (!characterId) return;
 
     try {
       await createAbility(characterId, {
         ability_name: feature.name,
-        ability_type: 'class_feature',
+        ability_type: "class_feature",
         max_uses: feature.maxUses,
         recharge_type: feature.recharge,
-      })
+      });
     } catch {
       // Error handled by store
     }
-  }
+  };
 
   const handleShortRest = () => {
     if (
       characterId &&
-      window.confirm('Take a short rest? This will restore short rest abilities.')
+      window.confirm(
+        "Take a short rest? This will restore short rest abilities.",
+      )
     ) {
-      shortRest(characterId)
+      shortRest(characterId);
     }
-  }
+  };
 
   const handleLongRest = () => {
     if (
       characterId &&
-      window.confirm('Take a long rest? This will restore all abilities and spell slots.')
+      window.confirm(
+        "Take a long rest? This will restore all abilities and spell slots.",
+      )
     ) {
-      longRest(characterId)
+      longRest(characterId);
     }
-  }
+  };
 
   if (!characterId) {
     return (
-      <div className="text-center py-8 text-text-muted">Select a character to track abilities.</div>
-    )
+      <div className="text-center py-8 text-text-muted">
+        Select a character to track abilities.
+      </div>
+    );
   }
 
   // Group abilities by recharge type
-  const groupedAbilities = abilities.reduce<Record<RechargeType, TrackedAbility[]>>(
+  const groupedAbilities = abilities.reduce<
+    Record<RechargeType, TrackedAbility[]>
+  >(
     (acc, ability) => {
       if (!acc[ability.recharge_type]) {
-        acc[ability.recharge_type] = []
+        acc[ability.recharge_type] = [];
       }
-      acc[ability.recharge_type].push(ability)
-      return acc
+      acc[ability.recharge_type].push(ability);
+      return acc;
     },
-    {} as Record<RechargeType, TrackedAbility[]>
-  )
+    {} as Record<RechargeType, TrackedAbility[]>,
+  );
 
   return (
     <div className="space-y-4">
@@ -213,8 +221,13 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
 
       {/* Abilities by Recharge Type */}
       {Object.entries(groupedAbilities).map(([recharge, rechargeAbilities]) => (
-        <div key={recharge} className="bg-background-panel border border-border rounded-xl p-4">
-          <h4 className={`text-sm font-medium mb-3 ${RECHARGE_COLORS[recharge as RechargeType]}`}>
+        <div
+          key={recharge}
+          className="bg-background-panel border border-border rounded-xl p-4"
+        >
+          <h4
+            className={`text-sm font-medium mb-3 ${RECHARGE_COLORS[recharge as RechargeType]}`}
+          >
             {RECHARGE_LABELS[recharge as RechargeType]}
           </h4>
           <div className="space-y-2">
@@ -225,9 +238,13 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
               >
                 {/* Name */}
                 <div className="flex-1 min-w-0">
-                  <span className="text-text font-medium">{ability.ability_name}</span>
+                  <span className="text-text font-medium">
+                    {ability.ability_name}
+                  </span>
                   {ability.notes && (
-                    <span className="text-text-muted text-sm ml-2">({ability.notes})</span>
+                    <span className="text-text-muted text-sm ml-2">
+                      ({ability.notes})
+                    </span>
                   )}
                 </div>
 
@@ -235,20 +252,24 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
                 {ability.max_uses > 0 ? (
                   <div className="flex items-center gap-1">
                     {Array.from({ length: ability.max_uses }).map((_, idx) => {
-                      const isUsed = idx < ability.current_uses
+                      const isUsed = idx < ability.current_uses;
                       return (
                         <button
                           key={idx}
-                          onClick={() => (isUsed ? handleReset(ability.id) : handleUse(ability.id))}
+                          onClick={() =>
+                            isUsed
+                              ? handleReset(ability.id)
+                              : handleUse(ability.id)
+                          }
                           disabled={loading}
                           className={`w-6 h-6 rounded-full border-2 transition-all ${
                             isUsed
-                              ? 'bg-gray-600/30 border-gray-500/50 hover:border-amber-400'
-                              : 'bg-amber-500/20 border-amber-500/50 hover:border-amber-400 hover:bg-amber-500/30'
+                              ? "bg-gray-600/30 border-gray-500/50 hover:border-amber-400"
+                              : "bg-amber-500/20 border-amber-500/50 hover:border-amber-400 hover:bg-amber-500/30"
                           }`}
-                          title={isUsed ? 'Click to restore' : 'Click to use'}
+                          title={isUsed ? "Click to restore" : "Click to use"}
                         />
-                      )
+                      );
                     })}
                   </div>
                 ) : (
@@ -272,7 +293,9 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
       {showAddModal && (
         <div
           className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
-          onClick={(e) => e.target === e.currentTarget && setShowAddModal(false)}
+          onClick={(e) =>
+            e.target === e.currentTarget && setShowAddModal(false)
+          }
         >
           <div className="bg-background-panel border border-border rounded-xl w-full max-w-md">
             {/* Header */}
@@ -294,7 +317,7 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
                   Quick Add from Class
                 </label>
                 <select
-                  value={selectedClass || ''}
+                  value={selectedClass || ""}
                   onChange={(e) => setSelectedClass(e.target.value || null)}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
                 >
@@ -307,30 +330,40 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
                 </select>
               </div>
 
-              {selectedClass && COMMON_CLASS_FEATURES[selectedClass]?.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {COMMON_CLASS_FEATURES[selectedClass].map((feature) => (
-                    <button
-                      key={feature.name}
-                      onClick={() => handleAddClassFeature(feature)}
-                      disabled={abilities.some((a) => a.ability_name === feature.name)}
-                      className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      + {feature.name}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {selectedClass &&
+                COMMON_CLASS_FEATURES[selectedClass]?.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {COMMON_CLASS_FEATURES[selectedClass].map((feature) => (
+                      <button
+                        key={feature.name}
+                        onClick={() => handleAddClassFeature(feature)}
+                        disabled={abilities.some(
+                          (a) => a.ability_name === feature.name,
+                        )}
+                        className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        + {feature.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
               <div className="border-t border-border pt-4">
-                <p className="text-sm text-text-muted mb-3">Or add a custom ability:</p>
+                <p className="text-sm text-text-muted mb-3">
+                  Or add a custom ability:
+                </p>
 
                 {/* Name */}
                 <div className="mb-3">
                   <input
                     type="text"
                     value={newAbility.ability_name}
-                    onChange={(e) => setNewAbility({ ...newAbility, ability_name: e.target.value })}
+                    onChange={(e) =>
+                      setNewAbility({
+                        ...newAbility,
+                        ability_name: e.target.value,
+                      })
+                    }
                     placeholder="Ability name"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary"
                   />
@@ -339,7 +372,9 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
                 {/* Max Uses and Recharge */}
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
-                    <label className="block text-xs text-text-muted mb-1">Max Uses</label>
+                    <label className="block text-xs text-text-muted mb-1">
+                      Max Uses
+                    </label>
                     <input
                       type="number"
                       value={newAbility.max_uses}
@@ -354,7 +389,9 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-text-muted mb-1">Recharge</label>
+                    <label className="block text-xs text-text-muted mb-1">
+                      Recharge
+                    </label>
                     <select
                       value={newAbility.recharge_type}
                       onChange={(e) =>
@@ -378,8 +415,10 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
                 <div>
                   <input
                     type="text"
-                    value={newAbility.notes || ''}
-                    onChange={(e) => setNewAbility({ ...newAbility, notes: e.target.value })}
+                    value={newAbility.notes || ""}
+                    onChange={(e) =>
+                      setNewAbility({ ...newAbility, notes: e.target.value })
+                    }
                     placeholder="Notes (optional)"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary"
                   />
@@ -407,5 +446,5 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,17 +1,17 @@
 // Location Result Renderer
 // Displays generated Location data in a structured format
 
-import Icon from '@/components/common/Icon'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { RawDataViewer, ParseWarning } from '../components'
-import type { GeneratedLocationData } from '../normalizers/location'
+import Icon from "@/components/common/Icon";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { RawDataViewer, ParseWarning } from "../components";
+import type { GeneratedLocationData } from "../normalizers/location";
 
 interface LocationRendererProps {
-  location: GeneratedLocationData
-  showRawResponse: boolean
-  isSaved: boolean
-  onSave: () => void
-  onCopy: () => void
+  location: GeneratedLocationData;
+  showRawResponse: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onCopy: () => void;
 }
 
 export function LocationRenderer({
@@ -45,7 +45,9 @@ export function LocationRenderer({
             Description
           </h3>
           <div className="bg-background p-4 rounded border border-border">
-            <p className="text-text whitespace-pre-line">{location.description}</p>
+            <p className="text-text whitespace-pre-line">
+              {location.description}
+            </p>
           </div>
         </div>
       )}
@@ -59,7 +61,10 @@ export function LocationRenderer({
           </h3>
           <div className="space-y-2">
             {location.features.map((feature, i) => (
-              <div key={i} className="bg-background p-3 rounded border border-primary/30">
+              <div
+                key={i}
+                className="bg-background p-3 rounded border border-primary/30"
+              >
                 <p className="text-text">{feature}</p>
               </div>
             ))}
@@ -76,7 +81,10 @@ export function LocationRenderer({
           </h3>
           <div className="space-y-2">
             {location.secrets.map((secret, i) => (
-              <div key={i} className="bg-amber-500/10 p-3 rounded border border-amber-500/30">
+              <div
+                key={i}
+                className="bg-amber-500/10 p-3 rounded border border-amber-500/30"
+              >
                 <p className="text-text">{secret}</p>
               </div>
             ))}
@@ -93,7 +101,10 @@ export function LocationRenderer({
           </h3>
           <div className="space-y-2">
             {location.npcs.map((npc, i) => (
-              <div key={i} className="bg-background p-3 rounded border border-border">
+              <div
+                key={i}
+                className="bg-background p-3 rounded border border-border"
+              >
                 <p className="text-text">{npc}</p>
               </div>
             ))}
@@ -110,7 +121,10 @@ export function LocationRenderer({
           </h3>
           <div className="space-y-2">
             {location.encounters.map((encounter, i) => (
-              <div key={i} className="bg-red-500/10 p-3 rounded border border-red-500/30">
+              <div
+                key={i}
+                className="bg-red-500/10 p-3 rounded border border-red-500/30"
+              >
                 <p className="text-text">{encounter}</p>
               </div>
             ))}
@@ -127,7 +141,10 @@ export function LocationRenderer({
           </h3>
           <div className="space-y-2">
             {location.factions.map((faction, i) => (
-              <div key={i} className="bg-background p-3 rounded border border-purple-500/30">
+              <div
+                key={i}
+                className="bg-background p-3 rounded border border-purple-500/30"
+              >
                 <p className="text-text">{faction}</p>
               </div>
             ))}
@@ -136,7 +153,9 @@ export function LocationRenderer({
       )}
 
       {/* Raw/unexpected fields */}
-      {location._raw && <RawDataViewer data={location._raw} defaultExpanded={showRawResponse} />}
+      {location._raw && (
+        <RawDataViewer data={location._raw} defaultExpanded={showRawResponse} />
+      )}
 
       <ActionsBar
         onCopy={onCopy}
@@ -145,47 +164,49 @@ export function LocationRenderer({
         isSaved={isSaved}
       />
     </div>
-  )
+  );
 }
 
 // Helper to format Location for clipboard
-export function formatLocationForClipboard(location: GeneratedLocationData): string {
-  let text = `${location.name}\n${location.type}${location.theme ? ` • ${location.theme}` : ''}\n\n${location.description}`
+export function formatLocationForClipboard(
+  location: GeneratedLocationData,
+): string {
+  let text = `${location.name}\n${location.type}${location.theme ? ` • ${location.theme}` : ""}\n\n${location.description}`;
 
   if (location.features && location.features.length > 0) {
-    text += '\n\nFeatures:\n'
+    text += "\n\nFeatures:\n";
     location.features.forEach((feature) => {
-      text += `- ${feature}\n`
-    })
+      text += `- ${feature}\n`;
+    });
   }
 
   if (location.secrets && location.secrets.length > 0) {
-    text += '\nSecrets:\n'
+    text += "\nSecrets:\n";
     location.secrets.forEach((secret) => {
-      text += `- ${secret}\n`
-    })
+      text += `- ${secret}\n`;
+    });
   }
 
   if (location.npcs && location.npcs.length > 0) {
-    text += '\nNotable NPCs:\n'
+    text += "\nNotable NPCs:\n";
     location.npcs.forEach((npc) => {
-      text += `- ${npc}\n`
-    })
+      text += `- ${npc}\n`;
+    });
   }
 
   if (location.encounters && location.encounters.length > 0) {
-    text += '\nEncounter Hooks:\n'
+    text += "\nEncounter Hooks:\n";
     location.encounters.forEach((encounter) => {
-      text += `- ${encounter}\n`
-    })
+      text += `- ${encounter}\n`;
+    });
   }
 
   if (location.factions && location.factions.length > 0) {
-    text += '\nFactions:\n'
+    text += "\nFactions:\n";
     location.factions.forEach((faction) => {
-      text += `- ${faction}\n`
-    })
+      text += `- ${faction}\n`;
+    });
   }
 
-  return text
+  return text;
 }

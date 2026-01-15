@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import Icon from '../common/Icon'
-import type { ChaseParticipant } from '../../types/chase'
-import { getParticipantIcon } from '../../types/chase'
+import { useState } from "react";
+import Icon from "../common/Icon";
+import type { ChaseParticipant } from "../../types/chase";
+import { getParticipantIcon } from "../../types/chase";
 
 interface ParticipantCardProps {
-  participant: ChaseParticipant
-  onUpdate?: (updates: Partial<ChaseParticipant>) => void
-  showControls?: boolean
+  participant: ChaseParticipant;
+  onUpdate?: (updates: Partial<ChaseParticipant>) => void;
+  showControls?: boolean;
 }
 
 export default function ParticipantCard({
@@ -14,70 +14,84 @@ export default function ParticipantCard({
   onUpdate,
   showControls = false,
 }: ParticipantCardProps) {
-  const [isEditingConditions, setIsEditingConditions] = useState(false)
-  const [newCondition, setNewCondition] = useState('')
+  const [isEditingConditions, setIsEditingConditions] = useState(false);
+  const [newCondition, setNewCondition] = useState("");
 
   // Calculate stamina percentage
   const staminaPercent =
-    participant.max_stamina > 0 ? (participant.stamina / participant.max_stamina) * 100 : 0
+    participant.max_stamina > 0
+      ? (participant.stamina / participant.max_stamina) * 100
+      : 0;
 
   // Get stamina color
   const getStaminaColor = (percent: number) => {
-    if (percent > 60) return 'bg-green-500'
-    if (percent > 30) return 'bg-yellow-500'
-    return 'bg-red-500'
-  }
+    if (percent > 60) return "bg-green-500";
+    if (percent > 30) return "bg-yellow-500";
+    return "bg-red-500";
+  };
 
   const handleAddCondition = () => {
     if (newCondition.trim() && participant.conditions) {
-      const updatedConditions = [...participant.conditions, newCondition.trim()]
-      onUpdate?.({ conditions: updatedConditions })
-      setNewCondition('')
+      const updatedConditions = [
+        ...participant.conditions,
+        newCondition.trim(),
+      ];
+      onUpdate?.({ conditions: updatedConditions });
+      setNewCondition("");
     }
-  }
+  };
 
   const handleRemoveCondition = (index: number) => {
     if (participant.conditions) {
-      const updatedConditions = participant.conditions.filter((_, i) => i !== index)
-      onUpdate?.({ conditions: updatedConditions })
+      const updatedConditions = participant.conditions.filter(
+        (_, i) => i !== index,
+      );
+      onUpdate?.({ conditions: updatedConditions });
     }
-  }
+  };
 
   const handleStaminaDamage = (amount: number) => {
-    const newStamina = Math.max(0, participant.stamina - amount)
-    onUpdate?.({ stamina: newStamina })
-  }
+    const newStamina = Math.max(0, participant.stamina - amount);
+    onUpdate?.({ stamina: newStamina });
+  };
 
   const handleStaminaHeal = (amount: number) => {
-    const newStamina = Math.min(participant.max_stamina, participant.stamina + amount)
-    onUpdate?.({ stamina: newStamina })
-  }
+    const newStamina = Math.min(
+      participant.max_stamina,
+      participant.stamina + amount,
+    );
+    onUpdate?.({ stamina: newStamina });
+  };
 
   return (
     <div
       className={`p-4 rounded-lg border-2 transition-all ${
-        participant.role === 'quarry'
-          ? 'bg-amber-950/30 border-amber-700 hover:border-amber-600'
-          : 'bg-blue-950/30 border-blue-700 hover:border-blue-600'
-      } ${participant.stamina === 0 ? 'opacity-60' : ''}`}
+        participant.role === "quarry"
+          ? "bg-amber-950/30 border-amber-700 hover:border-amber-600"
+          : "bg-blue-950/30 border-blue-700 hover:border-blue-600"
+      } ${participant.stamina === 0 ? "opacity-60" : ""}`}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div
-            className={`text-3xl ${participant.role === 'quarry' ? 'opacity-90' : 'opacity-80'}`}
+            className={`text-3xl ${participant.role === "quarry" ? "opacity-90" : "opacity-80"}`}
           >
             {getParticipantIcon(participant)}
           </div>
           <div>
-            <div className="font-semibold text-stone-100">{participant.name}</div>
+            <div className="font-semibold text-stone-100">
+              {participant.name}
+            </div>
             <div
               className={`text-xs font-medium ${
-                participant.role === 'quarry' ? 'text-amber-400' : 'text-blue-400'
+                participant.role === "quarry"
+                  ? "text-amber-400"
+                  : "text-blue-400"
               }`}
             >
-              {participant.role === 'quarry' ? 'Quarry' : 'Pursuer'}
-              {participant.participant_type === 'npc' && ' (NPC)'}
+              {participant.role === "quarry" ? "Quarry" : "Pursuer"}
+              {participant.participant_type === "npc" && " (NPC)"}
             </div>
           </div>
         </div>
@@ -85,7 +99,9 @@ export default function ParticipantCard({
         {/* Position badge */}
         <div className="text-right">
           <div className="text-xs text-stone-400">Position</div>
-          <div className="text-lg font-bold text-stone-200">{participant.current_position}</div>
+          <div className="text-lg font-bold text-stone-200">
+            {participant.current_position}
+          </div>
         </div>
       </div>
 
@@ -109,20 +125,22 @@ export default function ParticipantCard({
       <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
         <div className="bg-stone-800/50 rounded p-2 text-center">
           <div className="text-stone-400">Speed</div>
-          <div className="font-semibold text-stone-200">{participant.movement_speed}</div>
+          <div className="font-semibold text-stone-200">
+            {participant.movement_speed}
+          </div>
         </div>
         <div className="bg-stone-800/50 rounded p-2 text-center">
           <div className="text-stone-400">Moved</div>
           <div
             className={`font-semibold ${
               participant.movement_this_round > 0
-                ? 'text-green-400'
+                ? "text-green-400"
                 : participant.movement_this_round < 0
-                  ? 'text-red-400'
-                  : 'text-stone-400'
+                  ? "text-red-400"
+                  : "text-stone-400"
             }`}
           >
-            {participant.movement_this_round > 0 ? '+' : ''}
+            {participant.movement_this_round > 0 ? "+" : ""}
             {participant.movement_this_round}
           </div>
         </div>
@@ -130,10 +148,10 @@ export default function ParticipantCard({
           <div className="text-stone-400">Dash</div>
           <div
             className={`font-semibold ${
-              participant.has_dashed ? 'text-amber-400' : 'text-stone-500'
+              participant.has_dashed ? "text-amber-400" : "text-stone-500"
             }`}
           >
-            {participant.has_dashed ? 'Yes' : 'No'}
+            {participant.has_dashed ? "Yes" : "No"}
           </div>
         </div>
       </div>
@@ -193,10 +211,10 @@ export default function ParticipantCard({
                 value={newCondition}
                 onChange={(e) => setNewCondition(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddCondition()
-                  if (e.key === 'Escape') {
-                    setNewCondition('')
-                    setIsEditingConditions(false)
+                  if (e.key === "Enter") handleAddCondition();
+                  if (e.key === "Escape") {
+                    setNewCondition("");
+                    setIsEditingConditions(false);
                   }
                 }}
                 placeholder="Condition name..."
@@ -211,8 +229,8 @@ export default function ParticipantCard({
               </button>
               <button
                 onClick={() => {
-                  setNewCondition('')
-                  setIsEditingConditions(false)
+                  setNewCondition("");
+                  setIsEditingConditions(false);
                 }}
                 className="px-2 py-1 bg-stone-700 border border-stone-600 rounded text-xs text-stone-300 hover:bg-stone-600 transition-colors"
               >
@@ -239,5 +257,5 @@ export default function ParticipantCard({
         </div>
       )}
     </div>
-  )
+  );
 }

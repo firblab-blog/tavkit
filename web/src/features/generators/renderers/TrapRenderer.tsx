@@ -1,19 +1,25 @@
 // Renderer for generated Traps
 
-import Icon from '@/components/common/Icon'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { RawDataViewer, ParseWarning } from '../components'
-import type { GeneratedTrapData } from '../normalizers/trap'
+import Icon from "@/components/common/Icon";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { RawDataViewer, ParseWarning } from "../components";
+import type { GeneratedTrapData } from "../normalizers/trap";
 
 interface TrapRendererProps {
-  trap: GeneratedTrapData
-  showRawResponse?: boolean
-  isSaved: boolean
-  onSave: () => void
-  onCopy: () => void
+  trap: GeneratedTrapData;
+  showRawResponse?: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onCopy: () => void;
 }
 
-export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }: TrapRendererProps) {
+export function TrapRenderer({
+  trap,
+  showRawResponse,
+  isSaved,
+  onSave,
+  onCopy,
+}: TrapRendererProps) {
   return (
     <div className="space-y-6">
       {/* Parse warning */}
@@ -65,7 +71,9 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
               <Icon name="Skull" className="w-5 h-5 text-red-400" />
               Damage
             </h3>
-            <p className="text-red-400 font-mono font-bold text-xl">{trap.damage}</p>
+            <p className="text-red-400 font-mono font-bold text-xl">
+              {trap.damage}
+            </p>
           </div>
         )}
       </div>
@@ -83,13 +91,13 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
             <div className="bg-background p-4 rounded border border-border space-y-2">
               {trap.detection.passive_perception_dc && (
                 <p className="text-text">
-                  <span className="font-medium">Passive Perception DC:</span>{' '}
+                  <span className="font-medium">Passive Perception DC:</span>{" "}
                   {trap.detection.passive_perception_dc}
                 </p>
               )}
               {trap.detection.investigation_dc && (
                 <p className="text-text">
-                  <span className="font-medium">Investigation DC:</span>{' '}
+                  <span className="font-medium">Investigation DC:</span>{" "}
                   {trap.detection.investigation_dc}
                 </p>
               )}
@@ -98,7 +106,10 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
                   <p className="font-medium text-text mb-1">Clues:</p>
                   <ul className="space-y-1">
                     {trap.detection.clues.map((clue, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-text-muted">
+                      <li
+                        key={idx}
+                        className="flex items-start gap-2 text-text-muted"
+                      >
                         <span className="text-primary">•</span>
                         <span>{clue}</span>
                       </li>
@@ -119,9 +130,14 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
           </h3>
           <div className="space-y-3">
             {trap.solution_paths.map((path, idx) => (
-              <div key={idx} className="bg-background p-4 rounded border-2 border-primary/30">
+              <div
+                key={idx}
+                className="bg-background p-4 rounded border-2 border-primary/30"
+              >
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-text capitalize">{path.approach}</span>
+                  <span className="font-medium text-text capitalize">
+                    {path.approach}
+                  </span>
                   {path.dc && (
                     <span className="px-2 py-1 bg-primary/20 text-primary rounded text-sm font-mono font-bold">
                       DC {path.dc}
@@ -133,7 +149,9 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
                     <span className="font-medium">Skill:</span> {path.skill}
                   </p>
                 )}
-                {path.description && <p className="text-text mb-2">{path.description}</p>}
+                {path.description && (
+                  <p className="text-text mb-2">{path.description}</p>
+                )}
                 {path.time && (
                   <div className="flex gap-4 text-xs text-text-muted">
                     <span>Time: {path.time}</span>
@@ -141,7 +159,8 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
                 )}
                 {path.failure && (
                   <p className="text-sm text-red-400 mt-2">
-                    <span className="font-medium">On Failure:</span> {path.failure}
+                    <span className="font-medium">On Failure:</span>{" "}
+                    {path.failure}
                   </p>
                 )}
               </div>
@@ -199,7 +218,9 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
           <div className="grid md:grid-cols-2 gap-4">
             {trap.scaling.easier && (
               <div className="bg-green-500/10 p-4 rounded border border-green-500/20">
-                <p className="font-medium text-green-400 mb-2">Make It Easier:</p>
+                <p className="font-medium text-green-400 mb-2">
+                  Make It Easier:
+                </p>
                 <p className="text-text">{trap.scaling.easier}</p>
               </div>
             )}
@@ -227,7 +248,9 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {trap._raw && <RawDataViewer data={trap._raw} defaultExpanded={showRawResponse} />}
+      {trap._raw && (
+        <RawDataViewer data={trap._raw} defaultExpanded={showRawResponse} />
+      )}
 
       <ActionsBar
         onCopy={onCopy}
@@ -236,67 +259,67 @@ export function TrapRenderer({ trap, showRawResponse, isSaved, onSave, onCopy }:
         isSaved={isSaved}
       />
     </div>
-  )
+  );
 }
 
 /**
  * Format trap data for clipboard
  */
 export function formatTrapForClipboard(trap: GeneratedTrapData): string {
-  let text = `${trap.name}\n${trap.trap_type} • ${trap.difficulty}${trap.environment ? ` • ${trap.environment}` : ''}\n\n${trap.description}`
+  let text = `${trap.name}\n${trap.trap_type} • ${trap.difficulty}${trap.environment ? ` • ${trap.environment}` : ""}\n\n${trap.description}`;
 
   if (trap.trigger) {
-    text += `\n\nTrigger: ${trap.trigger}`
+    text += `\n\nTrigger: ${trap.trigger}`;
   }
 
   if (trap.effect) {
-    text += `\n\nEffect: ${trap.effect}`
+    text += `\n\nEffect: ${trap.effect}`;
   }
 
   if (trap.damage) {
-    text += `\nDamage: ${trap.damage}`
+    text += `\nDamage: ${trap.damage}`;
   }
 
   if (trap.detection) {
-    text += '\n\nDetection:\n'
+    text += "\n\nDetection:\n";
     if (trap.detection.passive_perception_dc) {
-      text += `Passive Perception DC: ${trap.detection.passive_perception_dc}\n`
+      text += `Passive Perception DC: ${trap.detection.passive_perception_dc}\n`;
     }
     if (trap.detection.investigation_dc) {
-      text += `Investigation DC: ${trap.detection.investigation_dc}\n`
+      text += `Investigation DC: ${trap.detection.investigation_dc}\n`;
     }
     if (trap.detection.clues && trap.detection.clues.length > 0) {
-      text += 'Clues:\n'
+      text += "Clues:\n";
       trap.detection.clues.forEach((clue) => {
-        text += `- ${clue}\n`
-      })
+        text += `- ${clue}\n`;
+      });
     }
   }
 
   if (trap.solution_paths && trap.solution_paths.length > 0) {
-    text += '\nSolution Paths:\n'
+    text += "\nSolution Paths:\n";
     trap.solution_paths.forEach((path) => {
-      text += `\n${path.approach} (${path.skill}${path.dc ? `, DC ${path.dc}` : ''})\n${path.description}\nTime: ${path.time}\nOn Failure: ${path.failure}\n`
-    })
+      text += `\n${path.approach} (${path.skill}${path.dc ? `, DC ${path.dc}` : ""})\n${path.description}\nTime: ${path.time}\nOn Failure: ${path.failure}\n`;
+    });
   }
 
   if (trap.complications && trap.complications.length > 0) {
-    text += '\nComplications:\n'
+    text += "\nComplications:\n";
     trap.complications.forEach((comp) => {
-      text += `- ${comp}\n`
-    })
+      text += `- ${comp}\n`;
+    });
   }
 
   if (trap.rewards && trap.rewards.length > 0) {
-    text += '\nRewards:\n'
+    text += "\nRewards:\n";
     trap.rewards.forEach((reward) => {
-      text += `- ${reward}\n`
-    })
+      text += `- ${reward}\n`;
+    });
   }
 
   if (trap.dm_notes) {
-    text += `\nDM Notes: ${trap.dm_notes}`
+    text += `\nDM Notes: ${trap.dm_notes}`;
   }
 
-  return text
+  return text;
 }

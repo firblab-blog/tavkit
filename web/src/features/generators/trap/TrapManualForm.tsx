@@ -1,21 +1,23 @@
 // Manual Entry Form for Traps
 
-import Icon from '@/components/common/Icon'
-import { FormField } from '@/components/ui/FormField'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import { ArrayFieldEditor } from '../components/Fields'
-import { trapTypeOptions, type ManualTrapData } from '../schemas/trap'
+import Icon from "@/components/common/Icon";
+import { FormField } from "@/components/ui/FormField";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import { ArrayFieldEditor } from "../components/Fields";
+import { trapTypeOptions, type ManualTrapData } from "../schemas/trap";
 
 interface TrapManualFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  manualData: ManualTrapData
-  setManualData: (data: ManualTrapData | ((prev: ManualTrapData) => ManualTrapData)) => void
-  onSave: () => void
-  saving: boolean
-  saved: boolean
-  error: string | null
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  manualData: ManualTrapData;
+  setManualData: (
+    data: ManualTrapData | ((prev: ManualTrapData) => ManualTrapData),
+  ) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  error: string | null;
 }
 
 export function TrapManualForm({
@@ -30,14 +32,19 @@ export function TrapManualForm({
 }: TrapManualFormProps) {
   return (
     <>
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       {/* Basic Information */}
       <FormField label="Trap Name" required>
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., Pendulum Blade, Poison Dart Trap"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -46,7 +53,9 @@ export function TrapManualForm({
       <FormField label="Trap Type">
         <select
           value={manualData.trap_type}
-          onChange={(e) => setManualData({ ...manualData, trap_type: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, trap_type: e.target.value })
+          }
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
           {trapTypeOptions.map((opt) => (
@@ -64,7 +73,9 @@ export function TrapManualForm({
             <input
               type="text"
               value={manualData.trigger}
-              onChange={(e) => setManualData({ ...manualData, trigger: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, trigger: e.target.value })
+              }
               placeholder="e.g., Pressure plate, Tripwire, Opening a door"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -73,7 +84,9 @@ export function TrapManualForm({
           <FormField label="Effect">
             <textarea
               value={manualData.effect}
-              onChange={(e) => setManualData({ ...manualData, effect: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, effect: e.target.value })
+              }
               placeholder="What happens when the trap is triggered?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -85,7 +98,9 @@ export function TrapManualForm({
               <input
                 type="text"
                 value={manualData.damage}
-                onChange={(e) => setManualData({ ...manualData, damage: e.target.value })}
+                onChange={(e) =>
+                  setManualData({ ...manualData, damage: e.target.value })
+                }
                 placeholder="e.g., 2d10 piercing"
                 className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -96,7 +111,7 @@ export function TrapManualForm({
                 type="number"
                 min={1}
                 max={30}
-                value={manualData.save_dc || ''}
+                value={manualData.save_dc || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -120,11 +135,13 @@ export function TrapManualForm({
                 type="number"
                 min={1}
                 max={30}
-                value={manualData.detection_dc || ''}
+                value={manualData.detection_dc || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
-                    detection_dc: e.target.value ? parseInt(e.target.value) : null,
+                    detection_dc: e.target.value
+                      ? parseInt(e.target.value)
+                      : null,
                   })
                 }
                 placeholder="Perception DC"
@@ -137,7 +154,7 @@ export function TrapManualForm({
                 type="number"
                 min={1}
                 max={30}
-                value={manualData.disarm_dc || ''}
+                value={manualData.disarm_dc || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -153,7 +170,9 @@ export function TrapManualForm({
           <FormField label="Bypass Method">
             <textarea
               value={manualData.bypass}
-              onChange={(e) => setManualData({ ...manualData, bypass: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, bypass: e.target.value })
+              }
               placeholder="How can the trap be avoided or bypassed?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -163,13 +182,18 @@ export function TrapManualForm({
       </CollapsibleSection>
 
       {/* Reset & Countermeasures */}
-      <CollapsibleSection title="Reset & Countermeasures" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Reset & Countermeasures"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <FormField label="Reset Mechanism">
             <input
               type="text"
               value={manualData.reset}
-              onChange={(e) => setManualData({ ...manualData, reset: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, reset: e.target.value })
+              }
               placeholder="e.g., Automatic (1 minute), Manual, None"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -178,7 +202,9 @@ export function TrapManualForm({
           <ArrayFieldEditor
             label="Countermeasures"
             values={manualData.countermeasures}
-            onChange={(countermeasures) => setManualData({ ...manualData, countermeasures })}
+            onChange={(countermeasures) =>
+              setManualData({ ...manualData, countermeasures })
+            }
             placeholder="Add a countermeasure..."
           />
         </div>
@@ -189,7 +215,9 @@ export function TrapManualForm({
         <FormField label="Lore/Description">
           <textarea
             value={manualData.lore}
-            onChange={(e) => setManualData({ ...manualData, lore: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, lore: e.target.value })
+            }
             placeholder="Background, purpose, or description of the trap..."
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             rows={3}
@@ -230,5 +258,5 @@ export function TrapManualForm({
         </div>
       )}
     </>
-  )
+  );
 }

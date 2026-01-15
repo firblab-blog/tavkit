@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import Icon from '../../common/Icon'
-import { JournalEntry } from '../../../store/playerJournalStore'
+import { useState } from "react";
+import Icon from "../../common/Icon";
+import { JournalEntry } from "../../../store/playerJournalStore";
 
 interface JournalEntryCardProps {
-  entry: JournalEntry
-  onClick: () => void
-  onEdit: () => void
-  onDelete: () => void
+  entry: JournalEntry;
+  onClick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 export default function JournalEntryCard({
@@ -15,29 +15,29 @@ export default function JournalEntryCard({
   onEdit,
   onDelete,
 }: JournalEntryCardProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false);
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return null
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   // Truncate content for preview
   const previewContent =
     entry.content && entry.content.length > 200
-      ? entry.content.slice(0, 200) + '...'
-      : entry.content
+      ? entry.content.slice(0, 200) + "..."
+      : entry.content;
 
   // Count tags
   const tagCount =
     (entry.tagged_npcs?.length || 0) +
     (entry.tagged_locations?.length || 0) +
-    (entry.tagged_quests?.length || 0)
+    (entry.tagged_quests?.length || 0);
 
   return (
     <div
@@ -60,17 +60,21 @@ export default function JournalEntryCard({
               </span>
             )}
           </div>
-          <h3 className="text-lg font-semibold text-text truncate">{entry.title}</h3>
+          <h3 className="text-lg font-semibold text-text truncate">
+            {entry.title}
+          </h3>
           {entry.session_date && (
-            <p className="text-sm text-text-muted mt-0.5">{formatDate(entry.session_date)}</p>
+            <p className="text-sm text-text-muted mt-0.5">
+              {formatDate(entry.session_date)}
+            </p>
           )}
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={(e) => {
-              e.stopPropagation()
-              onEdit()
+              e.stopPropagation();
+              onEdit();
             }}
             className="p-2 hover:bg-background rounded-lg transition-colors text-text-muted hover:text-text"
             title="Edit entry"
@@ -79,8 +83,8 @@ export default function JournalEntryCard({
           </button>
           <button
             onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
+              e.stopPropagation();
+              onDelete();
             }}
             className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-text-muted hover:text-red-400"
             title="Delete entry"
@@ -89,13 +93,16 @@ export default function JournalEntryCard({
           </button>
           <button
             onClick={(e) => {
-              e.stopPropagation()
-              setExpanded(!expanded)
+              e.stopPropagation();
+              setExpanded(!expanded);
             }}
             className="p-2 hover:bg-background rounded-lg transition-colors text-text-muted hover:text-text"
-            title={expanded ? 'Collapse' : 'Expand'}
+            title={expanded ? "Collapse" : "Expand"}
           >
-            <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} className="w-4 h-4" />
+            <Icon
+              name={expanded ? "ChevronUp" : "ChevronDown"}
+              className="w-4 h-4"
+            />
           </button>
         </div>
       </div>
@@ -142,5 +149,5 @@ export default function JournalEntryCard({
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,51 +1,54 @@
-import ContentListLayout from '../../../../common/ContentListLayout'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
-import ContentCard from '../../../../common/ContentCard'
-import ContentDetailModal from '../../../../common/ContentDetailModal'
-import AssignCampaignModal from '../../../../common/AssignCampaignModal'
-import { useLibraryContent } from '../../../../../hooks/useLibraryContent'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useState } from 'react'
-import { logger } from '@/utils/logger'
+import ContentListLayout from "../../../../common/ContentListLayout";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import ContentCard from "../../../../common/ContentCard";
+import ContentDetailModal from "../../../../common/ContentDetailModal";
+import AssignCampaignModal from "../../../../common/AssignCampaignModal";
+import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface Item {
-  id: string
-  name: string
-  campaign_id?: string | null
-  type: string
-  rarity?: string
-  description?: string
-  properties?: any
-  origin?: string
-  requires_attunement?: boolean
-  curse?: string
-  value?: any
-  ai_generated?: boolean
-  created_at: string
+  id: string;
+  name: string;
+  campaign_id?: string | null;
+  type: string;
+  rarity?: string;
+  description?: string;
+  properties?: any;
+  origin?: string;
+  requires_attunement?: boolean;
+  curse?: string;
+  value?: any;
+  ai_generated?: boolean;
+  created_at: string;
 }
 
 interface ItemsContentProps {
-  campaignId?: string
-  showCampaignFilter?: boolean
+  campaignId?: string;
+  showCampaignFilter?: boolean;
 }
 
 const rarityColors: Record<string, { bg: string; text: string }> = {
-  common: { bg: 'bg-gray-500/10', text: 'text-gray-400' },
-  uncommon: { bg: 'bg-green-500/10', text: 'text-green-400' },
-  rare: { bg: 'bg-blue-500/10', text: 'text-blue-400' },
-  very_rare: { bg: 'bg-purple-500/10', text: 'text-purple-400' },
-  legendary: { bg: 'bg-orange-500/10', text: 'text-orange-400' },
-  artifact: { bg: 'bg-red-500/10', text: 'text-red-400' },
-}
+  common: { bg: "bg-gray-500/10", text: "text-gray-400" },
+  uncommon: { bg: "bg-green-500/10", text: "text-green-400" },
+  rare: { bg: "bg-blue-500/10", text: "text-blue-400" },
+  very_rare: { bg: "bg-purple-500/10", text: "text-purple-400" },
+  legendary: { bg: "bg-orange-500/10", text: "text-orange-400" },
+  artifact: { bg: "bg-red-500/10", text: "text-red-400" },
+};
 
-export default function ItemsContent({ campaignId, showCampaignFilter }: ItemsContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const { campaigns } = useCampaignStore()
+export default function ItemsContent({
+  campaignId,
+  showCampaignFilter,
+}: ItemsContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const { campaigns } = useCampaignStore();
   const [assignModalItem, setAssignModalItem] = useState<{
-    id: string
-    name: string
-    currentCampaignId?: string | null
-  } | null>(null)
+    id: string;
+    name: string;
+    currentCampaignId?: string | null;
+  } | null>(null);
 
   const {
     filteredItems,
@@ -60,21 +63,21 @@ export default function ItemsContent({ campaignId, showCampaignFilter }: ItemsCo
     deleteItem,
     refresh,
   } = useLibraryContent<Item>({
-    contentType: 'items',
+    contentType: "items",
     campaignId,
     showCampaignFilter,
-    searchFields: ['name', 'type', 'description', 'rarity'],
-  })
+    searchFields: ["name", "type", "description", "rarity"],
+  });
 
   const handleDelete = async (item: Item) => {
     if (window.confirm(`Delete "${item.name}"? This cannot be undone.`)) {
       try {
-        await deleteItem(item.id)
+        await deleteItem(item.id);
       } catch (err) {
-        logger.error('Failed to delete item:', err)
+        logger.error("Failed to delete item:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -101,7 +104,7 @@ export default function ItemsContent({ campaignId, showCampaignFilter }: ItemsCo
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search items..."
         addButtonLabel="Add Item"
-        onAddClick={() => openGenerator('item')}
+        onAddClick={() => openGenerator("item")}
         addButtonColor="purple"
         loading={loading}
         error={error}
@@ -109,12 +112,15 @@ export default function ItemsContent({ campaignId, showCampaignFilter }: ItemsCo
         emptyTitle="No items yet"
         emptyDescription="Create magical items, weapons, and treasures."
         emptyCTALabel="Create Your First Item"
-        onEmptyCTAClick={() => openGenerator('item')}
+        onEmptyCTAClick={() => openGenerator("item")}
         hasItems={filteredItems.length > 0}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredItems.map((item) => {
-            const rarityColor = rarityColors[item.rarity?.toLowerCase().replace(' ', '_') || 'common'] || rarityColors.common
+            const rarityColor =
+              rarityColors[
+                item.rarity?.toLowerCase().replace(" ", "_") || "common"
+              ] || rarityColors.common;
             return (
               <ContentCard
                 key={item.id}
@@ -126,10 +132,22 @@ export default function ItemsContent({ campaignId, showCampaignFilter }: ItemsCo
                 badges={[
                   { label: item.type },
                   ...(item.rarity
-                    ? [{ label: item.rarity, color: rarityColor.text, bgColor: rarityColor.bg }]
+                    ? [
+                        {
+                          label: item.rarity,
+                          color: rarityColor.text,
+                          bgColor: rarityColor.bg,
+                        },
+                      ]
                     : []),
                   ...(item.requires_attunement
-                    ? [{ label: 'Attunement', color: 'text-amber-400', bgColor: 'bg-amber-500/10' }]
+                    ? [
+                        {
+                          label: "Attunement",
+                          color: "text-amber-400",
+                          bgColor: "bg-amber-500/10",
+                        },
+                      ]
                     : []),
                 ]}
                 onClick={() => setViewingItem(item)}
@@ -142,7 +160,7 @@ export default function ItemsContent({ campaignId, showCampaignFilter }: ItemsCo
                   })
                 }
               />
-            )
+            );
           })}
         </div>
       </ContentListLayout>
@@ -167,35 +185,37 @@ export default function ItemsContent({ campaignId, showCampaignFilter }: ItemsCo
         />
       )}
     </div>
-  )
+  );
 }
 
 interface ItemDetailModalProps {
-  item: Item
-  onClose: () => void
-  onDelete: () => void
+  item: Item;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
 function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
-  let properties: any[] = []
-  let value: any = null
+  let properties: any[] = [];
+  let value: any = null;
 
   try {
     properties = item.properties
-      ? typeof item.properties === 'string'
+      ? typeof item.properties === "string"
         ? JSON.parse(item.properties)
         : item.properties
-      : []
+      : [];
     value = item.value
-      ? typeof item.value === 'string'
+      ? typeof item.value === "string"
         ? JSON.parse(item.value)
         : item.value
-      : null
+      : null;
   } catch (err) {
-    logger.error('Failed to parse item data:', err)
+    logger.error("Failed to parse item data:", err);
   }
 
-  const rarityColor = rarityColors[item.rarity?.toLowerCase().replace(' ', '_') || 'common'] || rarityColors.common
+  const rarityColor =
+    rarityColors[item.rarity?.toLowerCase().replace(" ", "_") || "common"] ||
+    rarityColors.common;
 
   return (
     <ContentDetailModal
@@ -211,9 +231,15 @@ function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
         {/* Info Row */}
         <div className="flex flex-wrap gap-3">
           {item.rarity && (
-            <div className={`px-4 py-2 ${rarityColor.bg} border border-purple-500/30 rounded-lg`}>
+            <div
+              className={`px-4 py-2 ${rarityColor.bg} border border-purple-500/30 rounded-lg`}
+            >
               <p className="text-xs text-text-muted">Rarity</p>
-              <p className={`text-lg font-semibold ${rarityColor.text} capitalize`}>{item.rarity}</p>
+              <p
+                className={`text-lg font-semibold ${rarityColor.text} capitalize`}
+              >
+                {item.rarity}
+              </p>
             </div>
           )}
           {item.requires_attunement && (
@@ -226,7 +252,9 @@ function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
             <div className="px-4 py-2 bg-background border border-border rounded-lg">
               <p className="text-xs text-text-muted">Value</p>
               <p className="text-lg font-semibold text-text">
-                {typeof value === 'object' ? `${value.amount} ${value.currency}` : value}
+                {typeof value === "object"
+                  ? `${value.amount} ${value.currency}`
+                  : value}
               </p>
             </div>
           )}
@@ -237,7 +265,9 @@ function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Description
             </h4>
-            <p className="text-text leading-relaxed whitespace-pre-wrap">{item.description}</p>
+            <p className="text-text leading-relaxed whitespace-pre-wrap">
+              {item.description}
+            </p>
           </div>
         )}
 
@@ -248,7 +278,9 @@ function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
             </h4>
             <ul className="list-disc list-inside text-text space-y-1">
               {properties.map((p: any, i: number) => (
-                <li key={i}>{typeof p === 'string' ? p : p.name || p.description}</li>
+                <li key={i}>
+                  {typeof p === "string" ? p : p.name || p.description}
+                </li>
               ))}
             </ul>
           </div>
@@ -273,5 +305,5 @@ function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
         )}
       </div>
     </ContentDetailModal>
-  )
+  );
 }

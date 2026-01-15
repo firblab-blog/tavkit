@@ -9,7 +9,7 @@
  * - All methods output normally
  */
 
-const isDev = import.meta.env.DEV
+const isDev = import.meta.env.DEV;
 
 export const logger = {
   /**
@@ -17,7 +17,7 @@ export const logger = {
    */
   debug: (...args: unknown[]): void => {
     if (isDev) {
-      console.log('[DEBUG]', ...args)
+      console.log("[DEBUG]", ...args);
     }
   },
 
@@ -26,7 +26,7 @@ export const logger = {
    */
   log: (...args: unknown[]): void => {
     if (isDev) {
-      console.log(...args)
+      console.log(...args);
     }
   },
 
@@ -35,7 +35,7 @@ export const logger = {
    */
   info: (...args: unknown[]): void => {
     if (isDev) {
-      console.info(...args)
+      console.info(...args);
     }
   },
 
@@ -43,15 +43,15 @@ export const logger = {
    * Warning-level logging - kept in production for monitoring
    */
   warn: (...args: unknown[]): void => {
-    console.warn(...args)
+    console.warn(...args);
   },
 
   /**
    * Error-level logging - kept in production for monitoring
    */
   error: (...args: unknown[]): void => {
-    console.error(...args)
+    console.error(...args);
   },
-}
+};
 
-export default logger
+export default logger;

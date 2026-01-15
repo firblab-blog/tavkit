@@ -1,11 +1,16 @@
 interface FormFieldProps {
-  label: string
-  description?: string
-  children: React.ReactNode
-  required?: boolean
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+  required?: boolean;
 }
 
-export const FormField = ({ label, description, children, required = false }: FormFieldProps) => (
+export const FormField = ({
+  label,
+  description,
+  children,
+  required = false,
+}: FormFieldProps) => (
   <div className="space-y-2">
     <label className="block text-sm font-medium text-text">
       {label}
@@ -16,4 +21,4 @@ export const FormField = ({ label, description, children, required = false }: Fo
       {children}
     </div>
   </div>
-)
+);

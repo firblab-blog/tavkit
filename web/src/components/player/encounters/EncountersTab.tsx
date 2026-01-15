@@ -1,13 +1,13 @@
-import { useState } from 'react'
-import Icon from '../../common/Icon'
-import NPCsMet from './NPCsMet'
-import LocationsVisited from './LocationsVisited'
-import RevealedContent from '../reveals/RevealedContent'
+import { useState } from "react";
+import Icon from "../../common/Icon";
+import NPCsMet from "./NPCsMet";
+import LocationsVisited from "./LocationsVisited";
+import RevealedContent from "../reveals/RevealedContent";
 
-type SubTab = 'npcs' | 'locations' | 'gm_shared'
+type SubTab = "npcs" | "locations" | "gm_shared";
 
 export default function EncountersTab() {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('npcs')
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>("npcs");
 
   return (
     <div className="space-y-4">
@@ -25,36 +25,36 @@ export default function EncountersTab() {
       {/* Sub-tabs */}
       <div className="flex gap-2 border-b border-border pb-1">
         <button
-          onClick={() => setActiveSubTab('npcs')}
+          onClick={() => setActiveSubTab("npcs")}
           className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors flex items-center gap-2
             ${
-              activeSubTab === 'npcs'
-                ? 'text-blue-400 border-b-2 border-blue-400 -mb-[3px]'
-                : 'text-text-muted hover:text-text'
+              activeSubTab === "npcs"
+                ? "text-blue-400 border-b-2 border-blue-400 -mb-[3px]"
+                : "text-text-muted hover:text-text"
             }`}
         >
           <Icon name="User" className="w-4 h-4" />
           NPCs Met
         </button>
         <button
-          onClick={() => setActiveSubTab('locations')}
+          onClick={() => setActiveSubTab("locations")}
           className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors flex items-center gap-2
             ${
-              activeSubTab === 'locations'
-                ? 'text-emerald-400 border-b-2 border-emerald-400 -mb-[3px]'
-                : 'text-text-muted hover:text-text'
+              activeSubTab === "locations"
+                ? "text-emerald-400 border-b-2 border-emerald-400 -mb-[3px]"
+                : "text-text-muted hover:text-text"
             }`}
         >
           <Icon name="MapPin" className="w-4 h-4" />
           Locations Visited
         </button>
         <button
-          onClick={() => setActiveSubTab('gm_shared')}
+          onClick={() => setActiveSubTab("gm_shared")}
           className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors flex items-center gap-2
             ${
-              activeSubTab === 'gm_shared'
-                ? 'text-purple-400 border-b-2 border-purple-400 -mb-[3px]'
-                : 'text-text-muted hover:text-text'
+              activeSubTab === "gm_shared"
+                ? "text-purple-400 border-b-2 border-purple-400 -mb-[3px]"
+                : "text-text-muted hover:text-text"
             }`}
         >
           <Icon name="Eye" className="w-4 h-4" />
@@ -63,9 +63,9 @@ export default function EncountersTab() {
       </div>
 
       {/* Content */}
-      {activeSubTab === 'npcs' && <NPCsMet />}
-      {activeSubTab === 'locations' && <LocationsVisited />}
-      {activeSubTab === 'gm_shared' && <RevealedContent />}
+      {activeSubTab === "npcs" && <NPCsMet />}
+      {activeSubTab === "locations" && <LocationsVisited />}
+      {activeSubTab === "gm_shared" && <RevealedContent />}
     </div>
-  )
+  );
 }

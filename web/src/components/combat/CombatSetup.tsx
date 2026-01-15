@@ -1,37 +1,48 @@
-import { useState } from 'react'
-import Icon from '../common/Icon'
+import { useState } from "react";
+import Icon from "../common/Icon";
 
 interface CombatSetupProps {
-  onCreateCombat: (name: string, difficulty?: string, environment?: string) => void
-  loading: boolean
+  onCreateCombat: (
+    name: string,
+    difficulty?: string,
+    environment?: string,
+  ) => void;
+  loading: boolean;
 }
 
-const DIFFICULTIES = ['Trivial', 'Easy', 'Medium', 'Hard', 'Deadly']
+const DIFFICULTIES = ["Trivial", "Easy", "Medium", "Hard", "Deadly"];
 const ENVIRONMENTS = [
-  'Open Field',
-  'Forest',
-  'Dungeon',
-  'Cave',
-  'Urban',
-  'Underwater',
-  'Aerial',
-  'Ship/Boat',
-  'Mountain',
-  'Swamp',
-  'Desert',
-  'Arctic',
-]
+  "Open Field",
+  "Forest",
+  "Dungeon",
+  "Cave",
+  "Urban",
+  "Underwater",
+  "Aerial",
+  "Ship/Boat",
+  "Mountain",
+  "Swamp",
+  "Desert",
+  "Arctic",
+];
 
-export default function CombatSetup({ onCreateCombat, loading }: CombatSetupProps) {
-  const [name, setName] = useState('')
-  const [difficulty, setDifficulty] = useState<string>('')
-  const [environment, setEnvironment] = useState<string>('')
+export default function CombatSetup({
+  onCreateCombat,
+  loading,
+}: CombatSetupProps) {
+  const [name, setName] = useState("");
+  const [difficulty, setDifficulty] = useState<string>("");
+  const [environment, setEnvironment] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) return
-    onCreateCombat(name.trim(), difficulty || undefined, environment || undefined)
-  }
+    e.preventDefault();
+    if (!name.trim()) return;
+    onCreateCombat(
+      name.trim(),
+      difficulty || undefined,
+      environment || undefined,
+    );
+  };
 
   return (
     <div className="h-full flex items-center justify-center bg-background p-6">
@@ -75,11 +86,11 @@ export default function CombatSetup({ onCreateCombat, loading }: CombatSetupProp
                 <button
                   key={d}
                   type="button"
-                  onClick={() => setDifficulty(difficulty === d ? '' : d)}
+                  onClick={() => setDifficulty(difficulty === d ? "" : d)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     difficulty === d
-                      ? 'bg-primary text-background'
-                      : 'bg-background border border-border text-text-muted hover:border-primary/40'
+                      ? "bg-primary text-background"
+                      : "bg-background border border-border text-text-muted hover:border-primary/40"
                   }`}
                 >
                   {d}
@@ -129,7 +140,9 @@ export default function CombatSetup({ onCreateCombat, loading }: CombatSetupProp
             Quick Tips
           </h3>
           <ul className="text-xs text-text-muted space-y-1">
-            <li>• Add participants from PCs, NPCs, or monsters in your campaign</li>
+            <li>
+              • Add participants from PCs, NPCs, or monsters in your campaign
+            </li>
             <li>• Roll or set initiative for each combatant</li>
             <li>• Track HP changes, temp HP, and conditions</li>
             <li>• Use Next Turn to advance through the initiative order</li>
@@ -137,5 +150,5 @@ export default function CombatSetup({ onCreateCombat, loading }: CombatSetupProp
         </div>
       </div>
     </div>
-  )
+  );
 }

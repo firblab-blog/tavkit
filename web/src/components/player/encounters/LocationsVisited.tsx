@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
-import Icon from '../../common/Icon'
-import { usePlayerEncountersStore, LocationVisit } from '../../../store/playerEncountersStore'
-import { useCampaignStore } from '../../../store/campaignStore'
-import LocationDetailModal from './LocationDetailModal'
+import { useEffect, useState } from "react";
+import Icon from "../../common/Icon";
+import {
+  usePlayerEncountersStore,
+  LocationVisit,
+} from "../../../store/playerEncountersStore";
+import { useCampaignStore } from "../../../store/campaignStore";
+import LocationDetailModal from "./LocationDetailModal";
 
 export default function LocationsVisited() {
   const {
@@ -13,70 +16,76 @@ export default function LocationsVisited() {
     createLocation,
     updateLocation,
     deleteLocation,
-  } = usePlayerEncountersStore()
-  const getActiveCampaign = useCampaignStore((state) => state.getActiveCampaign)
-  const activeCampaign = getActiveCampaign()
+  } = usePlayerEncountersStore();
+  const getActiveCampaign = useCampaignStore(
+    (state) => state.getActiveCampaign,
+  );
+  const activeCampaign = getActiveCampaign();
 
-  const [showForm, setShowForm] = useState(false)
-  const [editingLocation, setEditingLocation] = useState<LocationVisit | null>(null)
-  const [viewingLocation, setViewingLocation] = useState<LocationVisit | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [showForm, setShowForm] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<LocationVisit | null>(
+    null,
+  );
+  const [viewingLocation, setViewingLocation] = useState<LocationVisit | null>(
+    null,
+  );
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    first_visit_session: '',
-    notes: '',
-  })
+    name: "",
+    description: "",
+    first_visit_session: "",
+    notes: "",
+  });
 
   useEffect(() => {
-    fetchLocations(activeCampaign?.id)
-  }, [fetchLocations, activeCampaign?.id])
+    fetchLocations(activeCampaign?.id);
+  }, [fetchLocations, activeCampaign?.id]);
 
   const filteredLocations = locations.filter((loc) => {
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       if (
         !loc.name.toLowerCase().includes(query) &&
         !loc.description?.toLowerCase().includes(query)
       ) {
-        return false
+        return false;
       }
     }
-    return true
-  })
+    return true;
+  });
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      description: '',
-      first_visit_session: '',
-      notes: '',
-    })
-    setEditingLocation(null)
-    setShowForm(false)
-  }
+      name: "",
+      description: "",
+      first_visit_session: "",
+      notes: "",
+    });
+    setEditingLocation(null);
+    setShowForm(false);
+  };
 
   const handleView = (location: LocationVisit) => {
-    setViewingLocation(location)
-  }
+    setViewingLocation(location);
+  };
 
   const handleEdit = (location: LocationVisit) => {
-    setViewingLocation(null)
-    setEditingLocation(location)
+    setViewingLocation(null);
+    setEditingLocation(location);
     setFormData({
       name: location.name,
-      description: location.description || '',
-      first_visit_session: location.first_visit_session?.toString() || '',
-      notes: location.notes || '',
-    })
-    setShowForm(true)
-  }
+      description: location.description || "",
+      first_visit_session: location.first_visit_session?.toString() || "",
+      notes: location.notes || "",
+    });
+    setShowForm(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formData.name.trim()) return
+    e.preventDefault();
+    if (!formData.name.trim()) return;
 
     const data = {
       campaign_id: activeCampaign?.id,
@@ -86,21 +95,21 @@ export default function LocationsVisited() {
         ? parseInt(formData.first_visit_session)
         : undefined,
       notes: formData.notes.trim() || undefined,
-    }
+    };
 
     if (editingLocation) {
-      await updateLocation(editingLocation.id, data)
+      await updateLocation(editingLocation.id, data);
     } else {
-      await createLocation(data)
+      await createLocation(data);
     }
-    resetForm()
-  }
+    resetForm();
+  };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to remove this location?')) {
-      await deleteLocation(id)
+    if (window.confirm("Are you sure you want to remove this location?")) {
+      await deleteLocation(id);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -145,14 +154,17 @@ export default function LocationsVisited() {
       {/* Empty State */}
       {!loadingLocations && filteredLocations.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="MapPin" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="MapPin"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching locations' : 'No locations logged yet'}
+            {searchQuery ? "No matching locations" : "No locations logged yet"}
           </h3>
           <p className="text-text-muted text-sm">
             {searchQuery
-              ? 'Try adjusting your search.'
-              : 'Start tracking places you visit in your adventures!'}
+              ? "Try adjusting your search."
+              : "Start tracking places you visit in your adventures!"}
           </p>
         </div>
       )}
@@ -171,7 +183,9 @@ export default function LocationsVisited() {
                   <Icon name="MapPin" className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="min-w-0">
-                  <h4 className="text-text font-medium truncate">{location.name}</h4>
+                  <h4 className="text-text font-medium truncate">
+                    {location.name}
+                  </h4>
                   {location.first_visit_session && (
                     <span className="text-xs text-text-muted">
                       Session {location.first_visit_session}
@@ -187,8 +201,8 @@ export default function LocationsVisited() {
                 )}
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleEdit(location)
+                    e.stopPropagation();
+                    handleEdit(location);
                   }}
                   className="p-1 hover:bg-background rounded text-text-muted hover:text-text"
                 >
@@ -196,8 +210,8 @@ export default function LocationsVisited() {
                 </button>
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(location.id)
+                    e.stopPropagation();
+                    handleDelete(location.id);
                   }}
                   className="p-1 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400"
                 >
@@ -207,7 +221,9 @@ export default function LocationsVisited() {
             </div>
 
             {location.description && (
-              <p className="text-text-muted text-sm line-clamp-2">{location.description}</p>
+              <p className="text-text-muted text-sm line-clamp-2">
+                {location.description}
+              </p>
             )}
 
             {location.notes && (
@@ -231,7 +247,7 @@ export default function LocationsVisited() {
           >
             <div className="border-b border-border px-5 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-text">
-                {editingLocation ? 'Edit Location' : 'Add Location'}
+                {editingLocation ? "Edit Location" : "Add Location"}
               </h3>
               <button
                 type="button"
@@ -244,11 +260,15 @@ export default function LocationsVisited() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Name *</label>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Name *
+                </label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   placeholder="Location name"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary"
                 />
@@ -260,7 +280,9 @@ export default function LocationsVisited() {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   placeholder="Brief description of this location"
                   rows={2}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary resize-y"
@@ -275,7 +297,10 @@ export default function LocationsVisited() {
                   type="number"
                   value={formData.first_visit_session}
                   onChange={(e) =>
-                    setFormData({ ...formData, first_visit_session: e.target.value })
+                    setFormData({
+                      ...formData,
+                      first_visit_session: e.target.value,
+                    })
                   }
                   placeholder="e.g., 3"
                   min="1"
@@ -284,10 +309,14 @@ export default function LocationsVisited() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Notes</label>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Notes
+                </label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   placeholder="Personal notes about this location"
                   rows={2}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary resize-y"
@@ -308,7 +337,7 @@ export default function LocationsVisited() {
                 disabled={loadingLocations || !formData.name.trim()}
                 className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
               >
-                {editingLocation ? 'Save' : 'Add'}
+                {editingLocation ? "Save" : "Add"}
               </button>
             </div>
           </form>
@@ -322,11 +351,11 @@ export default function LocationsVisited() {
           onClose={() => setViewingLocation(null)}
           onEdit={() => handleEdit(viewingLocation)}
           onDelete={() => {
-            handleDelete(viewingLocation.id)
-            setViewingLocation(null)
+            handleDelete(viewingLocation.id);
+            setViewingLocation(null);
           }}
         />
       )}
     </div>
-  )
+  );
 }

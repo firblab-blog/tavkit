@@ -1,27 +1,27 @@
-import { useState } from 'react'
-import Icon from '../common/Icon'
-import { TIME_OF_DAY, CROWD_SIZE, ATMOSPHERE } from './TavernSession'
+import { useState } from "react";
+import Icon from "../common/Icon";
+import { TIME_OF_DAY, CROWD_SIZE, ATMOSPHERE } from "./TavernSession";
 
 interface TavernSetupProps {
   onStart: (data: {
-    tavern_id: string
-    tavern_name: string
-    time_of_day: string
-    crowd_size: string
-    atmosphere: string
-  }) => void
-  isLoading: boolean
+    tavern_id: string;
+    tavern_name: string;
+    time_of_day: string;
+    crowd_size: string;
+    atmosphere: string;
+  }) => void;
+  isLoading: boolean;
 }
 
 export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
-  const [tavernName, setTavernName] = useState('')
-  const [timeOfDay, setTimeOfDay] = useState('evening')
-  const [crowdSize, setCrowdSize] = useState('moderate')
-  const [atmosphere, setAtmosphere] = useState('lively')
+  const [tavernName, setTavernName] = useState("");
+  const [timeOfDay, setTimeOfDay] = useState("evening");
+  const [crowdSize, setCrowdSize] = useState("moderate");
+  const [atmosphere, setAtmosphere] = useState("lively");
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!tavernName.trim()) return
+    e.preventDefault();
+    if (!tavernName.trim()) return;
 
     onStart({
       tavern_id: `tavern-${Date.now()}`, // Generate temporary ID
@@ -29,8 +29,8 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
       time_of_day: timeOfDay,
       crowd_size: crowdSize,
       atmosphere: atmosphere,
-    })
-  }
+    });
+  };
 
   return (
     <div className="bg-background-panel border border-border rounded-xl overflow-hidden">
@@ -40,14 +40,17 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
           Start Tavern Session
         </h2>
         <p className="text-sm text-text-muted mt-1">
-          Track patron interactions, rumors heard, and tabs during a tavern visit.
+          Track patron interactions, rumors heard, and tabs during a tavern
+          visit.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         {/* Tavern Name */}
         <div>
-          <label className="block text-sm font-medium text-text mb-2">Tavern Name</label>
+          <label className="block text-sm font-medium text-text mb-2">
+            Tavern Name
+          </label>
           <input
             type="text"
             value={tavernName}
@@ -60,7 +63,9 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
 
         {/* Time of Day */}
         <div>
-          <label className="block text-sm font-medium text-text mb-2">Time of Day</label>
+          <label className="block text-sm font-medium text-text mb-2">
+            Time of Day
+          </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {TIME_OF_DAY.map((time) => (
               <button
@@ -69,8 +74,8 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
                 onClick={() => setTimeOfDay(time.value)}
                 className={`p-3 rounded-lg border text-center transition-colors ${
                   timeOfDay === time.value
-                    ? 'border-primary bg-primary/10 text-text'
-                    : 'border-border text-text-muted hover:border-primary/40'
+                    ? "border-primary bg-primary/10 text-text"
+                    : "border-border text-text-muted hover:border-primary/40"
                 }`}
               >
                 <Icon name={time.icon} className="w-5 h-5 mx-auto mb-1" />
@@ -82,7 +87,9 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
 
         {/* Crowd Size */}
         <div>
-          <label className="block text-sm font-medium text-text mb-2">Crowd Size</label>
+          <label className="block text-sm font-medium text-text mb-2">
+            Crowd Size
+          </label>
           <div className="flex flex-wrap gap-2">
             {CROWD_SIZE.map((size) => (
               <button
@@ -91,8 +98,8 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
                 onClick={() => setCrowdSize(size.value)}
                 className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
                   crowdSize === size.value
-                    ? 'border-primary bg-primary/10 text-text'
-                    : 'border-border text-text-muted hover:border-primary/40'
+                    ? "border-primary bg-primary/10 text-text"
+                    : "border-border text-text-muted hover:border-primary/40"
                 }`}
               >
                 {size.label}
@@ -103,7 +110,9 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
 
         {/* Atmosphere */}
         <div>
-          <label className="block text-sm font-medium text-text mb-2">Atmosphere</label>
+          <label className="block text-sm font-medium text-text mb-2">
+            Atmosphere
+          </label>
           <div className="flex flex-wrap gap-2">
             {ATMOSPHERE.map((atmo) => (
               <button
@@ -112,8 +121,8 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
                 onClick={() => setAtmosphere(atmo.value)}
                 className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center gap-2 ${
                   atmosphere === atmo.value
-                    ? 'border-primary bg-primary/10 text-text'
-                    : 'border-border text-text-muted hover:border-primary/40'
+                    ? "border-primary bg-primary/10 text-text"
+                    : "border-border text-text-muted hover:border-primary/40"
                 }`}
               >
                 <Icon name={atmo.icon} className="w-4 h-4" />
@@ -143,5 +152,5 @@ export default function TavernSetup({ onStart, isLoading }: TavernSetupProps) {
         </button>
       </form>
     </div>
-  )
+  );
 }

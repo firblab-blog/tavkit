@@ -1,27 +1,27 @@
-import { useState } from 'react'
-import Icon from '../common/Icon'
-import { CartItem, HAGGLING_SKILLS } from './ShoppingSession'
+import { useState } from "react";
+import Icon from "../common/Icon";
+import { CartItem, HAGGLING_SKILLS } from "./ShoppingSession";
 
 interface ShoppingCartProps {
-  items: CartItem[]
-  discountPercentage: number
+  items: CartItem[];
+  discountPercentage: number;
   onAddItem: (data: {
-    character_name: string
-    item_name: string
-    quantity: number
-    base_price: string
-  }) => void
-  onUpdateItem: (itemId: string, updates: Partial<CartItem>) => void
-  onRemoveItem: (itemId: string) => void
+    character_name: string;
+    item_name: string;
+    quantity: number;
+    base_price: string;
+  }) => void;
+  onUpdateItem: (itemId: string, updates: Partial<CartItem>) => void;
+  onRemoveItem: (itemId: string) => void;
   onStartHaggling: (data: {
-    item_name: string
-    character_name: string
-    starting_price: string
-    party_offer: string
-    skill_check_type: string
-    max_rounds: number
-  }) => void
-  disabled?: boolean
+    item_name: string;
+    character_name: string;
+    starting_price: string;
+    party_offer: string;
+    skill_check_type: string;
+    max_rounds: number;
+  }) => void;
+  disabled?: boolean;
 }
 
 export default function ShoppingCart({
@@ -33,33 +33,33 @@ export default function ShoppingCart({
   onStartHaggling,
   disabled = false,
 }: ShoppingCartProps) {
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [characterName, setCharacterName] = useState('')
-  const [itemName, setItemName] = useState('')
-  const [quantity, setQuantity] = useState(1)
-  const [basePrice, setBasePrice] = useState('')
-  const [showHaggleForm, setShowHaggleForm] = useState<string | null>(null)
-  const [haggleOffer, setHaggleOffer] = useState('')
-  const [haggleSkill, setHaggleSkill] = useState('Persuasion')
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [characterName, setCharacterName] = useState("");
+  const [itemName, setItemName] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [basePrice, setBasePrice] = useState("");
+  const [showHaggleForm, setShowHaggleForm] = useState<string | null>(null);
+  const [haggleOffer, setHaggleOffer] = useState("");
+  const [haggleSkill, setHaggleSkill] = useState("Persuasion");
 
   const handleAddItem = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!characterName.trim() || !itemName.trim() || !basePrice.trim()) return
+    e.preventDefault();
+    if (!characterName.trim() || !itemName.trim() || !basePrice.trim()) return;
 
     onAddItem({
       character_name: characterName.trim(),
       item_name: itemName.trim(),
       quantity,
       base_price: basePrice.trim(),
-    })
+    });
 
-    setItemName('')
-    setQuantity(1)
-    setBasePrice('')
-  }
+    setItemName("");
+    setQuantity(1);
+    setBasePrice("");
+  };
 
   const handleStartHaggle = (item: CartItem) => {
-    if (!haggleOffer.trim()) return
+    if (!haggleOffer.trim()) return;
 
     onStartHaggling({
       item_name: item.item_name,
@@ -68,45 +68,45 @@ export default function ShoppingCart({
       party_offer: haggleOffer.trim(),
       skill_check_type: haggleSkill,
       max_rounds: 3,
-    })
+    });
 
-    setShowHaggleForm(null)
-    setHaggleOffer('')
-  }
+    setShowHaggleForm(null);
+    setHaggleOffer("");
+  };
 
   const calculateItemPrice = (item: CartItem) => {
-    const priceStr = item.negotiated_price || item.base_price
-    const price = parseFloat(priceStr.replace(/[^\d.]/g, ''))
-    if (isNaN(price)) return priceStr
+    const priceStr = item.negotiated_price || item.base_price;
+    const price = parseFloat(priceStr.replace(/[^\d.]/g, ""));
+    if (isNaN(price)) return priceStr;
 
     // Apply discount if no negotiated price
     if (!item.negotiated_price && discountPercentage !== 0) {
-      const adjustedPrice = price * (1 - discountPercentage / 100)
-      return `${adjustedPrice.toFixed(2)} gp`
+      const adjustedPrice = price * (1 - discountPercentage / 100);
+      return `${adjustedPrice.toFixed(2)} gp`;
     }
 
-    return `${price.toFixed(2)} gp`
-  }
+    return `${price.toFixed(2)} gp`;
+  };
 
   const calculateTotal = () => {
-    let total = 0
+    let total = 0;
     for (const item of items) {
-      if (!item.purchased) continue
-      const priceStr = item.negotiated_price || item.base_price
-      const price = parseFloat(priceStr.replace(/[^\d.]/g, ''))
+      if (!item.purchased) continue;
+      const priceStr = item.negotiated_price || item.base_price;
+      const price = parseFloat(priceStr.replace(/[^\d.]/g, ""));
       if (!isNaN(price)) {
-        let adjustedPrice = price
+        let adjustedPrice = price;
         if (!item.negotiated_price && discountPercentage !== 0) {
-          adjustedPrice = price * (1 - discountPercentage / 100)
+          adjustedPrice = price * (1 - discountPercentage / 100);
         }
-        total += adjustedPrice * item.quantity
+        total += adjustedPrice * item.quantity;
       }
     }
-    return total.toFixed(2)
-  }
+    return total.toFixed(2);
+  };
 
-  const purchasedItems = items.filter((i) => i.purchased)
-  const unpurchasedItems = items.filter((i) => !i.purchased)
+  const purchasedItems = items.filter((i) => i.purchased);
+  const unpurchasedItems = items.filter((i) => !i.purchased);
 
   return (
     <div className="bg-background-panel border border-border rounded-xl overflow-hidden">
@@ -121,14 +121,17 @@ export default function ShoppingCart({
             onClick={() => setShowAddForm(!showAddForm)}
             className="p-1.5 hover:bg-background rounded-lg transition-colors text-text-muted hover:text-primary"
           >
-            <Icon name={showAddForm ? 'X' : 'Plus'} className="w-4 h-4" />
+            <Icon name={showAddForm ? "X" : "Plus"} className="w-4 h-4" />
           </button>
         )}
       </div>
 
       {/* Add Item Form */}
       {showAddForm && !disabled && (
-        <form onSubmit={handleAddItem} className="p-4 border-b border-border bg-background/50">
+        <form
+          onSubmit={handleAddItem}
+          className="p-4 border-b border-border bg-background/50"
+        >
           <div className="space-y-3">
             <input
               type="text"
@@ -148,7 +151,9 @@ export default function ShoppingCart({
               <input
                 type="number"
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) =>
+                  setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                }
                 min={1}
                 className="w-16 px-3 py-2 bg-background border border-border rounded-lg text-text text-center focus:border-primary focus:outline-none"
               />
@@ -162,7 +167,9 @@ export default function ShoppingCart({
             </div>
             <button
               type="submit"
-              disabled={!characterName.trim() || !itemName.trim() || !basePrice.trim()}
+              disabled={
+                !characterName.trim() || !itemName.trim() || !basePrice.trim()
+              }
               className="w-full px-3 py-2 bg-primary hover:bg-primary/90 text-background font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               Add to Cart
@@ -188,10 +195,12 @@ export default function ShoppingCart({
                   <div className="flex items-center gap-3">
                     {/* Purchase Toggle */}
                     <button
-                      onClick={() => !disabled && onUpdateItem(item.id, { purchased: true })}
+                      onClick={() =>
+                        !disabled && onUpdateItem(item.id, { purchased: true })
+                      }
                       disabled={disabled}
                       className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors border-border hover:border-emerald-500/50 ${
-                        disabled ? 'opacity-50 cursor-not-allowed' : ''
+                        disabled ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                       title="Mark as purchased"
                     />
@@ -199,9 +208,13 @@ export default function ShoppingCart({
                     {/* Item Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-text">{item.item_name}</span>
+                        <span className="font-medium text-text">
+                          {item.item_name}
+                        </span>
                         {item.quantity > 1 && (
-                          <span className="text-xs text-text-muted">x{item.quantity}</span>
+                          <span className="text-xs text-text-muted">
+                            x{item.quantity}
+                          </span>
                         )}
                       </div>
                       <div className="text-sm text-text-muted">
@@ -216,7 +229,9 @@ export default function ShoppingCart({
 
                     {/* Price */}
                     <div className="text-right">
-                      <div className="font-medium text-text">{calculateItemPrice(item)}</div>
+                      <div className="font-medium text-text">
+                        {calculateItemPrice(item)}
+                      </div>
                       {!item.negotiated_price && discountPercentage !== 0 && (
                         <div className="text-xs text-text-muted line-through">
                           {item.base_price}
@@ -230,7 +245,9 @@ export default function ShoppingCart({
                         {!item.negotiated_price && (
                           <button
                             onClick={() =>
-                              setShowHaggleForm(showHaggleForm === item.id ? null : item.id)
+                              setShowHaggleForm(
+                                showHaggleForm === item.id ? null : item.id,
+                              )
                             }
                             className="p-1.5 hover:bg-primary/20 text-text-muted hover:text-primary rounded transition-colors"
                             title="Haggle"
@@ -298,19 +315,27 @@ export default function ShoppingCart({
                 <div key={item.id} className="p-4 bg-emerald-500/5">
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => !disabled && onUpdateItem(item.id, { purchased: false })}
+                      onClick={() =>
+                        !disabled && onUpdateItem(item.id, { purchased: false })
+                      }
                       disabled={disabled}
                       className="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 bg-emerald-500 border-emerald-500"
                     >
                       <Icon name="Check" className="w-3 h-3 text-white" />
                     </button>
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium text-text">{item.item_name}</span>
+                      <span className="font-medium text-text">
+                        {item.item_name}
+                      </span>
                       {item.quantity > 1 && (
-                        <span className="text-xs text-text-muted ml-2">x{item.quantity}</span>
+                        <span className="text-xs text-text-muted ml-2">
+                          x{item.quantity}
+                        </span>
                       )}
                     </div>
-                    <div className="font-medium text-emerald-400">{calculateItemPrice(item)}</div>
+                    <div className="font-medium text-emerald-400">
+                      {calculateItemPrice(item)}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -324,10 +349,12 @@ export default function ShoppingCart({
         <div className="p-4 border-t border-border bg-background/50">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-text">Total Purchased</span>
-            <span className="text-xl font-bold text-emerald-400">{calculateTotal()} gp</span>
+            <span className="text-xl font-bold text-emerald-400">
+              {calculateTotal()} gp
+            </span>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

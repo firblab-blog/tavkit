@@ -1,21 +1,27 @@
-import Icon from '../common/Icon'
-import { useCampaignStore } from '../../store/campaignStore'
+import Icon from "../common/Icon";
+import { useCampaignStore } from "../../store/campaignStore";
 
 export default function NoCampaignState() {
-  const { openCreateCampaignModal } = useCampaignStore()
+  const { openCreateCampaignModal } = useCampaignStore();
 
   const createCampaign = () => {
-    openCreateCampaignModal()
-  }
+    openCreateCampaignModal();
+  };
 
   return (
     <div className="bg-background-panel border border-border rounded-lg p-12 text-center">
       <div className="max-w-2xl mx-auto">
-        <Icon name="BookOpen" className="w-20 h-20 text-primary mx-auto mb-6 opacity-50" />
-        <h2 className="text-3xl font-bold text-text mb-4">Welcome to TavKit!</h2>
+        <Icon
+          name="BookOpen"
+          className="w-20 h-20 text-primary mx-auto mb-6 opacity-50"
+        />
+        <h2 className="text-3xl font-bold text-text mb-4">
+          Welcome to TavKit!
+        </h2>
         <p className="text-text-muted text-lg mb-8">
-          Get started by creating your first campaign. All your generated content, session runners,
-          and campaign management will be organized here.
+          Get started by creating your first campaign. All your generated
+          content, session runners, and campaign management will be organized
+          here.
         </p>
         <button
           onClick={createCampaign}
@@ -32,7 +38,8 @@ export default function NoCampaignState() {
               <h3 className="font-semibold text-text">Prep Sessions</h3>
             </div>
             <p className="text-sm text-text-muted">
-              Use AI generators to create NPCs, locations, quests, and more for your campaigns
+              Use AI generators to create NPCs, locations, quests, and more for
+              your campaigns
             </p>
           </div>
           <div className="p-4 bg-background rounded-lg border border-border">
@@ -41,7 +48,8 @@ export default function NoCampaignState() {
               <h3 className="font-semibold text-text">Run Sessions</h3>
             </div>
             <p className="text-sm text-text-muted">
-              Track combat, chases, social encounters, and more with interactive session runners
+              Track combat, chases, social encounters, and more with interactive
+              session runners
             </p>
           </div>
           <div className="p-4 bg-background rounded-lg border border-border">
@@ -50,11 +58,12 @@ export default function NoCampaignState() {
               <h3 className="font-semibold text-text">Organize Content</h3>
             </div>
             <p className="text-sm text-text-muted">
-              Keep all your campaign notes, generated content, and session history in one place
+              Keep all your campaign notes, generated content, and session
+              history in one place
             </p>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

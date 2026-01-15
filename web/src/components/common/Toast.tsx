@@ -1,43 +1,43 @@
-import { useEffect } from 'react'
-import Icon from './Icon'
-import { create } from 'zustand'
+import { useEffect } from "react";
+import Icon from "./Icon";
+import { create } from "zustand";
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'turn'
+export type ToastType = "success" | "error" | "warning" | "info" | "turn";
 
 export interface Toast {
-  id: string
-  message: string
-  type: ToastType
-  duration?: number
+  id: string;
+  message: string;
+  type: ToastType;
+  duration?: number;
   action?: {
-    label: string
-    onClick: () => void
-  }
+    label: string;
+    onClick: () => void;
+  };
 }
 
 interface ToastStore {
-  toasts: Toast[]
-  addToast: (toast: Omit<Toast, 'id'>) => void
-  removeToast: (id: string) => void
-  clearAll: () => void
+  toasts: Toast[];
+  addToast: (toast: Omit<Toast, "id">) => void;
+  removeToast: (id: string) => void;
+  clearAll: () => void;
 }
 
 export const useToastStore = create<ToastStore>((set) => ({
   toasts: [],
   addToast: (toast) => {
-    const id = `${Date.now()}-${Math.random()}`
+    const id = `${Date.now()}-${Math.random()}`;
     set((state) => ({
       toasts: [...state.toasts, { ...toast, id }],
-    }))
+    }));
 
     // Auto-remove after duration (default 5s)
-    const duration = toast.duration ?? 5000
+    const duration = toast.duration ?? 5000;
     if (duration > 0) {
       setTimeout(() => {
         set((state) => ({
           toasts: state.toasts.filter((t) => t.id !== id),
-        }))
-      }, duration)
+        }));
+      }, duration);
     }
   },
   removeToast: (id) =>
@@ -45,66 +45,70 @@ export const useToastStore = create<ToastStore>((set) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
   clearAll: () => set({ toasts: [] }),
-}))
+}));
 
 export function ToastContainer() {
-  const { toasts, removeToast } = useToastStore()
+  const { toasts, removeToast } = useToastStore();
 
   return (
     <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
       {toasts.map((toast) => (
-        <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
+        <ToastItem
+          key={toast.id}
+          toast={toast}
+          onClose={() => removeToast(toast.id)}
+        />
       ))}
     </div>
-  )
+  );
 }
 
 interface ToastItemProps {
-  readonly toast: Toast
-  readonly onClose: () => void
+  readonly toast: Toast;
+  readonly onClose: () => void;
 }
 
 function ToastItem({ toast, onClose }: ToastItemProps) {
   useEffect(() => {
     // Request notification permission on mount (for browser notifications)
-    if (toast.type === 'turn' && 'Notification' in window) {
-      Notification.requestPermission()
+    if (toast.type === "turn" && "Notification" in window) {
+      Notification.requestPermission();
     }
-  }, [toast.type])
+  }, [toast.type]);
 
   const getToastStyles = () => {
     switch (toast.type) {
-      case 'success':
-        return 'bg-green-500/90 text-white border-green-600'
-      case 'error':
-        return 'bg-red-500/90 text-white border-red-600'
-      case 'warning':
-        return 'bg-amber-500/90 text-white border-amber-600'
-      case 'info':
-        return 'bg-blue-500/90 text-white border-blue-600'
-      case 'turn':
-        return 'bg-primary/95 text-white border-primary shadow-2xl shadow-primary/50 ring-2 ring-primary/50'
+      case "success":
+        return "bg-green-500/90 text-white border-green-600";
+      case "error":
+        return "bg-red-500/90 text-white border-red-600";
+      case "warning":
+        return "bg-amber-500/90 text-white border-amber-600";
+      case "info":
+        return "bg-blue-500/90 text-white border-blue-600";
+      case "turn":
+        return "bg-primary/95 text-white border-primary shadow-2xl shadow-primary/50 ring-2 ring-primary/50";
       default:
-        return 'bg-background-panel text-text border-border'
+        return "bg-background-panel text-text border-border";
     }
-  }
+  };
 
   const getIcon = () => {
     switch (toast.type) {
-      case 'success':
-        return <Icon name="Check" className="w-5 h-5" />
-      case 'error':
-        return <Icon name="X" className="w-5 h-5" />
-      case 'warning':
-        return <Icon name="AlertTriangle" className="w-5 h-5" />
-      case 'info':
-        return <Icon name="Info" className="w-5 h-5" />
-      case 'turn':
-        return <Icon name="Swords" className="w-5 h-5" />
+      case "success":
+        return <Icon name="Check" className="w-5 h-5" />;
+      case "error":
+        return <Icon name="X" className="w-5 h-5" />;
+      case "warning":
+        return <Icon name="AlertTriangle" className="w-5 h-5" />;
+      case "info":
+        return <Icon name="Info" className="w-5 h-5" />;
+      case "turn":
+        return <Icon name="Swords" className="w-5 h-5" />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
     <div
@@ -118,8 +122,8 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
         {toast.action && (
           <button
             onClick={() => {
-              toast.action?.onClick()
-              onClose()
+              toast.action?.onClick();
+              onClose();
             }}
             className="mt-2 text-sm font-semibold underline hover:no-underline"
           >
@@ -136,24 +140,24 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
         <Icon name="X" className="w-4 h-4" />
       </button>
     </div>
-  )
+  );
 }
 
 // Helper function to show toast notifications
 export const toast = {
   success: (message: string, duration?: number) =>
-    useToastStore.getState().addToast({ message, type: 'success', duration }),
+    useToastStore.getState().addToast({ message, type: "success", duration }),
   error: (message: string, duration?: number) =>
-    useToastStore.getState().addToast({ message, type: 'error', duration }),
+    useToastStore.getState().addToast({ message, type: "error", duration }),
   warning: (message: string, duration?: number) =>
-    useToastStore.getState().addToast({ message, type: 'warning', duration }),
+    useToastStore.getState().addToast({ message, type: "warning", duration }),
   info: (message: string, duration?: number) =>
-    useToastStore.getState().addToast({ message, type: 'info', duration }),
+    useToastStore.getState().addToast({ message, type: "info", duration }),
   turn: (message: string, action?: { label: string; onClick: () => void }) =>
     useToastStore.getState().addToast({
       message,
-      type: 'turn',
+      type: "turn",
       duration: 8000, // Show turn notifications longer
       action,
     }),
-}
+};

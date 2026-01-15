@@ -1,35 +1,51 @@
 // NPC Generator
 // Rebuilt using the generator framework pattern
 
-import { useState, useCallback } from 'react'
-import { useGenerator, type GeneratorConfig } from '../hooks/useGenerator'
-import { GeneratorLayout, EntryModeToggle, ManualEntryPreview, SaveModal } from '../components'
-import { NPCRenderer, formatNPCForClipboard } from '../renderers/NPCRenderer'
-import { normalizeNPCResponse, hasValidNPCContent, type GeneratedNPCData } from '../normalizers/npc'
-import { defaultNPCData, type ManualNPCData } from '../schemas/npc'
-import { NPCAIForm } from './NPCAIForm'
-import { NPCManualForm } from './NPCManualForm'
-import { generateNPC, saveNPC, type NPCGenerationRequest } from '@/api/generators'
+import { useState, useCallback } from "react";
+import { useGenerator, type GeneratorConfig } from "../hooks/useGenerator";
+import {
+  GeneratorLayout,
+  EntryModeToggle,
+  ManualEntryPreview,
+  SaveModal,
+} from "../components";
+import { NPCRenderer, formatNPCForClipboard } from "../renderers/NPCRenderer";
+import {
+  normalizeNPCResponse,
+  hasValidNPCContent,
+  type GeneratedNPCData,
+} from "../normalizers/npc";
+import { defaultNPCData, type ManualNPCData } from "../schemas/npc";
+import { NPCAIForm } from "./NPCAIForm";
+import { NPCManualForm } from "./NPCManualForm";
+import {
+  generateNPC,
+  saveNPC,
+  type NPCGenerationRequest,
+} from "@/api/generators";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-type NPCParams = NPCGenerationRequest
+type NPCParams = NPCGenerationRequest;
 
 const npcConfig: GeneratorConfig<GeneratedNPCData, ManualNPCData, NPCParams> = {
-  generateApi: generateNPC as unknown as (params: NPCParams, timeout: number) => Promise<Record<string, unknown>>,
+  generateApi: generateNPC as unknown as (
+    params: NPCParams,
+    timeout: number,
+  ) => Promise<Record<string, unknown>>,
   saveApi: (data) => saveNPC(data as Parameters<typeof saveNPC>[0]),
   normalizeResponse: normalizeNPCResponse,
   hasValidContent: hasValidNPCContent,
-  entityKey: 'npc',
+  entityKey: "npc",
   defaultManualData: defaultNPCData,
 
   buildSavePayload: (npc, campaignId) => ({
     name: npc.name,
     race: npc.race,
     class: npc.class,
-    personality: npc.personality.traits.join(', '),
+    personality: npc.personality.traits.join(", "),
     backstory: npc.background,
     stats: {
       level: npc.level,
@@ -51,8 +67,8 @@ const npcConfig: GeneratorConfig<GeneratedNPCData, ManualNPCData, NPCParams> = {
   buildManualSavePayload: (data, campaignId) => ({
     name: data.name,
     race: data.race,
-    class: data.class || 'commoner',
-    personality: data.personality || data.traits.join(', '),
+    class: data.class || "commoner",
+    personality: data.personality || data.traits.join(", "),
     backstory: data.backstory,
     stats: {
       level: data.level,
@@ -86,40 +102,40 @@ const npcConfig: GeneratorConfig<GeneratedNPCData, ManualNPCData, NPCParams> = {
     campaign_id: campaignId || undefined,
     ai_generated: false,
   }),
-}
+};
 
 // ============================================================================
 // Component
 // ============================================================================
 
 export function NPCGenerator() {
-  const state = useGenerator(npcConfig)
+  const state = useGenerator(npcConfig);
 
   // AI form state
   const [formData, setFormData] = useState({
-    race: 'human',
-    class: '',
+    race: "human",
+    class: "",
     level: 5,
-    role: 'ally',
-    personality: '',
-    special_requests: '',
-  })
+    role: "ally",
+    personality: "",
+    special_requests: "",
+  });
 
   // Handle AI generation
   const handleGenerate = useCallback(() => {
-    state.generate(formData)
-  }, [state, formData])
+    state.generate(formData);
+  }, [state, formData]);
 
   // Handle copy to clipboard
   const handleCopy = useCallback(() => {
     if (state.generatedData) {
-      navigator.clipboard.writeText(formatNPCForClipboard(state.generatedData))
+      navigator.clipboard.writeText(formatNPCForClipboard(state.generatedData));
     }
-  }, [state.generatedData])
+  }, [state.generatedData]);
 
   // Build form content based on entry mode
   const formContent =
-    state.entryMode === 'ai' ? (
+    state.entryMode === "ai" ? (
       <>
         <EntryModeToggle mode={state.entryMode} onChange={state.setEntryMode} />
         <NPCAIForm
@@ -145,7 +161,7 @@ export function NPCGenerator() {
           error={state.error}
         />
       </>
-    )
+    );
 
   // Build result content
   const resultContent = state.generatedData ? (
@@ -156,9 +172,9 @@ export function NPCGenerator() {
       onSave={() => state.setShowSaveModal(true)}
       onCopy={handleCopy}
     />
-  ) : state.entryMode === 'manual' ? (
+  ) : state.entryMode === "manual" ? (
     <ManualEntryPreview entityType="NPC" />
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -166,17 +182,21 @@ export function NPCGenerator() {
         title="NPC Generator"
         description="Create detailed NPCs for your campaign with AI assistance or manual entry"
         icon="Users"
-        formTitle={state.entryMode === 'ai' ? 'Generation Parameters' : 'Manual Entry'}
-        formIcon={state.entryMode === 'ai' ? 'Sparkles' : 'Edit'}
-        resultsTitle={state.entryMode === 'ai' ? 'Generated NPC' : 'Preview'}
+        formTitle={
+          state.entryMode === "ai" ? "Generation Parameters" : "Manual Entry"
+        }
+        formIcon={state.entryMode === "ai" ? "Sparkles" : "Edit"}
+        resultsTitle={state.entryMode === "ai" ? "Generated NPC" : "Preview"}
         formContent={formContent}
         generatedContent={resultContent}
         isGenerating={state.loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate NPC"
         generateButtonIcon="Sparkles"
-        error={state.entryMode === 'ai' ? state.error ?? undefined : undefined}
-        hideGenerateButton={state.entryMode === 'manual'}
+        error={
+          state.entryMode === "ai" ? (state.error ?? undefined) : undefined
+        }
+        hideGenerateButton={state.entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -190,7 +210,7 @@ export function NPCGenerator() {
         />
       )}
     </>
-  )
+  );
 }
 
-export default NPCGenerator
+export default NPCGenerator;

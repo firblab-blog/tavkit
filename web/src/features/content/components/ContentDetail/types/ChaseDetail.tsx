@@ -1,87 +1,88 @@
 // Chase content detail view
 
-import Icon from '@/components/common/Icon'
+import Icon from "@/components/common/Icon";
 
 interface Participants {
-  quarry?: string
-  pursuers?: string
+  quarry?: string;
+  pursuers?: string;
 }
 
 interface Obstacle {
-  name: string
-  description?: string
-  check?: string
-  failure?: string
+  name: string;
+  description?: string;
+  check?: string;
+  failure?: string;
 }
 
 interface Shortcut {
-  name: string
-  description?: string
-  benefit?: string
+  name: string;
+  description?: string;
+  benefit?: string;
 }
 
 interface ChasePhase {
-  round: string | number
-  difficulty?: string
-  description: string
+  round: string | number;
+  difficulty?: string;
+  description: string;
 }
 
 interface EndingConditions {
-  success?: string
-  failure?: string
-  alternative?: string
+  success?: string;
+  failure?: string;
+  alternative?: string;
 }
 
 interface Rewards {
-  success?: string
-  partial?: string
-  failure?: string
+  success?: string;
+  partial?: string;
+  failure?: string;
 }
 
 interface ChaseData {
-  name: string
-  chase_type?: string
-  terrain?: string
-  difficulty?: string
-  description?: string
-  setting?: string
-  participants?: string | Participants
-  starting_conditions?: string
-  obstacles?: string | Obstacle[]
-  complications?: string | string[]
-  shortcuts?: string | Shortcut[]
-  chase_phases?: string | ChasePhase[]
-  ending_conditions?: string | EndingConditions
-  rewards?: string | Rewards
-  environmental_factors?: string | string[]
-  special_rules?: string
+  name: string;
+  chase_type?: string;
+  terrain?: string;
+  difficulty?: string;
+  description?: string;
+  setting?: string;
+  participants?: string | Participants;
+  starting_conditions?: string;
+  obstacles?: string | Obstacle[];
+  complications?: string | string[];
+  shortcuts?: string | Shortcut[];
+  chase_phases?: string | ChasePhase[];
+  ending_conditions?: string | EndingConditions;
+  rewards?: string | Rewards;
+  environmental_factors?: string | string[];
+  special_rules?: string;
 }
 
 interface ChaseDetailProps {
-  chase: ChaseData
+  chase: ChaseData;
 }
 
 function parseJSON<T>(value: string | T | undefined): T | null {
-  if (!value) return null
-  if (typeof value === 'string') {
+  if (!value) return null;
+  if (typeof value === "string") {
     try {
-      return JSON.parse(value)
+      return JSON.parse(value);
     } catch {
-      return null
+      return null;
     }
   }
-  return value
+  return value;
 }
 
 export function ChaseDetail({ chase }: ChaseDetailProps) {
-  const participants = parseJSON<Participants>(chase.participants)
-  const obstacles = parseJSON<Obstacle[]>(chase.obstacles) || []
-  const complications = parseJSON<string[]>(chase.complications) || []
-  const shortcuts = parseJSON<Shortcut[]>(chase.shortcuts) || []
-  const chasePhases = parseJSON<ChasePhase[]>(chase.chase_phases) || []
-  const endingConditions = parseJSON<EndingConditions>(chase.ending_conditions)
-  const rewards = parseJSON<Rewards>(chase.rewards)
-  const environmentalFactors = parseJSON<string[]>(chase.environmental_factors) || []
+  const participants = parseJSON<Participants>(chase.participants);
+  const obstacles = parseJSON<Obstacle[]>(chase.obstacles) || [];
+  const complications = parseJSON<string[]>(chase.complications) || [];
+  const shortcuts = parseJSON<Shortcut[]>(chase.shortcuts) || [];
+  const chasePhases = parseJSON<ChasePhase[]>(chase.chase_phases) || [];
+  const endingConditions = parseJSON<EndingConditions>(chase.ending_conditions);
+  const rewards = parseJSON<Rewards>(chase.rewards);
+  const environmentalFactors =
+    parseJSON<string[]>(chase.environmental_factors) || [];
 
   return (
     <div className="space-y-6">
@@ -91,12 +92,12 @@ export function ChaseDetail({ chase }: ChaseDetailProps) {
         <div className="flex gap-2 mt-2 flex-wrap">
           {chase.chase_type && (
             <span className="px-3 py-1 bg-primary/40 text-text rounded text-sm capitalize">
-              {chase.chase_type.replace(/_/g, ' ')}
+              {chase.chase_type.replace(/_/g, " ")}
             </span>
           )}
           {chase.terrain && (
             <span className="px-3 py-1 bg-blue-900/40 text-blue-300 rounded text-sm capitalize">
-              {chase.terrain.replace(/_/g, ' ')}
+              {chase.terrain.replace(/_/g, " ")}
             </span>
           )}
           {chase.difficulty && (
@@ -160,7 +161,9 @@ export function ChaseDetail({ chase }: ChaseDetailProps) {
             <Icon name="MapPin" className="w-5 h-5" />
             Starting Conditions
           </h3>
-          <p className="text-text leading-relaxed">{chase.starting_conditions}</p>
+          <p className="text-text leading-relaxed">
+            {chase.starting_conditions}
+          </p>
         </div>
       )}
 
@@ -173,10 +176,17 @@ export function ChaseDetail({ chase }: ChaseDetailProps) {
           </h3>
           <div className="space-y-3">
             {obstacles.map((obstacle, idx) => (
-              <div key={idx} className="bg-surface p-4 rounded border border-border">
-                <h4 className="font-semibold text-primary mb-2">{obstacle.name}</h4>
+              <div
+                key={idx}
+                className="bg-surface p-4 rounded border border-border"
+              >
+                <h4 className="font-semibold text-primary mb-2">
+                  {obstacle.name}
+                </h4>
                 {obstacle.description && (
-                  <p className="text-text-muted text-sm mb-3">{obstacle.description}</p>
+                  <p className="text-text-muted text-sm mb-3">
+                    {obstacle.description}
+                  </p>
                 )}
                 <div className="grid md:grid-cols-2 gap-2 text-sm">
                   {obstacle.check && (
@@ -225,13 +235,22 @@ export function ChaseDetail({ chase }: ChaseDetailProps) {
           </h3>
           <div className="space-y-2">
             {shortcuts.map((shortcut, idx) => (
-              <div key={idx} className="bg-surface p-3 rounded border-2 border-primary/30">
-                <h4 className="font-semibold text-text mb-1">{shortcut.name}</h4>
+              <div
+                key={idx}
+                className="bg-surface p-3 rounded border-2 border-primary/30"
+              >
+                <h4 className="font-semibold text-text mb-1">
+                  {shortcut.name}
+                </h4>
                 {shortcut.description && (
-                  <p className="text-text-muted text-sm mb-1">{shortcut.description}</p>
+                  <p className="text-text-muted text-sm mb-1">
+                    {shortcut.description}
+                  </p>
                 )}
                 {shortcut.benefit && (
-                  <p className="text-primary text-sm font-medium">✓ {shortcut.benefit}</p>
+                  <p className="text-primary text-sm font-medium">
+                    ✓ {shortcut.benefit}
+                  </p>
                 )}
               </div>
             ))}
@@ -248,9 +267,14 @@ export function ChaseDetail({ chase }: ChaseDetailProps) {
           </h3>
           <div className="space-y-2">
             {chasePhases.map((phase, idx) => (
-              <div key={idx} className="bg-surface p-3 rounded border border-border">
+              <div
+                key={idx}
+                className="bg-surface p-3 rounded border border-border"
+              >
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-medium text-primary">Round {phase.round}</span>
+                  <span className="font-medium text-primary">
+                    Round {phase.round}
+                  </span>
                   {phase.difficulty && (
                     <span className="text-sm px-2 py-0.5 bg-primary/20 text-primary rounded">
                       {phase.difficulty}
@@ -294,34 +318,37 @@ export function ChaseDetail({ chase }: ChaseDetailProps) {
       )}
 
       {/* Ending Conditions */}
-      {endingConditions && (endingConditions.success || endingConditions.failure) && (
-        <div>
-          <h3 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
-            <Icon name="Shield" className="w-5 h-5" />
-            Ending Conditions
-          </h3>
-          <div className="space-y-2">
-            {endingConditions.success && (
-              <div className="bg-green-900/20 p-3 rounded border border-green-700">
-                <span className="font-medium text-green-400">Success:</span>
-                <p className="text-text mt-1">{endingConditions.success}</p>
-              </div>
-            )}
-            {endingConditions.failure && (
-              <div className="bg-red-900/20 p-3 rounded border border-red-700">
-                <span className="font-medium text-red-400">Failure:</span>
-                <p className="text-text mt-1">{endingConditions.failure}</p>
-              </div>
-            )}
-            {endingConditions.alternative && (
-              <div className="bg-primary/10 p-3 rounded border border-primary/30">
-                <span className="font-medium text-primary">Alternative:</span>
-                <p className="text-text mt-1">{endingConditions.alternative}</p>
-              </div>
-            )}
+      {endingConditions &&
+        (endingConditions.success || endingConditions.failure) && (
+          <div>
+            <h3 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
+              <Icon name="Shield" className="w-5 h-5" />
+              Ending Conditions
+            </h3>
+            <div className="space-y-2">
+              {endingConditions.success && (
+                <div className="bg-green-900/20 p-3 rounded border border-green-700">
+                  <span className="font-medium text-green-400">Success:</span>
+                  <p className="text-text mt-1">{endingConditions.success}</p>
+                </div>
+              )}
+              {endingConditions.failure && (
+                <div className="bg-red-900/20 p-3 rounded border border-red-700">
+                  <span className="font-medium text-red-400">Failure:</span>
+                  <p className="text-text mt-1">{endingConditions.failure}</p>
+                </div>
+              )}
+              {endingConditions.alternative && (
+                <div className="bg-primary/10 p-3 rounded border border-primary/30">
+                  <span className="font-medium text-primary">Alternative:</span>
+                  <p className="text-text mt-1">
+                    {endingConditions.alternative}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Rewards */}
       {rewards && rewards.success && (
@@ -337,7 +364,9 @@ export function ChaseDetail({ chase }: ChaseDetailProps) {
             </div>
             {rewards.partial && (
               <div className="bg-surface p-3 rounded border border-border">
-                <span className="font-medium text-primary">Partial Success:</span>
+                <span className="font-medium text-primary">
+                  Partial Success:
+                </span>
                 <p className="text-text mt-1">{rewards.partial}</p>
               </div>
             )}
@@ -351,5 +380,5 @@ export function ChaseDetail({ chase }: ChaseDetailProps) {
         </div>
       )}
     </div>
-  )
+  );
 }

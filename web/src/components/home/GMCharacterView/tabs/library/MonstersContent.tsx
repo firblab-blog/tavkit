@@ -1,45 +1,48 @@
-import ReactMarkdown from 'react-markdown'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
-import ContentListLayout from '../../../../common/ContentListLayout'
-import ContentCard from '../../../../common/ContentCard'
-import ContentDetailModal from '../../../../common/ContentDetailModal'
-import AssignCampaignModal from '../../../../common/AssignCampaignModal'
-import { useLibraryContent } from '../../../../../hooks/useLibraryContent'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useState } from 'react'
-import { logger } from '@/utils/logger'
+import ReactMarkdown from "react-markdown";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import ContentListLayout from "../../../../common/ContentListLayout";
+import ContentCard from "../../../../common/ContentCard";
+import ContentDetailModal from "../../../../common/ContentDetailModal";
+import AssignCampaignModal from "../../../../common/AssignCampaignModal";
+import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface Monster {
-  id: string
-  name: string
-  campaign_id?: string | null
-  cr: number | string
-  type?: string
-  size?: string
-  alignment?: string
-  hp?: number
-  ac?: number
-  lore?: string
-  abilities?: string
-  tactics?: string
-  stats?: any
-  ai_generated?: boolean
-  created_at: string
+  id: string;
+  name: string;
+  campaign_id?: string | null;
+  cr: number | string;
+  type?: string;
+  size?: string;
+  alignment?: string;
+  hp?: number;
+  ac?: number;
+  lore?: string;
+  abilities?: string;
+  tactics?: string;
+  stats?: any;
+  ai_generated?: boolean;
+  created_at: string;
 }
 
 interface MonstersContentProps {
-  campaignId?: string
-  showCampaignFilter?: boolean
+  campaignId?: string;
+  showCampaignFilter?: boolean;
 }
 
-export default function MonstersContent({ campaignId, showCampaignFilter }: MonstersContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const { campaigns } = useCampaignStore()
+export default function MonstersContent({
+  campaignId,
+  showCampaignFilter,
+}: MonstersContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const { campaigns } = useCampaignStore();
   const [assignModalItem, setAssignModalItem] = useState<{
-    id: string
-    name: string
-    currentCampaignId?: string | null
-  } | null>(null)
+    id: string;
+    name: string;
+    currentCampaignId?: string | null;
+  } | null>(null);
 
   const {
     filteredItems,
@@ -54,23 +57,23 @@ export default function MonstersContent({ campaignId, showCampaignFilter }: Mons
     deleteItem,
     refresh,
   } = useLibraryContent<Monster>({
-    contentType: 'monsters',
+    contentType: "monsters",
     campaignId,
     showCampaignFilter,
-    searchFields: ['name', 'type', 'lore'],
-  })
+    searchFields: ["name", "type", "lore"],
+  });
 
   const handleDelete = async (monster: Monster) => {
     if (window.confirm(`Delete "${monster.name}"? This cannot be undone.`)) {
       try {
-        await deleteItem(monster.id)
+        await deleteItem(monster.id);
       } catch (err) {
-        logger.error('Failed to delete monster:', err)
+        logger.error("Failed to delete monster:", err);
       }
     }
-  }
+  };
 
-  const getCRDisplay = (cr: number | string) => `CR ${cr}`
+  const getCRDisplay = (cr: number | string) => `CR ${cr}`;
 
   return (
     <div className="space-y-4">
@@ -98,7 +101,7 @@ export default function MonstersContent({ campaignId, showCampaignFilter }: Mons
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search monsters..."
         addButtonLabel="Add Monster"
-        onAddClick={() => openGenerator('monster')}
+        onAddClick={() => openGenerator("monster")}
         addButtonColor="orange"
         loading={loading}
         error={error}
@@ -106,7 +109,7 @@ export default function MonstersContent({ campaignId, showCampaignFilter }: Mons
         emptyTitle="No monsters yet"
         emptyDescription="Add custom monsters, bosses, and creatures."
         emptyCTALabel="Create Your First Monster"
-        onEmptyCTAClick={() => openGenerator('monster')}
+        onEmptyCTAClick={() => openGenerator("monster")}
         hasItems={filteredItems.length > 0}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -122,10 +125,22 @@ export default function MonstersContent({ campaignId, showCampaignFilter }: Mons
                 ...(monster.type ? [{ label: monster.type }] : []),
                 ...(monster.size ? [{ label: monster.size }] : []),
                 ...(monster.hp
-                  ? [{ label: `HP ${monster.hp}`, color: 'text-orange-400', bgColor: 'bg-orange-500/10' }]
+                  ? [
+                      {
+                        label: `HP ${monster.hp}`,
+                        color: "text-orange-400",
+                        bgColor: "bg-orange-500/10",
+                      },
+                    ]
                   : []),
                 ...(monster.ac
-                  ? [{ label: `AC ${monster.ac}`, color: 'text-blue-400', bgColor: 'bg-blue-500/10' }]
+                  ? [
+                      {
+                        label: `AC ${monster.ac}`,
+                        color: "text-blue-400",
+                        bgColor: "bg-blue-500/10",
+                      },
+                    ]
                   : []),
               ]}
               onClick={() => setViewingItem(monster)}
@@ -164,20 +179,26 @@ export default function MonstersContent({ campaignId, showCampaignFilter }: Mons
         />
       )}
     </div>
-  )
+  );
 }
 
 // Monster Detail Modal
 interface MonsterDetailModalProps {
-  monster: Monster
-  onClose: () => void
-  onDelete: () => void
+  monster: Monster;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalProps) {
-  const getCRDisplay = (cr: number | string) => `CR ${cr}`
+function MonsterDetailModal({
+  monster,
+  onClose,
+  onDelete,
+}: MonsterDetailModalProps) {
+  const getCRDisplay = (cr: number | string) => `CR ${cr}`;
 
-  const subtitle = [getCRDisplay(monster.cr), monster.type].filter(Boolean).join(' • ')
+  const subtitle = [getCRDisplay(monster.cr), monster.type]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <ContentDetailModal
@@ -195,25 +216,33 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
           {monster.hp && (
             <div className="px-4 py-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
               <p className="text-xs text-text-muted">Hit Points</p>
-              <p className="text-lg font-semibold text-orange-400">{monster.hp}</p>
+              <p className="text-lg font-semibold text-orange-400">
+                {monster.hp}
+              </p>
             </div>
           )}
           {monster.ac && (
             <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <p className="text-xs text-text-muted">Armor Class</p>
-              <p className="text-lg font-semibold text-blue-400">{monster.ac}</p>
+              <p className="text-lg font-semibold text-blue-400">
+                {monster.ac}
+              </p>
             </div>
           )}
           {monster.size && (
             <div className="px-4 py-2 bg-background border border-border rounded-lg">
               <p className="text-xs text-text-muted">Size</p>
-              <p className="text-lg font-semibold text-text capitalize">{monster.size}</p>
+              <p className="text-lg font-semibold text-text capitalize">
+                {monster.size}
+              </p>
             </div>
           )}
           {monster.alignment && (
             <div className="px-4 py-2 bg-background border border-border rounded-lg">
               <p className="text-xs text-text-muted">Alignment</p>
-              <p className="text-lg font-semibold text-text capitalize">{monster.alignment}</p>
+              <p className="text-lg font-semibold text-text capitalize">
+                {monster.alignment}
+              </p>
             </div>
           )}
         </div>
@@ -225,7 +254,9 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
               Lore
             </h4>
             <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>{monster.lore.replace(/\\n/g, '\n')}</ReactMarkdown>
+              <ReactMarkdown>
+                {monster.lore.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
           </div>
         )}
@@ -237,7 +268,9 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
               Abilities
             </h4>
             <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>{monster.abilities.replace(/\\n/g, '\n')}</ReactMarkdown>
+              <ReactMarkdown>
+                {monster.abilities.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
           </div>
         )}
@@ -249,7 +282,9 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
               Tactics
             </h4>
             <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>{monster.tactics.replace(/\\n/g, '\n')}</ReactMarkdown>
+              <ReactMarkdown>
+                {monster.tactics.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
           </div>
         )}
@@ -259,5 +294,5 @@ function MonsterDetailModal({ monster, onClose, onDelete }: MonsterDetailModalPr
         )}
       </div>
     </ContentDetailModal>
-  )
+  );
 }

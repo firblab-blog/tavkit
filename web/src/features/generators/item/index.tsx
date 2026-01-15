@@ -1,51 +1,67 @@
 // Item Generator
 // Rebuilt using the generator framework pattern
 
-import { useState, useCallback } from 'react'
-import { useGenerator, type GeneratorConfig } from '../hooks/useGenerator'
-import { GeneratorLayout, EntryModeToggle, ManualEntryPreview, SaveModal } from '../components'
-import { ItemRenderer, formatItemForClipboard } from '../renderers/ItemRenderer'
+import { useState, useCallback } from "react";
+import { useGenerator, type GeneratorConfig } from "../hooks/useGenerator";
+import {
+  GeneratorLayout,
+  EntryModeToggle,
+  ManualEntryPreview,
+  SaveModal,
+} from "../components";
+import {
+  ItemRenderer,
+  formatItemForClipboard,
+} from "../renderers/ItemRenderer";
 import {
   normalizeItemResponse,
   hasValidItemContent,
   getNumericValue,
   type GeneratedItemData,
-} from '../normalizers/item'
-import { defaultItemData, type ManualItemData } from '../schemas/item'
-import { ItemAIForm } from './ItemAIForm'
-import { ItemManualForm } from './ItemManualForm'
-import { generateItem, saveItem, type ItemGenerationRequest } from '@/api/generators'
+} from "../normalizers/item";
+import { defaultItemData, type ManualItemData } from "../schemas/item";
+import { ItemAIForm } from "./ItemAIForm";
+import { ItemManualForm } from "./ItemManualForm";
+import {
+  generateItem,
+  saveItem,
+  type ItemGenerationRequest,
+} from "@/api/generators";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-type ItemParams = ItemGenerationRequest
+type ItemParams = ItemGenerationRequest;
 
-const itemConfig: GeneratorConfig<GeneratedItemData, ManualItemData, ItemParams> = {
+const itemConfig: GeneratorConfig<
+  GeneratedItemData,
+  ManualItemData,
+  ItemParams
+> = {
   generateApi: generateItem as unknown as (
     params: ItemParams,
-    timeout: number
+    timeout: number,
   ) => Promise<Record<string, unknown>>,
   saveApi: (data) => saveItem(data as Record<string, unknown>),
   normalizeResponse: normalizeItemResponse,
   hasValidContent: hasValidItemContent,
-  entityKey: 'item',
+  entityKey: "item",
   defaultManualData: defaultItemData,
 
   buildSavePayload: (item, campaignId) => {
     // Convert origin to string for saving
     const originStr =
-      typeof item.origin === 'string'
+      typeof item.origin === "string"
         ? item.origin
         : item.origin
           ? JSON.stringify(item.origin)
-          : ''
+          : "";
 
     return {
-      name: item.name || 'Unnamed Item',
-      type: item.type || 'weapon',
-      rarity: item.rarity || 'uncommon',
+      name: item.name || "Unnamed Item",
+      type: item.type || "weapon",
+      rarity: item.rarity || "uncommon",
       description: item.description,
       origin: originStr,
       properties: item.properties || {},
@@ -54,17 +70,17 @@ const itemConfig: GeneratorConfig<GeneratedItemData, ManualItemData, ItemParams>
       attunement: item.attunement,
       campaign_id: campaignId || undefined,
       ai_generated: true,
-    }
+    };
   },
 
   buildManualSavePayload: (data, campaignId) => {
     // Convert properties array to object
-    const propertiesObj: Record<string, unknown> = {}
+    const propertiesObj: Record<string, unknown> = {};
     data.properties
       .filter((p) => p.name.trim())
       .forEach((p) => {
-        propertiesObj[p.name] = p.value || true
-      })
+        propertiesObj[p.name] = p.value || true;
+      });
 
     return {
       campaign_id: campaignId || undefined,
@@ -78,25 +94,25 @@ const itemConfig: GeneratorConfig<GeneratedItemData, ManualItemData, ItemParams>
       weight: data.weight ?? 0,
       attunement: data.attunement,
       ai_generated: false,
-    }
+    };
   },
-}
+};
 
 // ============================================================================
 // Component
 // ============================================================================
 
 export function ItemGenerator() {
-  const state = useGenerator(itemConfig)
+  const state = useGenerator(itemConfig);
 
   // AI form state
   const [formData, setFormData] = useState({
-    type: 'weapon',
-    rarity: 'uncommon',
-    category: 'magical',
-    cursed: 'no',
-    special_requests: '',
-  })
+    type: "weapon",
+    rarity: "uncommon",
+    category: "magical",
+    cursed: "no",
+    special_requests: "",
+  });
 
   // Handle AI generation
   const handleGenerate = useCallback(() => {
@@ -107,19 +123,21 @@ export function ItemGenerator() {
       category: formData.category,
       cursed: formData.cursed,
       special_requests: formData.special_requests || undefined,
-    })
-  }, [state, formData])
+    });
+  }, [state, formData]);
 
   // Handle copy to clipboard
   const handleCopy = useCallback(() => {
     if (state.generatedData) {
-      navigator.clipboard.writeText(formatItemForClipboard(state.generatedData))
+      navigator.clipboard.writeText(
+        formatItemForClipboard(state.generatedData),
+      );
     }
-  }, [state.generatedData])
+  }, [state.generatedData]);
 
   // Build form content based on entry mode
   const formContent =
-    state.entryMode === 'ai' ? (
+    state.entryMode === "ai" ? (
       <>
         <EntryModeToggle mode={state.entryMode} onChange={state.setEntryMode} />
         <ItemAIForm
@@ -145,7 +163,7 @@ export function ItemGenerator() {
           error={state.error}
         />
       </>
-    )
+    );
 
   // Build result content
   const resultContent = state.generatedData ? (
@@ -156,9 +174,9 @@ export function ItemGenerator() {
       onSave={() => state.setShowSaveModal(true)}
       onCopy={handleCopy}
     />
-  ) : state.entryMode === 'manual' ? (
+  ) : state.entryMode === "manual" ? (
     <ManualEntryPreview entityType="Item" />
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -166,17 +184,19 @@ export function ItemGenerator() {
         title="Item Generator"
         description="Create magical items, weapons, armor, and treasures for your campaign"
         icon="Package"
-        formTitle={state.entryMode === 'ai' ? 'Item Details' : 'Manual Entry'}
-        formIcon={state.entryMode === 'ai' ? 'Sparkles' : 'Edit'}
-        resultsTitle={state.entryMode === 'ai' ? 'Generated Item' : 'Preview'}
+        formTitle={state.entryMode === "ai" ? "Item Details" : "Manual Entry"}
+        formIcon={state.entryMode === "ai" ? "Sparkles" : "Edit"}
+        resultsTitle={state.entryMode === "ai" ? "Generated Item" : "Preview"}
         formContent={formContent}
         generatedContent={resultContent}
         isGenerating={state.loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Item"
         generateButtonIcon="Sparkles"
-        error={state.entryMode === 'ai' ? state.error ?? undefined : undefined}
-        hideGenerateButton={state.entryMode === 'manual'}
+        error={
+          state.entryMode === "ai" ? (state.error ?? undefined) : undefined
+        }
+        hideGenerateButton={state.entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -190,7 +210,7 @@ export function ItemGenerator() {
         />
       )}
     </>
-  )
+  );
 }
 
-export default ItemGenerator
+export default ItemGenerator;

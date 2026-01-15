@@ -1,100 +1,102 @@
-import { useState, useEffect } from 'react'
-import { useAuthStore } from '../../store/authStore'
-import Icon from '../common/Icon'
-import { authFetch } from '@/utils/authFetch'
+import { useState, useEffect } from "react";
+import { useAuthStore } from "../../store/authStore";
+import Icon from "../common/Icon";
+import { authFetch } from "@/utils/authFetch";
 
 interface User {
-  id: string
-  username: string
-  email: string
-  display_name?: string | null
-  is_admin: boolean
-  game_system: string
-  created_at: string
-  updated_at: string
+  id: string;
+  username: string;
+  email: string;
+  display_name?: string | null;
+  is_admin: boolean;
+  game_system: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ListUsersResponse {
-  users: User[]
-  total: number
-  page: number
-  limit: number
+  users: User[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export default function AdminUserManagement() {
-  const [users, setUsers] = useState<User[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [limit] = useState(20)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [users, setUsers] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // Modal states
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Form states
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    display_name: '',
-    password: '',
-    confirmPassword: '',
+    username: "",
+    email: "",
+    display_name: "",
+    password: "",
+    confirmPassword: "",
     is_admin: false,
-    game_system: 'Dungeons & Dragons 5th Edition',
-  })
+    game_system: "Dungeons & Dragons 5th Edition",
+  });
 
-  const currentUser = useAuthStore((state) => state.user)
+  const currentUser = useAuthStore((state) => state.user);
 
   useEffect(() => {
-    fetchUsers()
-  }, [page])
+    fetchUsers();
+  }, [page]);
 
   const fetchUsers = async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
 
     try {
-      const res = await authFetch(`/api/v1/admin/users?page=${page}&limit=${limit}`)
+      const res = await authFetch(
+        `/api/v1/admin/users?page=${page}&limit=${limit}`,
+      );
 
       if (!res.ok) {
-        throw new Error('Failed to fetch users')
+        throw new Error("Failed to fetch users");
       }
 
-      const data: ListUsersResponse = await res.json()
-      setUsers(data.users)
-      setTotal(data.total)
+      const data: ListUsersResponse = await res.json();
+      setUsers(data.users);
+      setTotal(data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load users')
+      setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccess('')
+    e.preventDefault();
+    setError("");
+    setSuccess("");
 
     // Validate password confirmation
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
-      return
+      setError("Passwords do not match");
+      return;
     }
 
     // Validate password strength
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
+      setError("Password must be at least 8 characters");
+      return;
     }
 
     try {
-      const res = await authFetch('/api/v1/admin/users', {
-        method: 'POST',
+      const res = await authFetch("/api/v1/admin/users", {
+        method: "POST",
         body: JSON.stringify({
           username: formData.username,
           email: formData.email,
@@ -103,33 +105,33 @@ export default function AdminUserManagement() {
           is_admin: formData.is_admin,
           game_system: formData.game_system,
         }),
-      })
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to create user')
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create user");
       }
 
-      setSuccess('User created successfully!')
-      setShowCreateModal(false)
-      resetForm()
-      fetchUsers()
-      setTimeout(() => setSuccess(''), 3000)
+      setSuccess("User created successfully!");
+      setShowCreateModal(false);
+      resetForm();
+      fetchUsers();
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create user')
+      setError(err instanceof Error ? err.message : "Failed to create user");
     }
-  }
+  };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedUser) return
+    e.preventDefault();
+    if (!selectedUser) return;
 
-    setError('')
-    setSuccess('')
+    setError("");
+    setSuccess("");
 
     try {
       const res = await authFetch(`/api/v1/admin/users/${selectedUser.id}`, {
-        method: 'PUT',
+        method: "PUT",
         body: JSON.stringify({
           username: formData.username,
           email: formData.email,
@@ -137,137 +139,140 @@ export default function AdminUserManagement() {
           is_admin: formData.is_admin,
           game_system: formData.game_system,
         }),
-      })
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to update user')
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update user");
       }
 
-      setSuccess('User updated successfully!')
-      setShowEditModal(false)
-      setSelectedUser(null)
-      resetForm()
-      fetchUsers()
-      setTimeout(() => setSuccess(''), 3000)
+      setSuccess("User updated successfully!");
+      setShowEditModal(false);
+      setSelectedUser(null);
+      resetForm();
+      fetchUsers();
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user')
+      setError(err instanceof Error ? err.message : "Failed to update user");
     }
-  }
+  };
 
   const handleDeleteUser = async () => {
-    if (!selectedUser) return
+    if (!selectedUser) return;
 
-    setError('')
-    setSuccess('')
+    setError("");
+    setSuccess("");
 
     try {
       const res = await authFetch(`/api/v1/admin/users/${selectedUser.id}`, {
-        method: 'DELETE',
-      })
+        method: "DELETE",
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to delete user')
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete user");
       }
 
-      setSuccess('User deleted successfully!')
-      setShowDeleteModal(false)
-      setSelectedUser(null)
-      fetchUsers()
-      setTimeout(() => setSuccess(''), 3000)
+      setSuccess("User deleted successfully!");
+      setShowDeleteModal(false);
+      setSelectedUser(null);
+      fetchUsers();
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete user')
+      setError(err instanceof Error ? err.message : "Failed to delete user");
     }
-  }
+  };
 
   const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedUser) return
+    e.preventDefault();
+    if (!selectedUser) return;
 
-    setError('')
-    setSuccess('')
+    setError("");
+    setSuccess("");
 
     // Validate password confirmation
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
-      return
+      setError("Passwords do not match");
+      return;
     }
 
     // Validate password strength
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
+      setError("Password must be at least 8 characters");
+      return;
     }
 
     try {
-      const res = await authFetch(`/api/v1/admin/users/${selectedUser.id}/reset-password`, {
-        method: 'POST',
-        body: JSON.stringify({
-          password: formData.password,
-        }),
-      })
+      const res = await authFetch(
+        `/api/v1/admin/users/${selectedUser.id}/reset-password`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            password: formData.password,
+          }),
+        },
+      );
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to reset password')
+        const data = await res.json();
+        throw new Error(data.error || "Failed to reset password");
       }
 
-      setSuccess('Password reset successfully!')
-      setShowResetPasswordModal(false)
-      setSelectedUser(null)
-      resetForm()
-      setTimeout(() => setSuccess(''), 3000)
+      setSuccess("Password reset successfully!");
+      setShowResetPasswordModal(false);
+      setSelectedUser(null);
+      resetForm();
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset password')
+      setError(err instanceof Error ? err.message : "Failed to reset password");
     }
-  }
+  };
 
   const resetForm = () => {
     setFormData({
-      username: '',
-      email: '',
-      display_name: '',
-      password: '',
-      confirmPassword: '',
+      username: "",
+      email: "",
+      display_name: "",
+      password: "",
+      confirmPassword: "",
       is_admin: false,
-      game_system: 'Dungeons & Dragons 5th Edition',
-    })
-  }
+      game_system: "Dungeons & Dragons 5th Edition",
+    });
+  };
 
   const openEditModal = (user: User) => {
-    setSelectedUser(user)
+    setSelectedUser(user);
     setFormData({
       username: user.username,
       email: user.email,
-      display_name: user.display_name || '',
-      password: '',
-      confirmPassword: '',
+      display_name: user.display_name || "",
+      password: "",
+      confirmPassword: "",
       is_admin: user.is_admin,
       game_system: user.game_system,
-    })
-    setShowEditModal(true)
-  }
+    });
+    setShowEditModal(true);
+  };
 
   const openDeleteModal = (user: User) => {
-    setSelectedUser(user)
-    setShowDeleteModal(true)
-  }
+    setSelectedUser(user);
+    setShowDeleteModal(true);
+  };
 
   const openResetPasswordModal = (user: User) => {
-    setSelectedUser(user)
-    setFormData({ ...formData, password: '', confirmPassword: '' })
-    setShowResetPasswordModal(true)
-  }
+    setSelectedUser(user);
+    setFormData({ ...formData, password: "", confirmPassword: "" });
+    setShowResetPasswordModal(true);
+  };
 
-  const totalPages = Math.ceil(total / limit)
+  const totalPages = Math.ceil(total / limit);
 
   if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-text-muted">Loading users...</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -276,12 +281,14 @@ export default function AdminUserManagement() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-text mb-2">User Management</h1>
-          <p className="text-text-muted">Manage user accounts and permissions</p>
+          <p className="text-text-muted">
+            Manage user accounts and permissions
+          </p>
         </div>
         <button
           onClick={() => {
-            resetForm()
-            setShowCreateModal(true)
+            resetForm();
+            setShowCreateModal(true);
           }}
           className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
         >
@@ -333,12 +340,17 @@ export default function AdminUserManagement() {
             </thead>
             <tbody className="divide-y divide-border">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-background-muted/50 transition-colors">
+                <tr
+                  key={user.id}
+                  className="hover:bg-background-muted/50 transition-colors"
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                         <span className="text-sm font-medium text-primary">
-                          {(user.display_name || user.username).charAt(0).toUpperCase()}
+                          {(user.display_name || user.username)
+                            .charAt(0)
+                            .toUpperCase()}
                         </span>
                       </div>
                       <div className="flex flex-col">
@@ -346,7 +358,9 @@ export default function AdminUserManagement() {
                           {user.display_name || user.username}
                         </span>
                         {user.display_name && (
-                          <span className="text-xs text-text-muted">@{user.username}</span>
+                          <span className="text-xs text-text-muted">
+                            @{user.username}
+                          </span>
                         )}
                       </div>
                       {user.id === currentUser?.id && (
@@ -356,7 +370,9 @@ export default function AdminUserManagement() {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-text-muted">{user.email}</td>
+                  <td className="px-6 py-4 text-sm text-text-muted">
+                    {user.email}
+                  </td>
                   <td className="px-6 py-4">
                     {user.is_admin ? (
                       <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-400 font-medium">
@@ -368,7 +384,9 @@ export default function AdminUserManagement() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-text-muted">{user.game_system}</td>
+                  <td className="px-6 py-4 text-sm text-text-muted">
+                    {user.game_system}
+                  </td>
                   <td className="px-6 py-4 text-sm text-text-muted">
                     {new Date(user.created_at).toLocaleDateString()}
                   </td>
@@ -379,14 +397,20 @@ export default function AdminUserManagement() {
                         className="p-2 hover:bg-background rounded-lg transition-colors"
                         title="Edit user"
                       >
-                        <Icon name="Edit" className="w-4 h-4 text-text-muted hover:text-primary" />
+                        <Icon
+                          name="Edit"
+                          className="w-4 h-4 text-text-muted hover:text-primary"
+                        />
                       </button>
                       <button
                         onClick={() => openResetPasswordModal(user)}
                         className="p-2 hover:bg-background rounded-lg transition-colors"
                         title="Reset password"
                       >
-                        <Icon name="Edit" className="w-4 h-4 text-text-muted hover:text-primary" />
+                        <Icon
+                          name="Edit"
+                          className="w-4 h-4 text-text-muted hover:text-primary"
+                        />
                       </button>
                       {user.id !== currentUser?.id && (
                         <button
@@ -412,7 +436,8 @@ export default function AdminUserManagement() {
         {totalPages > 1 && (
           <div className="px-6 py-4 border-t border-border flex items-center justify-between">
             <div className="text-sm text-text-muted">
-              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} users
+              Showing {(page - 1) * limit + 1} to{" "}
+              {Math.min(page * limit, total)} of {total} users
             </div>
             <div className="flex gap-2">
               <button
@@ -438,14 +463,20 @@ export default function AdminUserManagement() {
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background-panel border border-border rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold text-text mb-4">Create New User</h2>
+            <h2 className="text-xl font-bold text-text mb-4">
+              Create New User
+            </h2>
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Username</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Username
+                </label>
                 <input
                   type="text"
                   value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, username: e.target.value })
+                  }
                   required
                   minLength={3}
                   maxLength={50}
@@ -453,11 +484,15 @@ export default function AdminUserManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Email</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   required
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -469,7 +504,9 @@ export default function AdminUserManagement() {
                 <input
                   type="text"
                   value={formData.display_name}
-                  onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, display_name: e.target.value })
+                  }
                   placeholder="Friendly name shown in UI"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -478,33 +515,50 @@ export default function AdminUserManagement() {
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Password</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Password
+                </label>
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   required
                   minLength={8}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-                <p className="text-xs text-text-muted mt-1">Minimum 8 characters</p>
+                <p className="text-xs text-text-muted mt-1">
+                  Minimum 8 characters
+                </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Confirm Password</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Confirm Password
+                </label>
                 <input
                   type="password"
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
                   required
                   minLength={8}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Game System</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Game System
+                </label>
                 <select
                   value={formData.game_system}
-                  onChange={(e) => setFormData({ ...formData, game_system: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, game_system: e.target.value })
+                  }
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option>Dungeons & Dragons 5th Edition</option>
@@ -524,10 +578,15 @@ export default function AdminUserManagement() {
                   type="checkbox"
                   id="is_admin"
                   checked={formData.is_admin}
-                  onChange={(e) => setFormData({ ...formData, is_admin: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_admin: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
                 />
-                <label htmlFor="is_admin" className="text-sm font-medium text-text">
+                <label
+                  htmlFor="is_admin"
+                  className="text-sm font-medium text-text"
+                >
                   Admin privileges
                 </label>
               </div>
@@ -535,8 +594,8 @@ export default function AdminUserManagement() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowCreateModal(false)
-                    resetForm()
+                    setShowCreateModal(false);
+                    resetForm();
                   }}
                   className="flex-1 px-4 py-2 bg-background border border-border hover:bg-background-muted text-text rounded-lg text-sm font-medium transition-colors"
                 >
@@ -561,11 +620,15 @@ export default function AdminUserManagement() {
             <h2 className="text-xl font-bold text-text mb-4">Edit User</h2>
             <form onSubmit={handleUpdateUser} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Username</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Username
+                </label>
                 <input
                   type="text"
                   value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, username: e.target.value })
+                  }
                   required
                   minLength={3}
                   maxLength={50}
@@ -573,11 +636,15 @@ export default function AdminUserManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Email</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   required
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -589,7 +656,9 @@ export default function AdminUserManagement() {
                 <input
                   type="text"
                   value={formData.display_name}
-                  onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, display_name: e.target.value })
+                  }
                   placeholder="Friendly name shown in UI"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -598,10 +667,14 @@ export default function AdminUserManagement() {
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Game System</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Game System
+                </label>
                 <select
                   value={formData.game_system}
-                  onChange={(e) => setFormData({ ...formData, game_system: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, game_system: e.target.value })
+                  }
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option>Dungeons & Dragons 5th Edition</option>
@@ -621,10 +694,15 @@ export default function AdminUserManagement() {
                   type="checkbox"
                   id="edit_is_admin"
                   checked={formData.is_admin}
-                  onChange={(e) => setFormData({ ...formData, is_admin: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_admin: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
                 />
-                <label htmlFor="edit_is_admin" className="text-sm font-medium text-text">
+                <label
+                  htmlFor="edit_is_admin"
+                  className="text-sm font-medium text-text"
+                >
                   Admin privileges
                 </label>
               </div>
@@ -632,9 +710,9 @@ export default function AdminUserManagement() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowEditModal(false)
-                    setSelectedUser(null)
-                    resetForm()
+                    setShowEditModal(false);
+                    setSelectedUser(null);
+                    resetForm();
                   }}
                   className="flex-1 px-4 py-2 bg-background border border-border hover:bg-background-muted text-text rounded-lg text-sm font-medium transition-colors"
                 >
@@ -661,18 +739,21 @@ export default function AdminUserManagement() {
                 <Icon name="AlertCircle" className="w-5 h-5 text-red-500" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-text mb-2">Delete User</h2>
+                <h2 className="text-xl font-bold text-text mb-2">
+                  Delete User
+                </h2>
                 <p className="text-sm text-text-muted">
-                  Are you sure you want to delete <strong>{selectedUser.username}</strong>? This
-                  action cannot be undone and will delete all of their campaigns and content.
+                  Are you sure you want to delete{" "}
+                  <strong>{selectedUser.username}</strong>? This action cannot
+                  be undone and will delete all of their campaigns and content.
                 </p>
               </div>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  setShowDeleteModal(false)
-                  setSelectedUser(null)
+                  setShowDeleteModal(false);
+                  setSelectedUser(null);
                 }}
                 className="flex-1 px-4 py-2 bg-background border border-border hover:bg-background-muted text-text rounded-lg text-sm font-medium transition-colors"
               >
@@ -699,16 +780,22 @@ export default function AdminUserManagement() {
             </p>
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text mb-1">New Password</label>
+                <label className="block text-sm font-medium text-text mb-1">
+                  New Password
+                </label>
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   required
                   minLength={8}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-                <p className="text-xs text-text-muted mt-1">Minimum 8 characters</p>
+                <p className="text-xs text-text-muted mt-1">
+                  Minimum 8 characters
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-text mb-1">
@@ -717,7 +804,12 @@ export default function AdminUserManagement() {
                 <input
                   type="password"
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
                   required
                   minLength={8}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
@@ -727,9 +819,9 @@ export default function AdminUserManagement() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowResetPasswordModal(false)
-                    setSelectedUser(null)
-                    resetForm()
+                    setShowResetPasswordModal(false);
+                    setSelectedUser(null);
+                    resetForm();
                   }}
                   className="flex-1 px-4 py-2 bg-background border border-border hover:bg-background-muted text-text rounded-lg text-sm font-medium transition-colors"
                 >
@@ -747,5 +839,5 @@ export default function AdminUserManagement() {
         </div>
       )}
     </div>
-  )
+  );
 }

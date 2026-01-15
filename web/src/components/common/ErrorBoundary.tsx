@@ -1,16 +1,16 @@
-import { Component, ErrorInfo, ReactNode } from 'react'
-import Icon from './Icon'
-import { logger } from '@/utils/logger'
+import { Component, ErrorInfo, ReactNode } from "react";
+import Icon from "./Icon";
+import { logger } from "@/utils/logger";
 
 interface Props {
-  children: ReactNode
-  fallback?: ReactNode
-  onError?: (error: Error, errorInfo: ErrorInfo) => void
+  children: ReactNode;
+  fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
-  hasError: boolean
-  error: Error | null
+  hasError: boolean;
+  error: Error | null;
 }
 
 /**
@@ -29,31 +29,31 @@ interface State {
  */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
-    super(props)
-    this.state = { hasError: false, error: null }
+    super(props);
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error }
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log error to console in development
-    logger.error('ErrorBoundary caught an error:', error, errorInfo)
+    logger.error("ErrorBoundary caught an error:", error, errorInfo);
 
     // Call optional error handler
-    this.props.onError?.(error, errorInfo)
+    this.props.onError?.(error, errorInfo);
   }
 
   handleRetry = (): void => {
-    this.setState({ hasError: false, error: null })
-  }
+    this.setState({ hasError: false, error: null });
+  };
 
   render(): ReactNode {
     if (this.state.hasError) {
       // Use custom fallback if provided
       if (this.props.fallback) {
-        return this.props.fallback
+        return this.props.fallback;
       }
 
       // Default error UI
@@ -65,7 +65,8 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
 
           <p className="text-text-muted text-center max-w-md mb-6">
-            An unexpected error occurred. This has been logged and we'll look into it.
+            An unexpected error occurred. This has been logged and we'll look
+            into it.
           </p>
 
           {this.state.error && (
@@ -87,10 +88,10 @@ export class ErrorBoundary extends Component<Props, State> {
             Try Again
           </button>
         </div>
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }
 
@@ -99,17 +100,17 @@ export class ErrorBoundary extends Component<Props, State> {
  */
 export function withErrorBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
-  fallback?: ReactNode
+  fallback?: ReactNode,
 ): React.FC<P> {
   const WithErrorBoundary: React.FC<P> = (props) => (
     <ErrorBoundary fallback={fallback}>
       <WrappedComponent {...props} />
     </ErrorBoundary>
-  )
+  );
 
-  WithErrorBoundary.displayName = `WithErrorBoundary(${WrappedComponent.displayName || WrappedComponent.name || 'Component'})`
+  WithErrorBoundary.displayName = `WithErrorBoundary(${WrappedComponent.displayName || WrappedComponent.name || "Component"})`;
 
-  return WithErrorBoundary
+  return WithErrorBoundary;
 }
 
-export default ErrorBoundary
+export default ErrorBoundary;

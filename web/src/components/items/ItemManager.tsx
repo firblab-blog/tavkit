@@ -1,131 +1,131 @@
-import { useState, useEffect } from 'react'
-import Icon from '../common/Icon'
-import ItemDetail from './ItemDetail'
-import ItemModal from './ItemModal'
-import { useItemStore } from '../../store/itemStore'
-import { useCampaignStore } from '../../store/campaignStore'
-import { Item, ITEM_TYPES, ITEM_RARITIES } from '../../api/items'
+import { useState, useEffect } from "react";
+import Icon from "../common/Icon";
+import ItemDetail from "./ItemDetail";
+import ItemModal from "./ItemModal";
+import { useItemStore } from "../../store/itemStore";
+import { useCampaignStore } from "../../store/campaignStore";
+import { Item, ITEM_TYPES, ITEM_RARITIES } from "../../api/items";
 
 export default function ItemManager() {
-  const { items, loading, error, fetchItems } = useItemStore()
-  const { campaigns, fetchCampaigns } = useCampaignStore()
+  const { items, loading, error, fetchItems } = useItemStore();
+  const { campaigns, fetchCampaigns } = useCampaignStore();
 
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Filter state
-  const [filterCampaignId, setFilterCampaignId] = useState<string>('')
-  const [filterType, setFilterType] = useState<string>('')
-  const [filterRarity, setFilterRarity] = useState<string>('')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [filterCampaignId, setFilterCampaignId] = useState<string>("");
+  const [filterType, setFilterType] = useState<string>("");
+  const [filterRarity, setFilterRarity] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Mobile drawer state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    fetchItems()
-    fetchCampaigns()
-  }, [fetchItems, fetchCampaigns])
+    fetchItems();
+    fetchCampaigns();
+  }, [fetchItems, fetchCampaigns]);
 
   // Detect mobile viewport
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
-    }
+      setIsMobile(window.innerWidth < 1024);
+    };
 
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Close drawer when switching to desktop
   useEffect(() => {
     if (!isMobile) {
-      setIsDrawerOpen(false)
+      setIsDrawerOpen(false);
     }
-  }, [isMobile])
+  }, [isMobile]);
 
   // Prevent body scroll when drawer open on mobile
   useEffect(() => {
     if (isMobile && isDrawerOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isMobile, isDrawerOpen])
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobile, isDrawerOpen]);
 
   // Handle Escape key to close drawer
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isDrawerOpen) {
-        setIsDrawerOpen(false)
+      if (e.key === "Escape" && isDrawerOpen) {
+        setIsDrawerOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [isDrawerOpen])
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isDrawerOpen]);
 
   // Filter items
   const filteredItems = items.filter((item) => {
-    if (filterCampaignId && item.campaign_id !== filterCampaignId) return false
-    if (filterType && item.type !== filterType) return false
-    if (filterRarity && item.rarity !== filterRarity) return false
+    if (filterCampaignId && item.campaign_id !== filterCampaignId) return false;
+    if (filterType && item.type !== filterType) return false;
+    if (filterRarity && item.rarity !== filterRarity) return false;
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       if (
         !item.name.toLowerCase().includes(query) &&
         !item.description?.toLowerCase().includes(query)
       ) {
-        return false
+        return false;
       }
     }
-    return true
-  })
+    return true;
+  });
 
   const formatRarity = (rarity?: string): string => {
-    if (!rarity) return 'Common'
-    return rarity.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
-  }
+    if (!rarity) return "Common";
+    return rarity.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  };
 
   const getTypeIcon = (
-    type: string
+    type: string,
   ):
-    | 'Sword'
-    | 'Shield'
-    | 'FlaskConical'
-    | 'Gem'
-    | 'Wrench'
-    | 'Scroll'
-    | 'Crown'
-    | 'Sparkles'
-    | 'Package' => {
+    | "Sword"
+    | "Shield"
+    | "FlaskConical"
+    | "Gem"
+    | "Wrench"
+    | "Scroll"
+    | "Crown"
+    | "Sparkles"
+    | "Package" => {
     switch (type) {
-      case 'weapon':
-        return 'Sword'
-      case 'armor':
-        return 'Shield'
-      case 'consumable':
-        return 'FlaskConical'
-      case 'treasure':
-        return 'Gem'
-      case 'tool':
-        return 'Wrench'
-      case 'quest_item':
-        return 'Scroll'
-      case 'relic':
-        return 'Crown'
-      case 'wondrous':
-        return 'Sparkles'
+      case "weapon":
+        return "Sword";
+      case "armor":
+        return "Shield";
+      case "consumable":
+        return "FlaskConical";
+      case "treasure":
+        return "Gem";
+      case "tool":
+        return "Wrench";
+      case "quest_item":
+        return "Scroll";
+      case "relic":
+        return "Crown";
+      case "wondrous":
+        return "Sparkles";
       default:
-        return 'Package'
+        return "Package";
     }
-  }
+  };
 
   return (
     <div className="h-full flex flex-col bg-background overflow-x-hidden">
@@ -190,8 +190,8 @@ export default function ItemManager() {
         {/* Sidebar - matches CampaignToolkit */}
         <aside
           className={`
-            ${isMobile ? 'fixed top-0 left-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out' : 'w-64 flex-shrink-0'}
-            ${isMobile && !isDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
+            ${isMobile ? "fixed top-0 left-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out" : "w-64 flex-shrink-0"}
+            ${isMobile && !isDrawerOpen ? "-translate-x-full" : "translate-x-0"}
             bg-background-panel border-r border-border overflow-y-auto
           `}
           role="navigation"
@@ -284,7 +284,10 @@ export default function ItemManager() {
 
                 {loading && (
                   <div className="flex items-center justify-center py-8">
-                    <Icon name="Loader2" className="w-6 h-6 animate-spin text-primary" />
+                    <Icon
+                      name="Loader2"
+                      className="w-6 h-6 animate-spin text-primary"
+                    />
                   </div>
                 )}
 
@@ -296,9 +299,14 @@ export default function ItemManager() {
 
                 {!loading && filteredItems.length === 0 && (
                   <div className="text-center py-6 px-2">
-                    <Icon name="Gem" className="w-12 h-12 text-primary/30 mx-auto mb-2" />
+                    <Icon
+                      name="Gem"
+                      className="w-12 h-12 text-primary/30 mx-auto mb-2"
+                    />
                     <p className="text-text-muted text-xs">
-                      {items.length === 0 ? 'No items yet' : 'No matching items'}
+                      {items.length === 0
+                        ? "No items yet"
+                        : "No matching items"}
                     </p>
                   </div>
                 )}
@@ -308,20 +316,25 @@ export default function ItemManager() {
                     <button
                       key={item.id}
                       onClick={() => {
-                        setSelectedItem(item)
-                        if (isMobile) setIsDrawerOpen(false)
+                        setSelectedItem(item);
+                        if (isMobile) setIsDrawerOpen(false);
                       }}
                       className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
                         selectedItem?.id === item.id
-                          ? 'bg-primary text-tavern-darkest'
-                          : 'text-tavern-mauve hover:bg-tavern-dark hover:text-tavern-light'
+                          ? "bg-primary text-tavern-darkest"
+                          : "text-tavern-mauve hover:bg-tavern-dark hover:text-tavern-light"
                       }`}
                     >
-                      <Icon name={getTypeIcon(item.type)} className="w-4 h-4 flex-shrink-0" />
+                      <Icon
+                        name={getTypeIcon(item.type)}
+                        className="w-4 h-4 flex-shrink-0"
+                      />
                       <div className="min-w-0 flex-1">
-                        <span className="text-sm font-medium truncate block">{item.name}</span>
+                        <span className="text-sm font-medium truncate block">
+                          {item.name}
+                        </span>
                         <span
-                          className={`text-xs ${selectedItem?.id === item.id ? 'text-tavern-darkest/70' : 'text-text-muted'}`}
+                          className={`text-xs ${selectedItem?.id === item.id ? "text-tavern-darkest/70" : "text-text-muted"}`}
                         >
                           {formatRarity(item.rarity)}
                         </span>
@@ -348,15 +361,20 @@ export default function ItemManager() {
                 <div className="text-center max-w-md">
                   <div className="relative mb-6">
                     <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
-                    <Icon name="Gem" className="w-24 h-24 text-primary/30 mx-auto relative" />
+                    <Icon
+                      name="Gem"
+                      className="w-24 h-24 text-primary/30 mx-auto relative"
+                    />
                   </div>
                   <h2 className="text-2xl font-bold text-text mb-2">
-                    {items.length > 0 ? 'Select an Item' : 'Create Your First Item'}
+                    {items.length > 0
+                      ? "Select an Item"
+                      : "Create Your First Item"}
                   </h2>
                   <p className="text-text-muted mb-6">
                     {items.length > 0
-                      ? 'Choose an item from the sidebar to view its details'
-                      : 'Get started by adding your first item to the vault'}
+                      ? "Choose an item from the sidebar to view its details"
+                      : "Get started by adding your first item to the vault"}
                   </p>
                   {items.length === 0 && (
                     <button
@@ -379,11 +397,11 @@ export default function ItemManager() {
         <ItemModal
           onClose={() => setShowCreateModal(false)}
           onSave={(item) => {
-            setShowCreateModal(false)
-            setSelectedItem(item)
+            setShowCreateModal(false);
+            setSelectedItem(item);
           }}
         />
       )}
     </div>
-  )
+  );
 }

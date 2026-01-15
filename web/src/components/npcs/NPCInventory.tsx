@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react'
-import Icon from '../common/Icon'
-import ItemReference from '../common/ItemReference'
-import { useItemStore } from '../../store/itemStore'
+import { useState, useEffect } from "react";
+import Icon from "../common/Icon";
+import ItemReference from "../common/ItemReference";
+import { useItemStore } from "../../store/itemStore";
 
 interface InventoryItem {
-  item_id: string
-  quantity: number
-  notes?: string
+  item_id: string;
+  quantity: number;
+  notes?: string;
 }
 
 interface NPCInventoryProps {
-  inventory: InventoryItem[]
-  onChange: (inventory: InventoryItem[]) => void
-  isEditing?: boolean
+  inventory: InventoryItem[];
+  onChange: (inventory: InventoryItem[]) => void;
+  isEditing?: boolean;
 }
 
 /**
@@ -24,38 +24,40 @@ export default function NPCInventory({
   onChange,
   isEditing = false,
 }: NPCInventoryProps) {
-  const { items, fetchItems } = useItemStore()
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
-  const [newQuantity, setNewQuantity] = useState(1)
-  const [newNotes, setNewNotes] = useState('')
+  const { items, fetchItems } = useItemStore();
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [newQuantity, setNewQuantity] = useState(1);
+  const [newNotes, setNewNotes] = useState("");
 
   useEffect(() => {
     // Fetch items if not loaded
     if (items.length === 0) {
-      fetchItems()
+      fetchItems();
     }
-  }, [items.length, fetchItems])
+  }, [items.length, fetchItems]);
 
   const handleRemoveItem = (itemId: string) => {
-    onChange(inventory.filter((item) => item.item_id !== itemId))
-  }
+    onChange(inventory.filter((item) => item.item_id !== itemId));
+  };
 
   const handleAddItem = () => {
-    if (!selectedItemId) return
+    if (!selectedItemId) return;
 
     // Check if item already exists in inventory
-    const existingIndex = inventory.findIndex((i) => i.item_id === selectedItemId)
+    const existingIndex = inventory.findIndex(
+      (i) => i.item_id === selectedItemId,
+    );
     if (existingIndex >= 0) {
       // Update quantity
-      const updated = [...inventory]
+      const updated = [...inventory];
       updated[existingIndex] = {
         ...updated[existingIndex],
         quantity: updated[existingIndex].quantity + newQuantity,
         notes: newNotes || updated[existingIndex].notes,
-      }
-      onChange(updated)
+      };
+      onChange(updated);
     } else {
       // Add new item
       onChange([
@@ -65,23 +67,27 @@ export default function NPCInventory({
           quantity: newQuantity,
           notes: newNotes || undefined,
         },
-      ])
+      ]);
     }
 
     // Reset modal
-    setShowAddModal(false)
-    setSelectedItemId(null)
-    setNewQuantity(1)
-    setNewNotes('')
-    setSearchQuery('')
-  }
+    setShowAddModal(false);
+    setSelectedItemId(null);
+    setNewQuantity(1);
+    setNewNotes("");
+    setSearchQuery("");
+  };
 
   const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   if (inventory.length === 0 && !isEditing) {
-    return <div className="text-text-muted text-sm italic">No items in inventory</div>
+    return (
+      <div className="text-text-muted text-sm italic">
+        No items in inventory
+      </div>
+    );
   }
 
   return (
@@ -94,7 +100,9 @@ export default function NPCInventory({
             itemId={invItem.item_id}
             quantity={invItem.quantity}
             notes={invItem.notes}
-            onRemove={isEditing ? () => handleRemoveItem(invItem.item_id) : undefined}
+            onRemove={
+              isEditing ? () => handleRemoveItem(invItem.item_id) : undefined
+            }
           />
         ))}
 
@@ -122,7 +130,9 @@ export default function NPCInventory({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-text">Add Item to Inventory</h3>
+              <h3 className="text-lg font-semibold text-text">
+                Add Item to Inventory
+              </h3>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="p-1 hover:bg-tavern-dark rounded transition-colors"
@@ -160,14 +170,17 @@ export default function NPCInventory({
                       onClick={() => setSelectedItemId(item.id)}
                       className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors ${
                         selectedItemId === item.id
-                          ? 'bg-primary/20 border border-primary/50'
-                          : 'hover:bg-tavern-dark border border-transparent'
+                          ? "bg-primary/20 border border-primary/50"
+                          : "hover:bg-tavern-dark border border-transparent"
                       }`}
                     >
-                      <Icon name="Package" className="w-4 h-4 text-text-muted" />
+                      <Icon
+                        name="Package"
+                        className="w-4 h-4 text-text-muted"
+                      />
                       <span className="flex-1 text-text">{item.name}</span>
                       <span className="text-xs text-text-muted capitalize">
-                        {item.type?.replace(/_/g, ' ')}
+                        {item.type?.replace(/_/g, " ")}
                       </span>
                     </button>
                   ))
@@ -178,17 +191,23 @@ export default function NPCInventory({
               {selectedItemId && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-text-muted block mb-1">Quantity</label>
+                    <label className="text-xs text-text-muted block mb-1">
+                      Quantity
+                    </label>
                     <input
                       type="number"
                       min={1}
                       value={newQuantity}
-                      onChange={(e) => setNewQuantity(parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        setNewQuantity(parseInt(e.target.value) || 1)
+                      }
                       className="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-text"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-text-muted block mb-1">Notes (optional)</label>
+                    <label className="text-xs text-text-muted block mb-1">
+                      Notes (optional)
+                    </label>
                     <input
                       type="text"
                       value={newNotes}
@@ -220,5 +239,5 @@ export default function NPCInventory({
         </div>
       )}
     </div>
-  )
+  );
 }

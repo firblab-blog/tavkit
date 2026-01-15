@@ -1,9 +1,9 @@
-import { useSearchParams } from 'react-router-dom'
-import { Campaign } from '../../../../store/campaignStore'
-import NextSession from '../../CampaignHero/NextSession'
+import { useSearchParams } from "react-router-dom";
+import { Campaign } from "../../../../store/campaignStore";
+import NextSession from "../../CampaignHero/NextSession";
 
 interface CampaignHeroCardProps {
-  campaign: Campaign
+  campaign: Campaign;
 }
 
 /**
@@ -16,12 +16,12 @@ interface CampaignHeroCardProps {
  * - Gradient background with subtle glow effects
  */
 export default function CampaignHeroCard({ campaign }: CampaignHeroCardProps) {
-  const [, setSearchParams] = useSearchParams()
+  const [, setSearchParams] = useSearchParams();
 
   const handleCampaignClick = () => {
     // Navigate to Campaign tab's overview section
-    setSearchParams({ tab: 'campaign', subtab: 'overview' }, { replace: true })
-  }
+    setSearchParams({ tab: "campaign", subtab: "overview" }, { replace: true });
+  };
 
   return (
     <div className="relative bg-gradient-to-br from-background-panel to-background rounded-xl sm:rounded-2xl border border-primary/30 p-4 sm:p-8 shadow-2xl overflow-visible">
@@ -38,7 +38,7 @@ export default function CampaignHeroCard({ campaign }: CampaignHeroCardProps) {
             </h1>
           </button>
           <p className="text-sm sm:text-base text-text-muted mt-2">
-            {campaign.game_system || 'D&D 5e'}
+            {campaign.game_system || "D&D 5e"}
             {campaign.theme && ` · ${campaign.theme}`}
           </p>
         </div>
@@ -47,5 +47,5 @@ export default function CampaignHeroCard({ campaign }: CampaignHeroCardProps) {
         <NextSession campaignId={campaign.id} />
       </div>
     </div>
-  )
+  );
 }

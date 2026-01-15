@@ -1,70 +1,70 @@
 // Encounter content detail view
 
 interface Creature {
-  name: string
-  quantity?: number
-  cr?: string | number
-  notes?: string
+  name: string;
+  quantity?: number;
+  cr?: string | number;
+  notes?: string;
 }
 
 interface Environment {
-  terrain?: string
-  lighting?: string
-  weather?: string
+  terrain?: string;
+  lighting?: string;
+  weather?: string;
 }
 
 interface Treasure {
-  coins?: Record<string, number>
-  items?: string[]
+  coins?: Record<string, number>;
+  items?: string[];
 }
 
 interface EncounterData {
-  name: string
-  party_level: number
-  party_size: number
-  difficulty: string
-  description?: string
-  creatures?: string | Creature[]
-  environment?: string | Environment
-  treasure?: string | Treasure
-  xp_total?: number
-  xp_per_player?: number
-  notes?: string
+  name: string;
+  party_level: number;
+  party_size: number;
+  difficulty: string;
+  description?: string;
+  creatures?: string | Creature[];
+  environment?: string | Environment;
+  treasure?: string | Treasure;
+  xp_total?: number;
+  xp_per_player?: number;
+  notes?: string;
 }
 
 interface EncounterDetailProps {
-  encounter: EncounterData
+  encounter: EncounterData;
 }
 
 function parseJSON<T>(value: string | T | undefined): T | null {
-  if (!value) return null
-  if (typeof value === 'string') {
+  if (!value) return null;
+  if (typeof value === "string") {
     try {
-      return JSON.parse(value)
+      return JSON.parse(value);
     } catch {
-      return null
+      return null;
     }
   }
-  return value
+  return value;
 }
 
 function getDifficultyClasses(difficulty: string): string {
   switch (difficulty.toLowerCase()) {
-    case 'deadly':
-      return 'bg-red-900/30 text-red-400'
-    case 'hard':
-      return 'bg-orange-900/30 text-orange-400'
-    case 'medium':
-      return 'bg-yellow-900/30 text-yellow-400'
+    case "deadly":
+      return "bg-red-900/30 text-red-400";
+    case "hard":
+      return "bg-orange-900/30 text-orange-400";
+    case "medium":
+      return "bg-yellow-900/30 text-yellow-400";
     default:
-      return 'bg-green-900/30 text-green-400'
+      return "bg-green-900/30 text-green-400";
   }
 }
 
 export function EncounterDetail({ encounter }: EncounterDetailProps) {
-  const creatures = parseJSON<Creature[]>(encounter.creatures) || []
-  const environment = parseJSON<Environment>(encounter.environment)
-  const treasure = parseJSON<Treasure>(encounter.treasure)
+  const creatures = parseJSON<Creature[]>(encounter.creatures) || [];
+  const environment = parseJSON<Environment>(encounter.environment);
+  const treasure = parseJSON<Treasure>(encounter.treasure);
 
   return (
     <div className="space-y-6">
@@ -89,31 +89,37 @@ export function EncounterDetail({ encounter }: EncounterDetailProps) {
       {/* Description */}
       {encounter.description && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-2">Description</h3>
-          <p className="text-text leading-relaxed whitespace-pre-wrap">{encounter.description}</p>
+          <h3 className="text-lg font-semibold text-primary mb-2">
+            Description
+          </h3>
+          <p className="text-text leading-relaxed whitespace-pre-wrap">
+            {encounter.description}
+          </p>
         </div>
       )}
 
       {/* Environment */}
       {environment && Object.keys(environment).length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">Environment</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            Environment
+          </h3>
           <div className="bg-surface p-4 rounded-lg border border-border space-y-2">
             {environment.terrain && (
               <div>
-                <span className="text-text-muted font-medium">Terrain:</span>{' '}
+                <span className="text-text-muted font-medium">Terrain:</span>{" "}
                 <span className="text-text">{environment.terrain}</span>
               </div>
             )}
             {environment.lighting && (
               <div>
-                <span className="text-text-muted font-medium">Lighting:</span>{' '}
+                <span className="text-text-muted font-medium">Lighting:</span>{" "}
                 <span className="text-text">{environment.lighting}</span>
               </div>
             )}
             {environment.weather && (
               <div>
-                <span className="text-text-muted font-medium">Weather:</span>{' '}
+                <span className="text-text-muted font-medium">Weather:</span>{" "}
                 <span className="text-text">{environment.weather}</span>
               </div>
             )}
@@ -127,10 +133,15 @@ export function EncounterDetail({ encounter }: EncounterDetailProps) {
           <h3 className="text-lg font-semibold text-primary mb-3">Creatures</h3>
           <div className="space-y-3">
             {creatures.map((creature, idx) => (
-              <div key={idx} className="bg-surface p-4 rounded-lg border border-border">
+              <div
+                key={idx}
+                className="bg-surface p-4 rounded-lg border border-border"
+              >
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-semibold text-text">{creature.name}</div>
+                    <div className="font-semibold text-text">
+                      {creature.name}
+                    </div>
                     <div className="text-sm text-text-muted">
                       Quantity: {creature.quantity || 1}
                     </div>
@@ -141,7 +152,9 @@ export function EncounterDetail({ encounter }: EncounterDetailProps) {
                     </span>
                   )}
                 </div>
-                {creature.notes && <p className="text-text text-sm mt-2">{creature.notes}</p>}
+                {creature.notes && (
+                  <p className="text-text text-sm mt-2">{creature.notes}</p>
+                )}
               </div>
             ))}
           </div>
@@ -153,13 +166,17 @@ export function EncounterDetail({ encounter }: EncounterDetailProps) {
         {encounter.xp_total && (
           <div className="bg-surface p-4 rounded-lg border border-border">
             <div className="text-text-muted text-sm">Total XP</div>
-            <div className="text-2xl font-bold text-text">{encounter.xp_total}</div>
+            <div className="text-2xl font-bold text-text">
+              {encounter.xp_total}
+            </div>
           </div>
         )}
         {encounter.xp_per_player && (
           <div className="bg-surface p-4 rounded-lg border border-border">
             <div className="text-text-muted text-sm">XP per Player</div>
-            <div className="text-2xl font-bold text-text">{encounter.xp_per_player}</div>
+            <div className="text-2xl font-bold text-text">
+              {encounter.xp_per_player}
+            </div>
           </div>
         )}
       </div>
@@ -206,5 +223,5 @@ export function EncounterDetail({ encounter }: EncounterDetailProps) {
         </div>
       )}
     </div>
-  )
+  );
 }

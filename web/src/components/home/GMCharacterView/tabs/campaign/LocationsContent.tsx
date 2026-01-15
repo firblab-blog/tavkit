@@ -1,82 +1,89 @@
-import { useEffect, useState, useMemo } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../../../../common/Icon'
-import { authFetch } from '../../../../../utils/authFetch'
-import { getApiUrl } from '../../../../../config/api'
-import { logger } from '../../../../../utils/logger'
-import { useGeneratorModalStore } from '../../../../../store/generatorModalStore'
+import { useEffect, useState, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../../../../common/Icon";
+import { authFetch } from "../../../../../utils/authFetch";
+import { getApiUrl } from "../../../../../config/api";
+import { logger } from "../../../../../utils/logger";
+import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
 
 interface LocationsContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
 interface Location {
-  id: string
-  name: string
-  type: string
-  description: string
-  tags?: string[]
-  created_at: string
-  updated_at: string
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  tags?: string[];
+  created_at: string;
+  updated_at: string;
 }
 
 /**
  * LocationsContent - Display locations from the campaign.
  */
-export default function LocationsContent({ campaignId }: LocationsContentProps) {
-  const { openGenerator } = useGeneratorModalStore()
-  const [locations, setLocations] = useState<Location[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewingLocation, setViewingLocation] = useState<Location | null>(null)
+export default function LocationsContent({
+  campaignId,
+}: LocationsContentProps) {
+  const { openGenerator } = useGeneratorModalStore();
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
 
   useEffect(() => {
     const loadLocations = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const response = await authFetch(getApiUrl(`/locations?campaign_id=${campaignId}`))
-        if (!response.ok) throw new Error('Failed to fetch locations')
-        const data = await response.json()
-        setLocations(Array.isArray(data) ? data : [])
+        const response = await authFetch(
+          getApiUrl(`/locations?campaign_id=${campaignId}`),
+        );
+        if (!response.ok) throw new Error("Failed to fetch locations");
+        const data = await response.json();
+        setLocations(Array.isArray(data) ? data : []);
       } catch (err) {
-        setError('Failed to load locations')
-        logger.error('Failed to load locations:', err)
+        setError("Failed to load locations");
+        logger.error("Failed to load locations:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    loadLocations()
-  }, [campaignId])
+    };
+    loadLocations();
+  }, [campaignId]);
 
   const filteredLocations = useMemo(() => {
-    if (!searchQuery) return locations
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return locations;
+    const query = searchQuery.toLowerCase();
     return locations.filter(
       (location) =>
         location.name.toLowerCase().includes(query) ||
         location.description?.toLowerCase().includes(query) ||
-        location.type?.toLowerCase().includes(query)
-    )
-  }, [locations, searchQuery])
+        location.type?.toLowerCase().includes(query),
+    );
+  }, [locations, searchQuery]);
 
   const handleDelete = async (location: Location) => {
     if (window.confirm(`Delete "${location.name}"? This cannot be undone.`)) {
       try {
-        const response = await authFetch(getApiUrl(`/locations/${location.id}`), {
-          method: 'DELETE',
-        })
-        if (!response.ok) throw new Error('Failed to delete location')
-        setLocations((prev) => prev.filter((l) => l.id !== location.id))
+        const response = await authFetch(
+          getApiUrl(`/locations/${location.id}`),
+          {
+            method: "DELETE",
+          },
+        );
+        if (!response.ok) throw new Error("Failed to delete location");
+        setLocations((prev) => prev.filter((l) => l.id !== location.id));
         if (viewingLocation?.id === location.id) {
-          setViewingLocation(null)
+          setViewingLocation(null);
         }
       } catch (err) {
-        logger.error('Failed to delete location:', err)
+        logger.error("Failed to delete location:", err);
       }
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -96,7 +103,7 @@ export default function LocationsContent({ campaignId }: LocationsContentProps) 
           />
         </div>
         <button
-          onClick={() => openGenerator('location')}
+          onClick={() => openGenerator("location")}
           className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-lg transition-colors text-sm"
         >
           <Icon name="Plus" className="w-4 h-4" />
@@ -121,17 +128,20 @@ export default function LocationsContent({ campaignId }: LocationsContentProps) 
       {/* Empty State */}
       {!loading && filteredLocations.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="MapPin" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="MapPin"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching locations' : 'No locations yet'}
+            {searchQuery ? "No matching locations" : "No locations yet"}
           </h3>
           <p className="text-text-muted text-sm mb-4">
             {searchQuery
-              ? 'Try adjusting your search.'
-              : 'Add taverns, dungeons, cities, and points of interest.'}
+              ? "Try adjusting your search."
+              : "Add taverns, dungeons, cities, and points of interest."}
           </p>
           <button
-            onClick={() => openGenerator('location')}
+            onClick={() => openGenerator("location")}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-lg transition-colors text-sm mx-auto"
           >
             <Icon name="Plus" className="w-4 h-4" />
@@ -157,7 +167,9 @@ export default function LocationsContent({ campaignId }: LocationsContentProps) 
                   <div className="min-w-0">
                     <h4 className="text-text font-medium">{location.name}</h4>
                     {location.type && (
-                      <p className="text-text-muted text-xs mt-0.5 capitalize">{location.type}</p>
+                      <p className="text-text-muted text-xs mt-0.5 capitalize">
+                        {location.type}
+                      </p>
                     )}
                     {location.description && (
                       <p className="text-text-muted text-sm mt-1 line-clamp-2">
@@ -168,8 +180,8 @@ export default function LocationsContent({ campaignId }: LocationsContentProps) 
                 </div>
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(location)
+                    e.stopPropagation();
+                    handleDelete(location);
                   }}
                   className="p-1.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400 flex-shrink-0"
                 >
@@ -190,17 +202,21 @@ export default function LocationsContent({ campaignId }: LocationsContentProps) 
         />
       )}
     </div>
-  )
+  );
 }
 
 // Location Detail Modal
 interface LocationDetailModalProps {
-  location: Location
-  onClose: () => void
-  onDelete: () => void
+  location: Location;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModalProps) {
+function LocationDetailModal({
+  location,
+  onClose,
+  onDelete,
+}: LocationDetailModalProps) {
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
@@ -214,9 +230,13 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
               <Icon name="MapPin" className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-text">{location.name}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {location.name}
+              </h3>
               {location.type && (
-                <p className="text-sm text-text-muted capitalize">{location.type}</p>
+                <p className="text-sm text-text-muted capitalize">
+                  {location.type}
+                </p>
               )}
             </div>
           </div>
@@ -232,7 +252,9 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {location.description ? (
             <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>{location.description.replace(/\\n/g, '\n')}</ReactMarkdown>
+              <ReactMarkdown>
+                {location.description.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
           ) : (
             <p className="text-text-muted italic">No description</p>
@@ -257,5 +279,5 @@ function LocationDetailModal({ location, onClose, onDelete }: LocationDetailModa
         </div>
       </div>
     </div>
-  )
+  );
 }

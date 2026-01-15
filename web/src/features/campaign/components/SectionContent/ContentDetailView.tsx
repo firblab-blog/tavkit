@@ -1,16 +1,16 @@
 // Content detail view for a selected entry
 
-import ReactMarkdown from 'react-markdown'
-import Icon from '@/components/common/Icon'
-import type { CampaignContent } from '../../types'
+import ReactMarkdown from "react-markdown";
+import Icon from "@/components/common/Icon";
+import type { CampaignContent } from "../../types";
 
 interface ContentDetailViewProps {
-  entry: CampaignContent
-  sectionName: string
-  onBack: () => void
-  onEdit: () => void
-  onDelete: () => void
-  renderExtras?: React.ReactNode
+  entry: CampaignContent;
+  sectionName: string;
+  onBack: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  renderExtras?: React.ReactNode;
 }
 
 export function ContentDetailView({
@@ -37,14 +37,16 @@ export function ContentDetailView({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-2xl font-bold text-text">{entry.title}</h3>
-            {entry.type === 'imported' && (
+            {entry.type === "imported" && (
               <span className="px-2 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
                 AI Generated
               </span>
             )}
           </div>
           <p className="text-sm text-text-muted">
-            {entry.type === 'imported' && entry.file_name ? `From: ${entry.file_name} • ` : ''}
+            {entry.type === "imported" && entry.file_name
+              ? `From: ${entry.file_name} • `
+              : ""}
             Updated {new Date(entry.updated_at).toLocaleDateString()}
           </p>
         </div>
@@ -72,16 +74,16 @@ export function ContentDetailView({
         {renderExtras}
       </div>
     </div>
-  )
+  );
 }
 
 function renderContent(content: string | undefined) {
   if (!content) {
-    return <p className="text-text-muted">No content</p>
+    return <p className="text-text-muted">No content</p>;
   }
 
   // Check if content is base64 image
-  if (content.startsWith('data:image/')) {
+  if (content.startsWith("data:image/")) {
     return (
       <div className="flex justify-center">
         <img
@@ -90,18 +92,18 @@ function renderContent(content: string | undefined) {
           className="max-w-full h-auto rounded-lg border border-border"
         />
       </div>
-    )
+    );
   }
 
   // Check if content is base64 audio
-  if (content.startsWith('data:audio/')) {
+  if (content.startsWith("data:audio/")) {
     return (
       <div className="flex justify-center">
         <audio controls className="w-full max-w-2xl" src={content}>
           Your browser does not support the audio element.
         </audio>
       </div>
-    )
+    );
   }
 
   // Default: render as markdown
@@ -109,5 +111,5 @@ function renderContent(content: string | undefined) {
     <div className="prose prose-invert max-w-none">
       <ReactMarkdown>{content}</ReactMarkdown>
     </div>
-  )
+  );
 }

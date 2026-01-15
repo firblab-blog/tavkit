@@ -1,1 +1,1 @@
-export { EntryModeToggle, type EntryMode } from './EntryModeToggle'
+export { EntryModeToggle, type EntryMode } from "./EntryModeToggle";

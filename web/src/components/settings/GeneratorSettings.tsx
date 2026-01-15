@@ -1,88 +1,88 @@
-import { useUISettingsStore } from '../../store/uiSettingsStore'
+import { useUISettingsStore } from "../../store/uiSettingsStore";
 
 export default function GeneratorSettings() {
-  const { enabledGenerators, setGeneratorEnabled } = useUISettingsStore()
+  const { enabledGenerators, setGeneratorEnabled } = useUISettingsStore();
 
   const generators = [
     {
-      key: 'npc',
-      name: 'NPC Generator',
-      description: 'Create detailed non-player characters',
+      key: "npc",
+      name: "NPC Generator",
+      description: "Create detailed non-player characters",
       beta: false,
     },
     {
-      key: 'monster',
-      name: 'Monster Generator',
-      description: 'Generate custom monsters and creatures',
+      key: "monster",
+      name: "Monster Generator",
+      description: "Generate custom monsters and creatures",
       beta: false,
     },
     {
-      key: 'location',
-      name: 'Location Generator',
-      description: 'Create places, dungeons, and environments',
+      key: "location",
+      name: "Location Generator",
+      description: "Create places, dungeons, and environments",
       beta: false,
     },
     {
-      key: 'item',
-      name: 'Item Generator',
-      description: 'Generate magical items and treasure',
+      key: "item",
+      name: "Item Generator",
+      description: "Generate magical items and treasure",
       beta: false,
     },
     {
-      key: 'encounter',
-      name: 'Encounter Builder',
-      description: 'Build balanced combat encounters',
+      key: "encounter",
+      name: "Encounter Builder",
+      description: "Build balanced combat encounters",
       beta: false,
     },
     {
-      key: 'rumor',
-      name: 'Rumor Generator',
-      description: 'Generate tavern rumors and plot hooks',
+      key: "rumor",
+      name: "Rumor Generator",
+      description: "Generate tavern rumors and plot hooks",
       beta: false,
     },
     {
-      key: 'tavern',
-      name: 'Tavern Generator',
-      description: 'Create inns, taverns, and gathering places',
+      key: "tavern",
+      name: "Tavern Generator",
+      description: "Create inns, taverns, and gathering places",
       beta: false,
     },
     {
-      key: 'merchant',
-      name: 'Merchant Generator',
-      description: 'Generate shops and merchants',
+      key: "merchant",
+      name: "Merchant Generator",
+      description: "Generate shops and merchants",
       beta: false,
     },
     {
-      key: 'trap',
-      name: 'Trap Generator',
-      description: 'Create traps, puzzles, and hazards',
+      key: "trap",
+      name: "Trap Generator",
+      description: "Create traps, puzzles, and hazards",
       beta: false,
     },
     {
-      key: 'critter',
-      name: 'Critter Generator',
-      description: 'Generate creatures and companions',
+      key: "critter",
+      name: "Critter Generator",
+      description: "Generate creatures and companions",
       beta: false,
     },
     {
-      key: 'quest',
-      name: 'Quest Generator',
-      description: 'Generate quest hooks and objectives',
+      key: "quest",
+      name: "Quest Generator",
+      description: "Generate quest hooks and objectives",
       beta: false,
     },
     {
-      key: 'dialogue',
-      name: 'Dialogue Builder',
-      description: 'Create NPC conversations and dialogue trees',
+      key: "dialogue",
+      name: "Dialogue Builder",
+      description: "Create NPC conversations and dialogue trees",
       beta: false,
     },
     {
-      key: 'chase',
-      name: 'Chase Generator',
-      description: 'Generate chase and pursuit scenes',
+      key: "chase",
+      name: "Chase Generator",
+      description: "Generate chase and pursuit scenes",
       beta: false,
     },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
@@ -101,33 +101,43 @@ export default function GeneratorSettings() {
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-text">{generator.name}</span>
+                <span className="text-sm font-medium text-text">
+                  {generator.name}
+                </span>
                 {generator.beta && (
                   <span className="px-1.5 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400">
                     Beta
                   </span>
                 )}
               </div>
-              <p className="text-xs text-text-muted mt-1">{generator.description}</p>
+              <p className="text-xs text-text-muted mt-1">
+                {generator.description}
+              </p>
             </div>
             <button
               onClick={() =>
                 setGeneratorEnabled(
                   generator.key as any,
-                  !enabledGenerators[generator.key as keyof typeof enabledGenerators]
+                  !enabledGenerators[
+                    generator.key as keyof typeof enabledGenerators
+                  ],
                 )
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-                enabledGenerators[generator.key as keyof typeof enabledGenerators]
-                  ? 'bg-primary'
-                  : 'bg-background-muted'
+                enabledGenerators[
+                  generator.key as keyof typeof enabledGenerators
+                ]
+                  ? "bg-primary"
+                  : "bg-background-muted"
               }`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  enabledGenerators[generator.key as keyof typeof enabledGenerators]
-                    ? 'translate-x-6'
-                    : 'translate-x-1'
+                  enabledGenerators[
+                    generator.key as keyof typeof enabledGenerators
+                  ]
+                    ? "translate-x-6"
+                    : "translate-x-1"
                 }`}
               />
             </button>
@@ -135,5 +145,5 @@ export default function GeneratorSettings() {
         ))}
       </div>
     </div>
-  )
+  );
 }

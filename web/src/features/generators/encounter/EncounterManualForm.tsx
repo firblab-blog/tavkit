@@ -1,25 +1,29 @@
 // Manual Entry Form for Encounters
 
-import Icon from '@/components/common/Icon'
-import { FormField } from '@/components/ui/FormField'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import { ArrayFieldEditor } from '../components/Fields'
+import Icon from "@/components/common/Icon";
+import { FormField } from "@/components/ui/FormField";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import { ArrayFieldEditor } from "../components/Fields";
 import {
   encounterTypeOptions,
   difficultyOptions,
   type ManualEncounterData,
-} from '../schemas/encounter'
+} from "../schemas/encounter";
 
 interface EncounterManualFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  manualData: ManualEncounterData
-  setManualData: (data: ManualEncounterData | ((prev: ManualEncounterData) => ManualEncounterData)) => void
-  onSave: () => void
-  saving: boolean
-  saved: boolean
-  error: string | null
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  manualData: ManualEncounterData;
+  setManualData: (
+    data:
+      | ManualEncounterData
+      | ((prev: ManualEncounterData) => ManualEncounterData),
+  ) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  error: string | null;
 }
 
 export function EncounterManualForm({
@@ -34,14 +38,19 @@ export function EncounterManualForm({
 }: EncounterManualFormProps) {
   return (
     <>
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       {/* Basic Information */}
       <FormField label="Encounter Name" required>
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., Ambush at the Bridge, The Goblin Camp"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -51,7 +60,9 @@ export function EncounterManualForm({
         <FormField label="Encounter Type">
           <select
             value={manualData.encounter_type}
-            onChange={(e) => setManualData({ ...manualData, encounter_type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, encounter_type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {encounterTypeOptions.map((opt) => (
@@ -65,7 +76,9 @@ export function EncounterManualForm({
         <FormField label="Difficulty">
           <select
             value={manualData.difficulty}
-            onChange={(e) => setManualData({ ...manualData, difficulty: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, difficulty: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {difficultyOptions.map((opt) => (
@@ -80,7 +93,9 @@ export function EncounterManualForm({
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Describe the encounter scenario..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={3}
@@ -91,7 +106,9 @@ export function EncounterManualForm({
         <input
           type="text"
           value={manualData.environment}
-          onChange={(e) => setManualData({ ...manualData, environment: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, environment: e.target.value })
+          }
           placeholder="e.g., Forest clearing, Underground cavern"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -101,15 +118,20 @@ export function EncounterManualForm({
       <CollapsibleSection title="Creatures" defaultExpanded>
         <div className="space-y-3">
           {manualData.creatures.map((creature, idx) => (
-            <div key={idx} className="bg-background p-3 rounded border border-border space-y-2">
+            <div
+              key={idx}
+              className="bg-background p-3 rounded border border-border space-y-2"
+            >
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-text">Creature {idx + 1}</span>
+                <span className="text-sm font-medium text-text">
+                  Creature {idx + 1}
+                </span>
                 <button
                   type="button"
                   onClick={() => {
-                    const newCreatures = [...manualData.creatures]
-                    newCreatures.splice(idx, 1)
-                    setManualData({ ...manualData, creatures: newCreatures })
+                    const newCreatures = [...manualData.creatures];
+                    newCreatures.splice(idx, 1);
+                    setManualData({ ...manualData, creatures: newCreatures });
                   }}
                   className="text-red-400 hover:text-red-300 text-sm"
                 >
@@ -121,9 +143,9 @@ export function EncounterManualForm({
                   type="text"
                   value={creature.name}
                   onChange={(e) => {
-                    const newCreatures = [...manualData.creatures]
-                    newCreatures[idx] = { ...creature, name: e.target.value }
-                    setManualData({ ...manualData, creatures: newCreatures })
+                    const newCreatures = [...manualData.creatures];
+                    newCreatures[idx] = { ...creature, name: e.target.value };
+                    setManualData({ ...manualData, creatures: newCreatures });
                   }}
                   placeholder="Creature name"
                   className="col-span-2 w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -133,9 +155,12 @@ export function EncounterManualForm({
                   min={1}
                   value={creature.count}
                   onChange={(e) => {
-                    const newCreatures = [...manualData.creatures]
-                    newCreatures[idx] = { ...creature, count: parseInt(e.target.value) || 1 }
-                    setManualData({ ...manualData, creatures: newCreatures })
+                    const newCreatures = [...manualData.creatures];
+                    newCreatures[idx] = {
+                      ...creature,
+                      count: parseInt(e.target.value) || 1,
+                    };
+                    setManualData({ ...manualData, creatures: newCreatures });
                   }}
                   placeholder="#"
                   className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -145,9 +170,9 @@ export function EncounterManualForm({
                 type="text"
                 value={creature.notes}
                 onChange={(e) => {
-                  const newCreatures = [...manualData.creatures]
-                  newCreatures[idx] = { ...creature, notes: e.target.value }
-                  setManualData({ ...manualData, creatures: newCreatures })
+                  const newCreatures = [...manualData.creatures];
+                  newCreatures[idx] = { ...creature, notes: e.target.value };
+                  setManualData({ ...manualData, creatures: newCreatures });
                 }}
                 placeholder="Notes (tactics, special abilities, etc.)"
                 className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -159,7 +184,10 @@ export function EncounterManualForm({
             onClick={() =>
               setManualData({
                 ...manualData,
-                creatures: [...manualData.creatures, { name: '', count: 1, notes: '' }],
+                creatures: [
+                  ...manualData.creatures,
+                  { name: "", count: 1, notes: "" },
+                ],
               })
             }
             className="w-full px-3 py-2 border border-dashed border-border text-text-muted hover:border-primary hover:text-primary rounded transition-colors text-sm"
@@ -170,11 +198,16 @@ export function EncounterManualForm({
       </CollapsibleSection>
 
       {/* Setup */}
-      <CollapsibleSection title="Setup & Initial Conditions" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Setup & Initial Conditions"
+        defaultExpanded={false}
+      >
         <FormField label="Setup">
           <textarea
             value={manualData.setup}
-            onChange={(e) => setManualData({ ...manualData, setup: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, setup: e.target.value })
+            }
             placeholder="Initial positions, surprise, timing, etc."
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             rows={2}
@@ -187,7 +220,9 @@ export function EncounterManualForm({
         <ArrayFieldEditor
           label="Objectives"
           values={manualData.objectives}
-          onChange={(objectives) => setManualData({ ...manualData, objectives })}
+          onChange={(objectives) =>
+            setManualData({ ...manualData, objectives })
+          }
           placeholder="Add an objective..."
         />
       </CollapsibleSection>
@@ -197,7 +232,9 @@ export function EncounterManualForm({
         <ArrayFieldEditor
           label="Terrain Features"
           values={manualData.terrain_features}
-          onChange={(terrain_features) => setManualData({ ...manualData, terrain_features })}
+          onChange={(terrain_features) =>
+            setManualData({ ...manualData, terrain_features })
+          }
           placeholder="Add a terrain feature..."
         />
       </CollapsibleSection>
@@ -217,7 +254,9 @@ export function EncounterManualForm({
         <ArrayFieldEditor
           label="Complications"
           values={manualData.complications}
-          onChange={(complications) => setManualData({ ...manualData, complications })}
+          onChange={(complications) =>
+            setManualData({ ...manualData, complications })
+          }
           placeholder="Add a complication..."
         />
       </CollapsibleSection>
@@ -265,5 +304,5 @@ export function EncounterManualForm({
         </div>
       )}
     </>
-  )
+  );
 }

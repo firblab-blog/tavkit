@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Icon from '../common/Icon'
-import { useCharacterStore, Character } from '../../store/characterStore'
-import { useContextStore } from '../../store/contextStore'
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import Icon from "../common/Icon";
+import { useCharacterStore, Character } from "../../store/characterStore";
+import { useContextStore } from "../../store/contextStore";
 
 interface CharacterSwitcherProps {
-  activeCharacterId?: string | null
-  onCharacterSelect?: (character: Character) => void
+  activeCharacterId?: string | null;
+  onCharacterSelect?: (character: Character) => void;
 }
 
 /**
@@ -19,60 +19,64 @@ export default function CharacterSwitcher({
   activeCharacterId,
   onCharacterSelect,
 }: CharacterSwitcherProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Don't fetch here - parent component (PlayerHome) handles fetching
   // This prevents duplicate API calls that can trigger rate limiting
-  const { characters } = useCharacterStore()
-  const { updateContext } = useContextStore()
+  const { characters } = useCharacterStore();
+  const { updateContext } = useContextStore();
 
-  const activeCharacter = characters.find((c) => c.id === activeCharacterId)
+  const activeCharacter = characters.find((c) => c.id === activeCharacterId);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
       }
-    }
+    };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   const handleSelectCharacter = async (character: Character) => {
     // Update context to track this character
     await updateContext({
-      last_context_type: 'player_campaign',
+      last_context_type: "player_campaign",
       last_character_id: character.id,
-    })
-    setIsOpen(false)
-    onCharacterSelect?.(character)
-  }
+    });
+    setIsOpen(false);
+    onCharacterSelect?.(character);
+  };
 
   const handleCreateCharacter = () => {
-    setIsOpen(false)
-    navigate('/dashboard/player/characters')
-  }
+    setIsOpen(false);
+    navigate("/dashboard/player/characters");
+  };
 
   // Get display info for active character
   const getDisplayName = () => {
     if (activeCharacter) {
-      return activeCharacter.name
+      return activeCharacter.name;
     }
-    return 'Select Character'
-  }
+    return "Select Character";
+  };
 
   const getDisplaySubtitle = () => {
     if (activeCharacter) {
-      return `Level ${activeCharacter.level} ${activeCharacter.class_info}`
+      return `Level ${activeCharacter.level} ${activeCharacter.class_info}`;
     }
-    return 'No character selected'
-  }
+    return "No character selected";
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -102,7 +106,7 @@ export default function CharacterSwitcher({
         </div>
         <Icon
           name="ChevronDown"
-          className={`w-4 h-4 text-text-muted group-hover:text-primary transition-all ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-text-muted group-hover:text-primary transition-all ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -122,8 +126,8 @@ export default function CharacterSwitcher({
                     onClick={() => handleSelectCharacter(character)}
                     className={`w-full text-left p-3 rounded-lg transition-colors group flex items-center gap-3 ${
                       character.id === activeCharacterId
-                        ? 'bg-blue-500/10 border border-blue-500/20'
-                        : 'hover:bg-background'
+                        ? "bg-blue-500/10 border border-blue-500/20"
+                        : "hover:bg-background"
                     }`}
                   >
                     {/* Avatar */}
@@ -133,24 +137,24 @@ export default function CharacterSwitcher({
                         alt={character.name}
                         className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ${
                           character.id === activeCharacterId
-                            ? 'border border-blue-500/40'
-                            : 'border border-border group-hover:border-blue-500/40'
+                            ? "border border-blue-500/40"
+                            : "border border-border group-hover:border-blue-500/40"
                         }`}
                       />
                     ) : (
                       <div
                         className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                           character.id === activeCharacterId
-                            ? 'bg-blue-500/20 border border-blue-500/40'
-                            : 'bg-background border border-border group-hover:border-blue-500/40'
+                            ? "bg-blue-500/20 border border-blue-500/40"
+                            : "bg-background border border-border group-hover:border-blue-500/40"
                         }`}
                       >
                         <Icon
                           name="User"
                           className={`w-5 h-5 ${
                             character.id === activeCharacterId
-                              ? 'text-blue-400'
-                              : 'text-text-muted group-hover:text-blue-400'
+                              ? "text-blue-400"
+                              : "text-text-muted group-hover:text-blue-400"
                           }`}
                         />
                       </div>
@@ -159,18 +163,24 @@ export default function CharacterSwitcher({
                     <div className="flex-1 min-w-0">
                       <span
                         className={`block truncate font-medium ${
-                          character.id === activeCharacterId ? 'text-text' : 'text-text'
+                          character.id === activeCharacterId
+                            ? "text-text"
+                            : "text-text"
                         }`}
                       >
                         {character.name}
                       </span>
                       <span className="text-xs text-text-muted truncate block">
-                        Level {character.level} {character.race} {character.class_info}
+                        Level {character.level} {character.race}{" "}
+                        {character.class_info}
                       </span>
                     </div>
                     {/* Check mark for active */}
                     {character.id === activeCharacterId && (
-                      <Icon name="Check" className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <Icon
+                        name="Check"
+                        className="w-4 h-4 text-blue-400 flex-shrink-0"
+                      />
                     )}
                   </button>
                 ))}
@@ -178,9 +188,14 @@ export default function CharacterSwitcher({
             </div>
           ) : (
             <div className="p-6 text-center">
-              <Icon name="User" className="w-10 h-10 text-text-muted mx-auto mb-2" />
+              <Icon
+                name="User"
+                className="w-10 h-10 text-text-muted mx-auto mb-2"
+              />
               <p className="text-text-muted text-sm">No characters yet</p>
-              <p className="text-text-muted/60 text-xs mt-1">Create your first character below</p>
+              <p className="text-text-muted/60 text-xs mt-1">
+                Create your first character below
+              </p>
             </div>
           )}
 
@@ -195,5 +210,5 @@ export default function CharacterSwitcher({
         </div>
       )}
     </div>
-  )
+  );
 }

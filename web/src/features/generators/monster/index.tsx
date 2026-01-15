@@ -1,35 +1,51 @@
 // Monster Generator
 // Rebuilt using the generator framework pattern
 
-import { useState, useCallback } from 'react'
-import { useGenerator, type GeneratorConfig } from '../hooks/useGenerator'
-import { GeneratorLayout, EntryModeToggle, ManualEntryPreview, SaveModal } from '../components'
-import { MonsterRenderer, formatMonsterForClipboard } from '../renderers/MonsterRenderer'
+import { useState, useCallback } from "react";
+import { useGenerator, type GeneratorConfig } from "../hooks/useGenerator";
+import {
+  GeneratorLayout,
+  EntryModeToggle,
+  ManualEntryPreview,
+  SaveModal,
+} from "../components";
+import {
+  MonsterRenderer,
+  formatMonsterForClipboard,
+} from "../renderers/MonsterRenderer";
 import {
   normalizeMonsterResponse,
   hasValidMonsterContent,
   type GeneratedMonsterData,
-} from '../normalizers/monster'
-import { defaultMonsterData, type ManualMonsterData } from '../schemas/monster'
-import { MonsterAIForm } from './MonsterAIForm'
-import { MonsterManualForm } from './MonsterManualForm'
-import { generateMonster, saveMonster, type MonsterGenerationRequest } from '@/api/generators'
+} from "../normalizers/monster";
+import { defaultMonsterData, type ManualMonsterData } from "../schemas/monster";
+import { MonsterAIForm } from "./MonsterAIForm";
+import { MonsterManualForm } from "./MonsterManualForm";
+import {
+  generateMonster,
+  saveMonster,
+  type MonsterGenerationRequest,
+} from "@/api/generators";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-type MonsterParams = MonsterGenerationRequest
+type MonsterParams = MonsterGenerationRequest;
 
-const monsterConfig: GeneratorConfig<GeneratedMonsterData, ManualMonsterData, MonsterParams> = {
+const monsterConfig: GeneratorConfig<
+  GeneratedMonsterData,
+  ManualMonsterData,
+  MonsterParams
+> = {
   generateApi: generateMonster as unknown as (
     params: MonsterParams,
-    timeout: number
+    timeout: number,
   ) => Promise<Record<string, unknown>>,
   saveApi: (data) => saveMonster(data as Record<string, unknown>),
   normalizeResponse: normalizeMonsterResponse,
   hasValidContent: hasValidMonsterContent,
-  entityKey: 'monster',
+  entityKey: "monster",
   defaultManualData: defaultMonsterData,
 
   buildSavePayload: (monster, campaignId) => ({
@@ -58,13 +74,13 @@ const monsterConfig: GeneratorConfig<GeneratedMonsterData, ManualMonsterData, Mo
       lair_actions: monster.lair_actions,
     },
     lore: monster.lore,
-    tactics: `${monster.traits?.map((t) => t.name).join(', ') || ''} - ${monster.actions?.map((a) => a.name).join(', ') || ''}`,
+    tactics: `${monster.traits?.map((t) => t.name).join(", ") || ""} - ${monster.actions?.map((a) => a.name).join(", ") || ""}`,
     campaign_id: campaignId || undefined,
     ai_generated: true,
   }),
 
   buildManualSavePayload: (data, campaignId) => {
-    const crValue = parseFloat(data.challenge_rating) || 1
+    const crValue = parseFloat(data.challenge_rating) || 1;
     return {
       campaign_id: campaignId || undefined,
       name: data.name.trim(),
@@ -74,8 +90,10 @@ const monsterConfig: GeneratorConfig<GeneratedMonsterData, ManualMonsterData, Mo
         size: data.size,
         alignment: data.alignment,
         armor_class: data.stats.ac || 10,
-        hit_points: { average: data.stats.hp || 1, dice: '' },
-        speed: data.stats.speed ? { walk: parseInt(data.stats.speed) || 30 } : { walk: 30 },
+        hit_points: { average: data.stats.hp || 1, dice: "" },
+        speed: data.stats.speed
+          ? { walk: parseInt(data.stats.speed) || 30 }
+          : { walk: 30 },
         abilities: {
           STR: data.stats.str || 10,
           DEX: data.stats.dex || 10,
@@ -95,44 +113,46 @@ const monsterConfig: GeneratorConfig<GeneratedMonsterData, ManualMonsterData, Mo
         actions: data.actions.filter((a) => a.name.trim()),
         legendary_actions: data.legendary_actions.filter((a) => a.name.trim()),
       },
-      lore: data.lore.trim() || '',
-      tactics: data.tactics.trim() || '',
+      lore: data.lore.trim() || "",
+      tactics: data.tactics.trim() || "",
       ai_generated: false,
-    }
+    };
   },
-}
+};
 
 // ============================================================================
 // Component
 // ============================================================================
 
 export function MonsterGenerator() {
-  const state = useGenerator(monsterConfig)
+  const state = useGenerator(monsterConfig);
 
   // AI form state
   const [formData, setFormData] = useState({
-    monster_type: 'aberration',
-    size: 'medium',
+    monster_type: "aberration",
+    size: "medium",
     challenge_rating: 5,
-    environment: 'dungeon',
-    special_requests: '',
-  })
+    environment: "dungeon",
+    special_requests: "",
+  });
 
   // Handle AI generation
   const handleGenerate = useCallback(() => {
-    state.generate(formData)
-  }, [state, formData])
+    state.generate(formData);
+  }, [state, formData]);
 
   // Handle copy to clipboard
   const handleCopy = useCallback(() => {
     if (state.generatedData) {
-      navigator.clipboard.writeText(formatMonsterForClipboard(state.generatedData))
+      navigator.clipboard.writeText(
+        formatMonsterForClipboard(state.generatedData),
+      );
     }
-  }, [state.generatedData])
+  }, [state.generatedData]);
 
   // Build form content based on entry mode
   const formContent =
-    state.entryMode === 'ai' ? (
+    state.entryMode === "ai" ? (
       <>
         <EntryModeToggle mode={state.entryMode} onChange={state.setEntryMode} />
         <MonsterAIForm
@@ -158,7 +178,7 @@ export function MonsterGenerator() {
           error={state.error}
         />
       </>
-    )
+    );
 
   // Build result content
   const resultContent = state.generatedData ? (
@@ -169,9 +189,9 @@ export function MonsterGenerator() {
       onSave={() => state.setShowSaveModal(true)}
       onCopy={handleCopy}
     />
-  ) : state.entryMode === 'manual' ? (
+  ) : state.entryMode === "manual" ? (
     <ManualEntryPreview entityType="Monster" />
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -179,17 +199,23 @@ export function MonsterGenerator() {
         title="Monster Generator"
         description="Create custom monsters with complete stat blocks and lore"
         icon="Skull"
-        formTitle={state.entryMode === 'ai' ? 'Monster Details' : 'Manual Entry'}
-        formIcon={state.entryMode === 'ai' ? 'Sparkles' : 'Edit'}
-        resultsTitle={state.entryMode === 'ai' ? 'Generated Monster' : 'Preview'}
+        formTitle={
+          state.entryMode === "ai" ? "Monster Details" : "Manual Entry"
+        }
+        formIcon={state.entryMode === "ai" ? "Sparkles" : "Edit"}
+        resultsTitle={
+          state.entryMode === "ai" ? "Generated Monster" : "Preview"
+        }
         formContent={formContent}
         generatedContent={resultContent}
         isGenerating={state.loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Monster"
         generateButtonIcon="Sparkles"
-        error={state.entryMode === 'ai' ? state.error ?? undefined : undefined}
-        hideGenerateButton={state.entryMode === 'manual'}
+        error={
+          state.entryMode === "ai" ? (state.error ?? undefined) : undefined
+        }
+        hideGenerateButton={state.entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -203,7 +229,7 @@ export function MonsterGenerator() {
         />
       )}
     </>
-  )
+  );
 }
 
-export default MonsterGenerator
+export default MonsterGenerator;

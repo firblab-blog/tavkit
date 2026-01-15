@@ -1,13 +1,13 @@
 // Content list grid display
 
-import Icon from '@/components/common/Icon'
-import type { CampaignContent } from '../../types'
+import Icon from "@/components/common/Icon";
+import type { CampaignContent } from "../../types";
 
 interface ContentListProps {
-  entries: CampaignContent[]
-  searchQuery: string
-  onSelectEntry: (entryId: string) => void
-  onClearSearch: () => void
+  entries: CampaignContent[];
+  searchQuery: string;
+  onSelectEntry: (entryId: string) => void;
+  onClearSearch: () => void;
 }
 
 export function ContentList({
@@ -19,21 +19,28 @@ export function ContentList({
   // Filter entries based on search query
   const filteredEntries = searchQuery.trim()
     ? entries.filter((entry) => {
-        const query = searchQuery.toLowerCase()
-        const titleMatch = entry.title?.toLowerCase().includes(query)
-        const contentMatch = entry.content?.toLowerCase().includes(query)
-        const subsectionMatch = entry.subsection?.toLowerCase().includes(query)
-        return titleMatch || contentMatch || subsectionMatch
+        const query = searchQuery.toLowerCase();
+        const titleMatch = entry.title?.toLowerCase().includes(query);
+        const contentMatch = entry.content?.toLowerCase().includes(query);
+        const subsectionMatch = entry.subsection?.toLowerCase().includes(query);
+        return titleMatch || contentMatch || subsectionMatch;
       })
-    : entries
+    : entries;
 
   // No results found
   if (filteredEntries.length === 0 && searchQuery) {
     return (
       <div className="text-center py-12 bg-surface border border-dashed border-border rounded-lg">
-        <Icon name="Search" className="w-16 h-16 text-text-muted mx-auto mb-3 opacity-50" />
-        <p className="text-text-muted mb-2">No results found for "{searchQuery}"</p>
-        <p className="text-sm text-text-muted">Try adjusting your search terms</p>
+        <Icon
+          name="Search"
+          className="w-16 h-16 text-text-muted mx-auto mb-3 opacity-50"
+        />
+        <p className="text-text-muted mb-2">
+          No results found for "{searchQuery}"
+        </p>
+        <p className="text-sm text-text-muted">
+          Try adjusting your search terms
+        </p>
         <button
           onClick={onClearSearch}
           className="mt-4 px-4 py-2 bg-surface hover:bg-surface-hover text-text rounded-lg transition-colors border border-border"
@@ -41,7 +48,7 @@ export function ContentList({
           Clear Search
         </button>
       </div>
-    )
+    );
   }
 
   return (
@@ -73,18 +80,20 @@ export function ContentList({
               </span>
             )}
             <p className="text-sm text-text-muted line-clamp-2">
-              {entry.content?.replace(/[#*_`]/g, '').substring(0, 120)}...
+              {entry.content?.replace(/[#*_`]/g, "").substring(0, 120)}...
             </p>
             <div className="flex items-center gap-2 mt-3 text-xs text-text-muted">
               <Icon
-                name={entry.type === 'imported' ? 'Sparkles' : 'FileText'}
+                name={entry.type === "imported" ? "Sparkles" : "FileText"}
                 className="w-3 h-3"
               />
-              <span>{entry.type === 'imported' ? 'AI Generated' : 'Manual'}</span>
+              <span>
+                {entry.type === "imported" ? "AI Generated" : "Manual"}
+              </span>
             </div>
           </button>
         ))}
       </div>
     </>
-  )
+  );
 }

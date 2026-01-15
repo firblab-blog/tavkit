@@ -1,12 +1,12 @@
-import { useMemo } from 'react'
-import type { ChaseParticipant } from '../../types/chase'
-import { getParticipantIcon } from '../../types/chase'
+import { useMemo } from "react";
+import type { ChaseParticipant } from "../../types/chase";
+import { getParticipantIcon } from "../../types/chase";
 
 interface DistanceTrackerProps {
-  participants: ChaseParticipant[]
-  catchThreshold: number
-  escapeThreshold: number
-  terrain: string
+  participants: ChaseParticipant[];
+  catchThreshold: number;
+  escapeThreshold: number;
+  terrain: string;
 }
 
 export default function DistanceTracker({
@@ -17,52 +17,55 @@ export default function DistanceTracker({
 }: DistanceTrackerProps) {
   // Calculate the track length and positions
   const trackData = useMemo(() => {
-    const pursuers = participants.filter((p) => p.role === 'pursuer')
-    const quarry = participants.filter((p) => p.role === 'quarry')
+    const pursuers = participants.filter((p) => p.role === "pursuer");
+    const quarry = participants.filter((p) => p.role === "quarry");
 
     if (pursuers.length === 0 || quarry.length === 0) {
-      return { spaces: 10, participants: [] }
+      return { spaces: 10, participants: [] };
     }
 
     // Calculate average positions
-    const pursuerAvg = pursuers.reduce((sum, p) => sum + p.current_position, 0) / pursuers.length
-    const quarryAvg = quarry.reduce((sum, p) => sum + p.current_position, 0) / quarry.length
+    const pursuerAvg =
+      pursuers.reduce((sum, p) => sum + p.current_position, 0) /
+      pursuers.length;
+    const quarryAvg =
+      quarry.reduce((sum, p) => sum + p.current_position, 0) / quarry.length;
 
     // Determine track range
-    const minPos = Math.min(pursuerAvg, quarryAvg) - 2
-    const maxPos = Math.max(pursuerAvg, quarryAvg) + 2
-    const trackLength = Math.max(escapeThreshold + 3, maxPos - minPos + 4)
+    const minPos = Math.min(pursuerAvg, quarryAvg) - 2;
+    const maxPos = Math.max(pursuerAvg, quarryAvg) + 2;
+    const trackLength = Math.max(escapeThreshold + 3, maxPos - minPos + 4);
 
     // Map participants to track positions
     const participantPositions = participants.map((p) => ({
       ...p,
       relativePosition: ((p.current_position - minPos) / trackLength) * 100,
-    }))
+    }));
 
     return {
       spaces: Math.ceil(trackLength),
       participants: participantPositions,
       catchPosition: (catchThreshold / trackLength) * 100,
       escapePosition: (escapeThreshold / trackLength) * 100,
-    }
-  }, [participants, catchThreshold, escapeThreshold])
+    };
+  }, [participants, catchThreshold, escapeThreshold]);
 
   // Get terrain emoji/icon
   const terrainIcon = useMemo(() => {
     const icons: Record<string, string> = {
-      urban: '🏙️',
-      rooftops: '🏘️',
-      forest: '🌲',
-      mountains: '⛰️',
-      desert: '🏜️',
-      swamp: '🐊',
-      snow: '❄️',
-      underground: '⚒️',
-      waterways: '🌊',
-      magical: '✨',
-    }
-    return icons[terrain] || '🗺️'
-  }, [terrain])
+      urban: "🏙️",
+      rooftops: "🏘️",
+      forest: "🌲",
+      mountains: "⛰️",
+      desert: "🏜️",
+      swamp: "🐊",
+      snow: "❄️",
+      underground: "⚒️",
+      waterways: "🌊",
+      magical: "✨",
+    };
+    return icons[terrain] || "🗺️";
+  }, [terrain]);
 
   return (
     <div className="p-6 bg-stone-800/50 rounded-lg border border-stone-700">
@@ -90,7 +93,10 @@ export default function DistanceTracker({
           {/* Distance markers */}
           <div className="absolute inset-0 flex">
             {Array.from({ length: trackData.spaces }).map((_, i) => (
-              <div key={i} className="flex-1 border-r border-stone-700/50 last:border-r-0" />
+              <div
+                key={i}
+                className="flex-1 border-r border-stone-700/50 last:border-r-0"
+              />
             ))}
           </div>
 
@@ -126,10 +132,10 @@ export default function DistanceTracker({
             >
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-2xl border-2 transition-all ${
-                  p.role === 'quarry'
-                    ? 'bg-amber-600 border-amber-400 shadow-lg shadow-amber-500/50'
-                    : 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/50'
-                } ${p.stamina === 0 ? 'opacity-50 grayscale' : ''}`}
+                  p.role === "quarry"
+                    ? "bg-amber-600 border-amber-400 shadow-lg shadow-amber-500/50"
+                    : "bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/50"
+                } ${p.stamina === 0 ? "opacity-50 grayscale" : ""}`}
               >
                 {getParticipantIcon(p)}
               </div>
@@ -138,10 +144,12 @@ export default function DistanceTracker({
               {p.movement_this_round !== 0 && (
                 <div
                   className={`absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold whitespace-nowrap ${
-                    p.movement_this_round > 0 ? 'text-green-400' : 'text-red-400'
+                    p.movement_this_round > 0
+                      ? "text-green-400"
+                      : "text-red-400"
                   }`}
                 >
-                  {p.movement_this_round > 0 ? '+' : ''}
+                  {p.movement_this_round > 0 ? "+" : ""}
                   {p.movement_this_round}
                 </div>
               )}
@@ -165,12 +173,15 @@ export default function DistanceTracker({
       {/* Distance info */}
       <div className="mt-6 flex items-center justify-center gap-8 text-sm">
         {trackData.participants
-          .filter((p) => p.role === 'quarry')
+          .filter((p) => p.role === "quarry")
           .map((quarry) => {
-            const pursuers = trackData.participants.filter((p) => p.role === 'pursuer')
+            const pursuers = trackData.participants.filter(
+              (p) => p.role === "pursuer",
+            );
             const avgPursuerPos =
-              pursuers.reduce((sum, p) => sum + p.current_position, 0) / pursuers.length
-            const distance = Math.abs(quarry.current_position - avgPursuerPos)
+              pursuers.reduce((sum, p) => sum + p.current_position, 0) /
+              pursuers.length;
+            const distance = Math.abs(quarry.current_position - avgPursuerPos);
 
             return (
               <div key={quarry.id} className="text-center">
@@ -182,9 +193,9 @@ export default function DistanceTracker({
                   ~{Math.round(distance * 30)}-{Math.round(distance * 60)} feet
                 </div>
               </div>
-            )
+            );
           })}
       </div>
     </div>
-  )
+  );
 }

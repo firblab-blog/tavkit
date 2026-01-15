@@ -1,76 +1,78 @@
 // Quest content detail view
 
 interface Objective {
-  description?: string
+  description?: string;
 }
 
 interface Reward {
-  description?: string
+  description?: string;
 }
 
 interface Complication {
-  description?: string
+  description?: string;
 }
 
 interface NPC {
-  name?: string
+  name?: string;
 }
 
 interface Location {
-  name?: string
+  name?: string;
 }
 
 interface QuestData {
-  title: string
-  type: string
-  status: string
-  category?: string
-  party_level?: number
-  description?: string
-  objectives?: string | (string | Objective)[]
-  rewards?: string | (string | Reward)[]
-  complications?: string | (string | Complication)[]
-  combat_intensity?: string
-  time_limit?: string
-  npcs_involved?: string | (string | NPC)[]
-  locations_involved?: string | (string | Location)[]
+  title: string;
+  type: string;
+  status: string;
+  category?: string;
+  party_level?: number;
+  description?: string;
+  objectives?: string | (string | Objective)[];
+  rewards?: string | (string | Reward)[];
+  complications?: string | (string | Complication)[];
+  combat_intensity?: string;
+  time_limit?: string;
+  npcs_involved?: string | (string | NPC)[];
+  locations_involved?: string | (string | Location)[];
 }
 
 interface QuestDetailProps {
-  quest: QuestData
+  quest: QuestData;
 }
 
 function parseJSON<T>(value: string | T | undefined): T | null {
-  if (!value) return null
-  if (typeof value === 'string') {
+  if (!value) return null;
+  if (typeof value === "string") {
     try {
-      return JSON.parse(value)
+      return JSON.parse(value);
     } catch {
-      return null
+      return null;
     }
   }
-  return value
+  return value;
 }
 
 function getStatusClasses(status: string): string {
   switch (status.toLowerCase()) {
-    case 'available':
-      return 'bg-blue-900/30 text-blue-400'
-    case 'active':
-      return 'bg-green-900/30 text-green-400'
-    case 'completed':
-      return 'bg-primary/20 text-primary'
+    case "available":
+      return "bg-blue-900/30 text-blue-400";
+    case "active":
+      return "bg-green-900/30 text-green-400";
+    case "completed":
+      return "bg-primary/20 text-primary";
     default:
-      return 'bg-red-900/30 text-red-400'
+      return "bg-red-900/30 text-red-400";
   }
 }
 
 export function QuestDetail({ quest }: QuestDetailProps) {
-  const objectives = parseJSON<(string | Objective)[]>(quest.objectives) || []
-  const rewards = parseJSON<(string | Reward)[]>(quest.rewards) || []
-  const complications = parseJSON<(string | Complication)[]>(quest.complications) || []
-  const npcsInvolved = parseJSON<(string | NPC)[]>(quest.npcs_involved) || []
-  const locationsInvolved = parseJSON<(string | Location)[]>(quest.locations_involved) || []
+  const objectives = parseJSON<(string | Objective)[]>(quest.objectives) || [];
+  const rewards = parseJSON<(string | Reward)[]>(quest.rewards) || [];
+  const complications =
+    parseJSON<(string | Complication)[]>(quest.complications) || [];
+  const npcsInvolved = parseJSON<(string | NPC)[]>(quest.npcs_involved) || [];
+  const locationsInvolved =
+    parseJSON<(string | Location)[]>(quest.locations_involved) || [];
 
   return (
     <div className="space-y-6">
@@ -81,7 +83,9 @@ export function QuestDetail({ quest }: QuestDetailProps) {
           <span className="px-3 py-1 bg-primary/30 text-text rounded-lg text-sm uppercase">
             {quest.type}
           </span>
-          <span className={`px-3 py-1 rounded-lg text-sm uppercase ${getStatusClasses(quest.status)}`}>
+          <span
+            className={`px-3 py-1 rounded-lg text-sm uppercase ${getStatusClasses(quest.status)}`}
+          >
             {quest.status}
           </span>
           {quest.category && (
@@ -100,19 +104,27 @@ export function QuestDetail({ quest }: QuestDetailProps) {
       {/* Description */}
       {quest.description && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-2">Description</h3>
-          <p className="text-text leading-relaxed whitespace-pre-wrap">{quest.description}</p>
+          <h3 className="text-lg font-semibold text-primary mb-2">
+            Description
+          </h3>
+          <p className="text-text leading-relaxed whitespace-pre-wrap">
+            {quest.description}
+          </p>
         </div>
       )}
 
       {/* Objectives */}
       {objectives.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">Objectives</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            Objectives
+          </h3>
           <ul className="list-disc list-inside space-y-2 text-text">
             {objectives.map((objective, idx) => (
               <li key={idx}>
-                {typeof objective === 'string' ? objective : objective.description}
+                {typeof objective === "string"
+                  ? objective
+                  : objective.description}
               </li>
             ))}
           </ul>
@@ -126,7 +138,9 @@ export function QuestDetail({ quest }: QuestDetailProps) {
           <div className="bg-primary/10 p-4 rounded-lg border border-primary/30">
             <ul className="space-y-1 text-text">
               {rewards.map((reward, idx) => (
-                <li key={idx}>{typeof reward === 'string' ? reward : reward.description}</li>
+                <li key={idx}>
+                  {typeof reward === "string" ? reward : reward.description}
+                </li>
               ))}
             </ul>
           </div>
@@ -136,12 +150,19 @@ export function QuestDetail({ quest }: QuestDetailProps) {
       {/* Complications */}
       {complications.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">Complications</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            Complications
+          </h3>
           <div className="space-y-2">
             {complications.map((complication, idx) => (
-              <div key={idx} className="bg-red-900/20 p-3 rounded-lg border border-red-500/30">
+              <div
+                key={idx}
+                className="bg-red-900/20 p-3 rounded-lg border border-red-500/30"
+              >
                 <p className="text-text text-sm">
-                  {typeof complication === 'string' ? complication : complication.description}
+                  {typeof complication === "string"
+                    ? complication
+                    : complication.description}
                 </p>
               </div>
             ))}
@@ -161,7 +182,9 @@ export function QuestDetail({ quest }: QuestDetailProps) {
         )}
         {quest.time_limit && (
           <div className="bg-surface p-4 rounded-lg border border-border">
-            <div className="text-xs text-text-muted uppercase tracking-wide mb-1">Time Limit</div>
+            <div className="text-xs text-text-muted uppercase tracking-wide mb-1">
+              Time Limit
+            </div>
             <div className="text-text">{quest.time_limit}</div>
           </div>
         )}
@@ -170,14 +193,16 @@ export function QuestDetail({ quest }: QuestDetailProps) {
       {/* NPCs Involved */}
       {npcsInvolved.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-3">NPCs Involved</h3>
+          <h3 className="text-lg font-semibold text-primary mb-3">
+            NPCs Involved
+          </h3>
           <div className="flex flex-wrap gap-2">
             {npcsInvolved.map((npc, idx) => (
               <span
                 key={idx}
                 className="px-3 py-1 bg-surface text-text rounded-full text-sm"
               >
-                {typeof npc === 'string' ? npc : npc?.name || 'Unnamed NPC'}
+                {typeof npc === "string" ? npc : npc?.name || "Unnamed NPC"}
               </span>
             ))}
           </div>
@@ -194,12 +219,14 @@ export function QuestDetail({ quest }: QuestDetailProps) {
                 key={idx}
                 className="px-3 py-1 bg-primary/30 text-text rounded-full text-sm"
               >
-                {typeof location === 'string' ? location : location?.name || 'Unnamed Location'}
+                {typeof location === "string"
+                  ? location
+                  : location?.name || "Unnamed Location"}
               </span>
             ))}
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

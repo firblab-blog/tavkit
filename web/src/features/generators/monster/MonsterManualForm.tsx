@@ -1,27 +1,29 @@
 // Manual Entry Form for Monsters
 
-import Icon from '@/components/common/Icon'
-import { FormField } from '@/components/ui/FormField'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import { ArrayFieldEditor, ObjectArrayEditor } from '../components/Fields'
+import Icon from "@/components/common/Icon";
+import { FormField } from "@/components/ui/FormField";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import { ArrayFieldEditor, ObjectArrayEditor } from "../components/Fields";
 import {
   creatureTypeOptions,
   sizeOptions,
   alignmentOptions,
   challengeRatingOptions,
   type ManualMonsterData,
-} from '../schemas/monster'
+} from "../schemas/monster";
 
 interface MonsterManualFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  manualData: ManualMonsterData
-  setManualData: (data: ManualMonsterData | ((prev: ManualMonsterData) => ManualMonsterData)) => void
-  onSave: () => void
-  saving: boolean
-  saved: boolean
-  error: string | null
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  manualData: ManualMonsterData;
+  setManualData: (
+    data: ManualMonsterData | ((prev: ManualMonsterData) => ManualMonsterData),
+  ) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  error: string | null;
 }
 
 export function MonsterManualForm({
@@ -36,14 +38,19 @@ export function MonsterManualForm({
 }: MonsterManualFormProps) {
   return (
     <>
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       {/* Basic Information */}
       <FormField label="Monster Name" required>
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., Shadow Serpent, Flame Horror"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -53,7 +60,9 @@ export function MonsterManualForm({
         <FormField label="Creature Type">
           <select
             value={manualData.creature_type}
-            onChange={(e) => setManualData({ ...manualData, creature_type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, creature_type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {creatureTypeOptions.map((opt) => (
@@ -67,7 +76,9 @@ export function MonsterManualForm({
         <FormField label="Size">
           <select
             value={manualData.size}
-            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, size: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {sizeOptions.map((opt) => (
@@ -83,7 +94,9 @@ export function MonsterManualForm({
         <FormField label="Alignment">
           <select
             value={manualData.alignment}
-            onChange={(e) => setManualData({ ...manualData, alignment: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, alignment: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {alignmentOptions.map((opt) => (
@@ -97,7 +110,9 @@ export function MonsterManualForm({
         <FormField label="Challenge Rating">
           <select
             value={manualData.challenge_rating}
-            onChange={(e) => setManualData({ ...manualData, challenge_rating: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, challenge_rating: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {challengeRatingOptions.map((opt) => (
@@ -112,7 +127,9 @@ export function MonsterManualForm({
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Physical description of the creature..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={2}
@@ -127,7 +144,7 @@ export function MonsterManualForm({
               <input
                 type="number"
                 min={1}
-                value={manualData.stats.ac || ''}
+                value={manualData.stats.ac || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -146,7 +163,7 @@ export function MonsterManualForm({
               <input
                 type="number"
                 min={1}
-                value={manualData.stats.hp || ''}
+                value={manualData.stats.hp || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -178,45 +195,56 @@ export function MonsterManualForm({
           </div>
 
           <div className="grid grid-cols-6 gap-2">
-            {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((stat) => (
-              <FormField key={stat} label={stat.toUpperCase()}>
-                <input
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={manualData.stats[stat] || ''}
-                  onChange={(e) =>
-                    setManualData({
-                      ...manualData,
-                      stats: {
-                        ...manualData.stats,
-                        [stat]: e.target.value ? parseInt(e.target.value) : null,
-                      },
-                    })
-                  }
-                  placeholder="10"
-                  className="w-full px-2 py-2 bg-background border border-border rounded-lg text-text text-center focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </FormField>
-            ))}
+            {(["str", "dex", "con", "int", "wis", "cha"] as const).map(
+              (stat) => (
+                <FormField key={stat} label={stat.toUpperCase()}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={manualData.stats[stat] || ""}
+                    onChange={(e) =>
+                      setManualData({
+                        ...manualData,
+                        stats: {
+                          ...manualData.stats,
+                          [stat]: e.target.value
+                            ? parseInt(e.target.value)
+                            : null,
+                        },
+                      })
+                    }
+                    placeholder="10"
+                    className="w-full px-2 py-2 bg-background border border-border rounded-lg text-text text-center focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </FormField>
+              ),
+            )}
           </div>
         </div>
       </CollapsibleSection>
 
       {/* Resistances & Immunities */}
-      <CollapsibleSection title="Resistances & Immunities" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Resistances & Immunities"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <ArrayFieldEditor
             label="Damage Resistances"
             values={manualData.damage_resistances}
-            onChange={(damage_resistances) => setManualData({ ...manualData, damage_resistances })}
+            onChange={(damage_resistances) =>
+              setManualData({ ...manualData, damage_resistances })
+            }
             placeholder="Add damage resistance..."
           />
 
           <ArrayFieldEditor
             label="Damage Immunities"
             values={manualData.damage_immunities}
-            onChange={(damage_immunities) => setManualData({ ...manualData, damage_immunities })}
+            onChange={(damage_immunities) =>
+              setManualData({ ...manualData, damage_immunities })
+            }
             placeholder="Add damage immunity..."
           />
 
@@ -244,7 +272,9 @@ export function MonsterManualForm({
           <ArrayFieldEditor
             label="Languages"
             values={manualData.languages}
-            onChange={(languages) => setManualData({ ...manualData, languages })}
+            onChange={(languages) =>
+              setManualData({ ...manualData, languages })
+            }
             placeholder="Add a language..."
           />
         </div>
@@ -288,7 +318,9 @@ export function MonsterManualForm({
         <ObjectArrayEditor
           label="Legendary Actions"
           values={manualData.legendary_actions}
-          onChange={(legendary_actions) => setManualData({ ...manualData, legendary_actions })}
+          onChange={(legendary_actions) =>
+            setManualData({ ...manualData, legendary_actions })
+          }
           namePlaceholder="Legendary action name"
           descriptionPlaceholder="Legendary action description"
         />
@@ -300,7 +332,9 @@ export function MonsterManualForm({
           <FormField label="Tactics">
             <textarea
               value={manualData.tactics}
-              onChange={(e) => setManualData({ ...manualData, tactics: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, tactics: e.target.value })
+              }
               placeholder="How does this creature fight?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -310,7 +344,9 @@ export function MonsterManualForm({
           <FormField label="Lore">
             <textarea
               value={manualData.lore}
-              onChange={(e) => setManualData({ ...manualData, lore: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, lore: e.target.value })
+              }
               placeholder="Background, habitat, behavior..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={3}
@@ -352,5 +388,5 @@ export function MonsterManualForm({
         </div>
       )}
     </>
-  )
+  );
 }

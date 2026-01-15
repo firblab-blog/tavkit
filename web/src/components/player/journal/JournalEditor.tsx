@@ -1,16 +1,16 @@
-import { useState } from 'react'
-import Icon from '../../common/Icon'
+import { useState } from "react";
+import Icon from "../../common/Icon";
 import {
   usePlayerJournalStore,
   JournalEntry,
   TaggedEntity,
-} from '../../../store/playerJournalStore'
+} from "../../../store/playerJournalStore";
 
 interface JournalEditorProps {
-  entry?: JournalEntry | null
-  characterId?: string
-  campaignId?: string
-  onClose: () => void
+  entry?: JournalEntry | null;
+  characterId?: string;
+  campaignId?: string;
+  onClose: () => void;
 }
 
 export default function JournalEditor({
@@ -19,29 +19,35 @@ export default function JournalEditor({
   campaignId,
   onClose,
 }: JournalEditorProps) {
-  const { createEntry, updateEntry, loading } = usePlayerJournalStore()
-  const isEditing = !!entry
+  const { createEntry, updateEntry, loading } = usePlayerJournalStore();
+  const isEditing = !!entry;
 
-  const [title, setTitle] = useState(entry?.title || '')
-  const [content, setContent] = useState(entry?.content || '')
-  const [sessionNumber, setSessionNumber] = useState(entry?.session_number?.toString() || '')
-  const [sessionDate, setSessionDate] = useState(entry?.session_date || '')
-  const [isPrivate, setIsPrivate] = useState(entry?.is_private ?? true)
-  const [taggedNPCs, setTaggedNPCs] = useState<TaggedEntity[]>(entry?.tagged_npcs || [])
+  const [title, setTitle] = useState(entry?.title || "");
+  const [content, setContent] = useState(entry?.content || "");
+  const [sessionNumber, setSessionNumber] = useState(
+    entry?.session_number?.toString() || "",
+  );
+  const [sessionDate, setSessionDate] = useState(entry?.session_date || "");
+  const [isPrivate, setIsPrivate] = useState(entry?.is_private ?? true);
+  const [taggedNPCs, setTaggedNPCs] = useState<TaggedEntity[]>(
+    entry?.tagged_npcs || [],
+  );
   const [taggedLocations, setTaggedLocations] = useState<TaggedEntity[]>(
-    entry?.tagged_locations || []
-  )
-  const [taggedQuests, setTaggedQuests] = useState<TaggedEntity[]>(entry?.tagged_quests || [])
-  const [newTag, setNewTag] = useState({ type: 'npc', name: '' })
-  const [error, setError] = useState<string | null>(null)
+    entry?.tagged_locations || [],
+  );
+  const [taggedQuests, setTaggedQuests] = useState<TaggedEntity[]>(
+    entry?.tagged_quests || [],
+  );
+  const [newTag, setNewTag] = useState({ type: "npc", name: "" });
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
 
     if (!title.trim()) {
-      setError('Title is required')
-      return
+      setError("Title is required");
+      return;
     }
 
     try {
@@ -55,7 +61,7 @@ export default function JournalEditor({
           tagged_npcs: taggedNPCs,
           tagged_locations: taggedLocations,
           tagged_quests: taggedQuests,
-        })
+        });
       } else {
         await createEntry({
           campaign_id: campaignId,
@@ -68,47 +74,47 @@ export default function JournalEditor({
           tagged_npcs: taggedNPCs,
           tagged_locations: taggedLocations,
           tagged_quests: taggedQuests,
-        })
+        });
       }
-      onClose()
+      onClose();
     } catch {
-      setError('Failed to save journal entry')
+      setError("Failed to save journal entry");
     }
-  }
+  };
 
   const addTag = () => {
-    if (!newTag.name.trim()) return
+    if (!newTag.name.trim()) return;
 
-    const tag: TaggedEntity = { name: newTag.name.trim() }
+    const tag: TaggedEntity = { name: newTag.name.trim() };
 
     switch (newTag.type) {
-      case 'npc':
-        setTaggedNPCs([...taggedNPCs, tag])
-        break
-      case 'location':
-        setTaggedLocations([...taggedLocations, tag])
-        break
-      case 'quest':
-        setTaggedQuests([...taggedQuests, tag])
-        break
+      case "npc":
+        setTaggedNPCs([...taggedNPCs, tag]);
+        break;
+      case "location":
+        setTaggedLocations([...taggedLocations, tag]);
+        break;
+      case "quest":
+        setTaggedQuests([...taggedQuests, tag]);
+        break;
     }
 
-    setNewTag({ ...newTag, name: '' })
-  }
+    setNewTag({ ...newTag, name: "" });
+  };
 
   const removeTag = (type: string, index: number) => {
     switch (type) {
-      case 'npc':
-        setTaggedNPCs(taggedNPCs.filter((_, i) => i !== index))
-        break
-      case 'location':
-        setTaggedLocations(taggedLocations.filter((_, i) => i !== index))
-        break
-      case 'quest':
-        setTaggedQuests(taggedQuests.filter((_, i) => i !== index))
-        break
+      case "npc":
+        setTaggedNPCs(taggedNPCs.filter((_, i) => i !== index));
+        break;
+      case "location":
+        setTaggedLocations(taggedLocations.filter((_, i) => i !== index));
+        break;
+      case "quest":
+        setTaggedQuests(taggedQuests.filter((_, i) => i !== index));
+        break;
     }
-  }
+  };
 
   return (
     <div
@@ -124,7 +130,7 @@ export default function JournalEditor({
           <div className="flex items-center gap-3">
             <Icon name="BookOpen" className="w-6 h-6 text-purple-400" />
             <h2 className="text-xl font-bold text-text">
-              {isEditing ? 'Edit Journal Entry' : 'New Journal Entry'}
+              {isEditing ? "Edit Journal Entry" : "New Journal Entry"}
             </h2>
           </div>
           <button
@@ -146,7 +152,9 @@ export default function JournalEditor({
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-1">Title *</label>
+            <label className="block text-sm font-medium text-text-muted mb-1">
+              Title *
+            </label>
             <input
               type="text"
               value={title}
@@ -172,7 +180,9 @@ export default function JournalEditor({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-muted mb-1">Session Date</label>
+              <label className="block text-sm font-medium text-text-muted mb-1">
+                Session Date
+              </label>
               <input
                 type="date"
                 value={sessionDate}
@@ -184,7 +194,9 @@ export default function JournalEditor({
 
           {/* Content */}
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-1">Content</label>
+            <label className="block text-sm font-medium text-text-muted mb-1">
+              Content
+            </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -196,7 +208,9 @@ export default function JournalEditor({
 
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-2">Tags</label>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Tags
+            </label>
 
             {/* Add Tag */}
             <div className="flex gap-2 mb-3">
@@ -213,12 +227,12 @@ export default function JournalEditor({
                 type="text"
                 value={newTag.name}
                 onChange={(e) => setNewTag({ ...newTag, name: e.target.value })}
-                placeholder={`${newTag.type === 'npc' ? 'NPC' : newTag.type === 'location' ? 'Location' : 'Quest'} name...`}
+                placeholder={`${newTag.type === "npc" ? "NPC" : newTag.type === "location" ? "Location" : "Quest"} name...`}
                 className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    addTag()
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addTag();
                   }
                 }}
               />
@@ -242,7 +256,7 @@ export default function JournalEditor({
                   {npc.name}
                   <button
                     type="button"
-                    onClick={() => removeTag('npc', i)}
+                    onClick={() => removeTag("npc", i)}
                     className="ml-1 hover:text-blue-100"
                   >
                     <Icon name="X" className="w-3 h-3" />
@@ -258,7 +272,7 @@ export default function JournalEditor({
                   {loc.name}
                   <button
                     type="button"
-                    onClick={() => removeTag('location', i)}
+                    onClick={() => removeTag("location", i)}
                     className="ml-1 hover:text-emerald-100"
                   >
                     <Icon name="X" className="w-3 h-3" />
@@ -274,7 +288,7 @@ export default function JournalEditor({
                   {quest.name}
                   <button
                     type="button"
-                    onClick={() => removeTag('quest', i)}
+                    onClick={() => removeTag("quest", i)}
                     className="ml-1 hover:text-amber-100"
                   >
                     <Icon name="X" className="w-3 h-3" />
@@ -290,18 +304,20 @@ export default function JournalEditor({
               type="button"
               onClick={() => setIsPrivate(!isPrivate)}
               className={`relative w-12 h-6 rounded-full transition-colors ${
-                isPrivate ? 'bg-blue-500' : 'bg-border'
+                isPrivate ? "bg-blue-500" : "bg-border"
               }`}
             >
               <span
                 className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                  isPrivate ? 'left-7' : 'left-1'
+                  isPrivate ? "left-7" : "left-1"
                 }`}
               />
             </button>
             <span className="text-sm text-text-muted flex items-center gap-1">
-              <Icon name={isPrivate ? 'EyeOff' : 'Globe'} className="w-4 h-4" />
-              {isPrivate ? 'Private (only you can see)' : 'Shared (party can see)'}
+              <Icon name={isPrivate ? "EyeOff" : "Globe"} className="w-4 h-4" />
+              {isPrivate
+                ? "Private (only you can see)"
+                : "Shared (party can see)"}
             </span>
           </div>
         </div>
@@ -320,11 +336,13 @@ export default function JournalEditor({
             disabled={loading}
             className="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            {loading && <Icon name="Loader2" className="w-4 h-4 animate-spin" />}
-            {isEditing ? 'Save Changes' : 'Create Entry'}
+            {loading && (
+              <Icon name="Loader2" className="w-4 h-4 animate-spin" />
+            )}
+            {isEditing ? "Save Changes" : "Create Entry"}
           </button>
         </div>
       </form>
     </div>
-  )
+  );
 }

@@ -1,19 +1,22 @@
-import { useState } from 'react'
-import Icon from '@/components/common/Icon'
+import { useState } from "react";
+import Icon from "@/components/common/Icon";
 
 interface RawDataViewerProps {
-  data: Record<string, unknown>
-  defaultExpanded?: boolean
+  data: Record<string, unknown>;
+  defaultExpanded?: boolean;
 }
 
 /**
  * Collapsible viewer for raw/unexpected AI response data
  */
-export function RawDataViewer({ data, defaultExpanded = false }: RawDataViewerProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
-  const fieldCount = Object.keys(data).length
+export function RawDataViewer({
+  data,
+  defaultExpanded = false,
+}: RawDataViewerProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const fieldCount = Object.keys(data).length;
 
-  if (fieldCount === 0) return null
+  if (fieldCount === 0) return null;
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
@@ -25,7 +28,10 @@ export function RawDataViewer({ data, defaultExpanded = false }: RawDataViewerPr
           <Icon name="FileText" className="w-5 h-5" />
           Additional AI Response Data ({fieldCount} fields)
         </span>
-        <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} className="w-5 h-5 text-text-muted" />
+        <Icon
+          name={expanded ? "ChevronUp" : "ChevronDown"}
+          className="w-5 h-5 text-text-muted"
+        />
       </button>
       {expanded && (
         <div className="p-4 bg-background border-t border-border">
@@ -35,5 +41,5 @@ export function RawDataViewer({ data, defaultExpanded = false }: RawDataViewerPr
         </div>
       )}
     </div>
-  )
+  );
 }

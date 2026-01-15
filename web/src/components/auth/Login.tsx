@@ -1,51 +1,51 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuthStore } from '../../store/authStore'
-import Icon from '../common/Icon'
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuthStore } from "../../store/authStore";
+import Icon from "../common/Icon";
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [registrationEnabled, setRegistrationEnabled] = useState(false)
-  const [sessionExpired, setSessionExpired] = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
-  const login = useAuthStore((state) => state.login)
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const login = useAuthStore((state) => state.login);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     // Check if redirected due to session expiry
-    if (searchParams.get('expired') === 'true') {
-      setSessionExpired(true)
+    if (searchParams.get("expired") === "true") {
+      setSessionExpired(true);
       // Clean up URL
-      window.history.replaceState({}, '', '/login')
+      window.history.replaceState({}, "", "/login");
     }
-  }, [searchParams])
+  }, [searchParams]);
 
   useEffect(() => {
     // Fetch settings to check if registration is enabled
-    fetch('/api/v1/settings')
+    fetch("/api/v1/settings")
       .then((res) => res.json())
       .then((data) => setRegistrationEnabled(data.registration_enabled))
-      .catch(() => setRegistrationEnabled(false))
-  }, [])
+      .catch(() => setRegistrationEnabled(false));
+  }, []);
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      await login(email, password)
-      navigate('/dashboard')
+      await login(email, password);
+      navigate("/dashboard");
     } catch {
-      setError('Invalid email or password')
+      setError("Invalid email or password");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
@@ -53,9 +53,15 @@ export default function Login() {
         {/* Logo and welcome */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
-            <img src="/tavkit-logo-master.svg" alt="TavKit Logo" className="w-32 h-32" />
+            <img
+              src="/tavkit-logo-master.svg"
+              alt="TavKit Logo"
+              className="w-32 h-32"
+            />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Welcome to Tavkit</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Welcome to Tavkit
+          </h1>
           <p className="text-gray-400">
             Your AI-powered Game Master toolkit for epic D&D campaigns
           </p>
@@ -81,7 +87,10 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Email Address
               </label>
               <input
@@ -96,7 +105,10 @@ export default function Login() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Password
               </label>
               <input
@@ -140,7 +152,7 @@ export default function Login() {
                   Signing in...
                 </>
               ) : (
-                'Sign In'
+                "Sign In"
               )}
             </button>
           </form>
@@ -148,7 +160,7 @@ export default function Login() {
           {registrationEnabled && (
             <div className="mt-6 pt-6 border-t border-gray-700">
               <p className="text-center text-sm text-gray-400">
-                Don't have an account?{' '}
+                Don't have an account?{" "}
                 <Link
                   to="/register"
                   className="text-primary-400 hover:text-primary-300 font-medium transition-colors"
@@ -166,5 +178,5 @@ export default function Login() {
         </p>
       </div>
     </div>
-  )
+  );
 }

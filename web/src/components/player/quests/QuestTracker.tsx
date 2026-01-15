@@ -1,28 +1,47 @@
-import { useEffect, useState } from 'react'
-import Icon from '../../common/Icon'
+import { useEffect, useState } from "react";
+import Icon from "../../common/Icon";
 import {
   usePlayerQuestStore,
   QuestTracking,
   QuestStatus,
   QuestType,
   QuestObjective,
-} from '../../../store/playerQuestStore'
-import { useCampaignStore } from '../../../store/campaignStore'
-import QuestDetailModal from './QuestDetailModal'
+} from "../../../store/playerQuestStore";
+import { useCampaignStore } from "../../../store/campaignStore";
+import QuestDetailModal from "./QuestDetailModal";
 
-const statusColors: Record<QuestStatus, { bg: string; text: string; border: string }> = {
-  active: { bg: 'bg-blue-500/10', text: 'text-blue-300', border: 'border-blue-500/30' },
-  completed: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/30' },
-  failed: { bg: 'bg-red-500/10', text: 'text-red-300', border: 'border-red-500/30' },
-  abandoned: { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/30' },
-}
+const statusColors: Record<
+  QuestStatus,
+  { bg: string; text: string; border: string }
+> = {
+  active: {
+    bg: "bg-blue-500/10",
+    text: "text-blue-300",
+    border: "border-blue-500/30",
+  },
+  completed: {
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-300",
+    border: "border-emerald-500/30",
+  },
+  failed: {
+    bg: "bg-red-500/10",
+    text: "text-red-300",
+    border: "border-red-500/30",
+  },
+  abandoned: {
+    bg: "bg-gray-500/10",
+    text: "text-gray-400",
+    border: "border-gray-500/30",
+  },
+};
 
 const typeLabels: Record<QuestType, string> = {
-  personal: 'Personal Goal',
-  main: 'Main Quest',
-  side: 'Side Quest',
-  gm_shared: 'GM Shared',
-}
+  personal: "Personal Goal",
+  main: "Main Quest",
+  side: "Side Quest",
+  gm_shared: "GM Shared",
+};
 
 export default function QuestTracker() {
   const {
@@ -34,66 +53,68 @@ export default function QuestTracker() {
     updateQuest,
     deleteQuest,
     toggleObjective,
-  } = usePlayerQuestStore()
-  const getActiveCampaign = useCampaignStore((state) => state.getActiveCampaign)
-  const activeCampaign = getActiveCampaign()
+  } = usePlayerQuestStore();
+  const getActiveCampaign = useCampaignStore(
+    (state) => state.getActiveCampaign,
+  );
+  const activeCampaign = getActiveCampaign();
 
-  const [showForm, setShowForm] = useState(false)
-  const [editingQuest, setEditingQuest] = useState<QuestTracking | null>(null)
-  const [viewingQuest, setViewingQuest] = useState<QuestTracking | null>(null)
-  const [filterStatus, setFilterStatus] = useState<QuestStatus | ''>('active')
-  const [expandedQuests, setExpandedQuests] = useState<Set<string>>(new Set())
+  const [showForm, setShowForm] = useState(false);
+  const [editingQuest, setEditingQuest] = useState<QuestTracking | null>(null);
+  const [viewingQuest, setViewingQuest] = useState<QuestTracking | null>(null);
+  const [filterStatus, setFilterStatus] = useState<QuestStatus | "">("active");
+  const [expandedQuests, setExpandedQuests] = useState<Set<string>>(new Set());
 
   // Form state
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    quest_type: 'personal' as QuestType,
-    priority: '0',
+    title: "",
+    description: "",
+    quest_type: "personal" as QuestType,
+    priority: "0",
     objectives: [] as QuestObjective[],
-    notes: '',
-  })
-  const [newObjective, setNewObjective] = useState('')
+    notes: "",
+  });
+  const [newObjective, setNewObjective] = useState("");
 
   useEffect(() => {
-    fetchQuests(activeCampaign?.id, filterStatus || undefined)
-  }, [fetchQuests, activeCampaign?.id, filterStatus])
+    fetchQuests(activeCampaign?.id, filterStatus || undefined);
+  }, [fetchQuests, activeCampaign?.id, filterStatus]);
 
   const resetForm = () => {
     setFormData({
-      title: '',
-      description: '',
-      quest_type: 'personal',
-      priority: '0',
+      title: "",
+      description: "",
+      quest_type: "personal",
+      priority: "0",
       objectives: [],
-      notes: '',
-    })
-    setNewObjective('')
-    setEditingQuest(null)
-    setShowForm(false)
-  }
+      notes: "",
+    });
+    setNewObjective("");
+    setEditingQuest(null);
+    setShowForm(false);
+  };
 
   const handleView = (quest: QuestTracking) => {
-    setViewingQuest(quest)
-  }
+    setViewingQuest(quest);
+  };
 
   const handleEdit = (quest: QuestTracking) => {
-    setViewingQuest(null) // Close view modal if open
-    setEditingQuest(quest)
+    setViewingQuest(null); // Close view modal if open
+    setEditingQuest(quest);
     setFormData({
       title: quest.title,
-      description: quest.description || '',
+      description: quest.description || "",
       quest_type: quest.quest_type,
       priority: quest.priority.toString(),
       objectives: quest.objectives || [],
-      notes: quest.notes || '',
-    })
-    setShowForm(true)
-  }
+      notes: quest.notes || "",
+    });
+    setShowForm(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formData.title.trim()) return
+    e.preventDefault();
+    if (!formData.title.trim()) return;
 
     const data = {
       campaign_id: activeCampaign?.id,
@@ -101,75 +122,85 @@ export default function QuestTracker() {
       description: formData.description.trim() || undefined,
       quest_type: formData.quest_type,
       priority: parseInt(formData.priority) || 0,
-      objectives: formData.objectives.length > 0 ? formData.objectives : undefined,
+      objectives:
+        formData.objectives.length > 0 ? formData.objectives : undefined,
       notes: formData.notes.trim() || undefined,
-    }
+    };
 
     if (editingQuest) {
-      await updateQuest(editingQuest.id, data)
+      await updateQuest(editingQuest.id, data);
     } else {
-      await createQuest(data)
+      await createQuest(data);
     }
-    resetForm()
-  }
+    resetForm();
+  };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this quest?')) {
-      await deleteQuest(id)
+    if (window.confirm("Are you sure you want to delete this quest?")) {
+      await deleteQuest(id);
     }
-  }
+  };
 
-  const handleStatusChange = async (quest: QuestTracking, newStatus: QuestStatus) => {
-    await updateQuest(quest.id, { status: newStatus })
-  }
+  const handleStatusChange = async (
+    quest: QuestTracking,
+    newStatus: QuestStatus,
+  ) => {
+    await updateQuest(quest.id, { status: newStatus });
+  };
 
   const addObjective = () => {
-    if (!newObjective.trim()) return
+    if (!newObjective.trim()) return;
     setFormData({
       ...formData,
-      objectives: [...formData.objectives, { text: newObjective.trim(), completed: false }],
-    })
-    setNewObjective('')
-  }
+      objectives: [
+        ...formData.objectives,
+        { text: newObjective.trim(), completed: false },
+      ],
+    });
+    setNewObjective("");
+  };
 
   const removeObjective = (index: number) => {
     setFormData({
       ...formData,
       objectives: formData.objectives.filter((_, i) => i !== index),
-    })
-  }
+    });
+  };
 
   const toggleExpanded = (id: string) => {
-    const newExpanded = new Set(expandedQuests)
+    const newExpanded = new Set(expandedQuests);
     if (newExpanded.has(id)) {
-      newExpanded.delete(id)
+      newExpanded.delete(id);
     } else {
-      newExpanded.add(id)
+      newExpanded.add(id);
     }
-    setExpandedQuests(newExpanded)
-  }
+    setExpandedQuests(newExpanded);
+  };
 
   // Group quests by status
-  const activeQuests = quests.filter((q) => q.status === 'active')
-  const completedQuests = quests.filter((q) => q.status === 'completed')
-  const otherQuests = quests.filter((q) => q.status === 'failed' || q.status === 'abandoned')
+  const activeQuests = quests.filter((q) => q.status === "active");
+  const completedQuests = quests.filter((q) => q.status === "completed");
+  const otherQuests = quests.filter(
+    (q) => q.status === "failed" || q.status === "abandoned",
+  );
 
   const renderQuestList = (questList: QuestTracking[], title: string) => {
-    if (questList.length === 0) return null
+    if (questList.length === 0) return null;
 
     return (
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-text-muted">{title}</h3>
         {questList.map((quest) => {
-          const colors = statusColors[quest.status]
-          const isExpanded = expandedQuests.has(quest.id)
-          const completedObjectives = quest.objectives?.filter((o) => o.completed).length || 0
-          const totalObjectives = quest.objectives?.length || 0
+          const colors = statusColors[quest.status];
+          const isExpanded = expandedQuests.has(quest.id);
+          const completedObjectives =
+            quest.objectives?.filter((o) => o.completed).length || 0;
+          const totalObjectives = quest.objectives?.length || 0;
 
           return (
             <div
               key={quest.id}
-              className={`bg-background-panel border ${colors.border} rounded-xl overflow-hidden cursor-pointer hover:border-${colors.text.replace('text-', '')} transition-colors`}
+              className={`bg-background-panel border ${colors.border} rounded-xl overflow-hidden cursor-pointer hover:border-${colors.text.replace("text-", "")} transition-colors`}
               onClick={() => handleView(quest)}
             >
               {/* Header */}
@@ -178,13 +209,13 @@ export default function QuestTracker() {
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <button
                       onClick={(e) => {
-                        e.stopPropagation()
-                        toggleExpanded(quest.id)
+                        e.stopPropagation();
+                        toggleExpanded(quest.id);
                       }}
                       className="p-1 hover:bg-background rounded text-text-muted hover:text-text mt-0.5"
                     >
                       <Icon
-                        name={isExpanded ? 'ChevronDown' : 'ChevronRight'}
+                        name={isExpanded ? "ChevronDown" : "ChevronRight"}
                         className="w-4 h-4"
                       />
                     </button>
@@ -221,7 +252,9 @@ export default function QuestTracker() {
                   <div className="flex items-center gap-1">
                     <select
                       value={quest.status}
-                      onChange={(e) => handleStatusChange(quest, e.target.value as QuestStatus)}
+                      onChange={(e) =>
+                        handleStatusChange(quest, e.target.value as QuestStatus)
+                      }
                       onClick={(e) => e.stopPropagation()}
                       className="px-2 py-1 bg-background border border-border rounded text-xs text-text focus:outline-none focus:border-primary"
                     >
@@ -232,8 +265,8 @@ export default function QuestTracker() {
                     </select>
                     <button
                       onClick={(e) => {
-                        e.stopPropagation()
-                        handleEdit(quest)
+                        e.stopPropagation();
+                        handleEdit(quest);
                       }}
                       className="p-1 hover:bg-background rounded text-text-muted hover:text-text"
                     >
@@ -241,8 +274,8 @@ export default function QuestTracker() {
                     </button>
                     <button
                       onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(quest.id)
+                        e.stopPropagation();
+                        handleDelete(quest.id);
                       }}
                       className="p-1 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400"
                     >
@@ -256,15 +289,22 @@ export default function QuestTracker() {
               {isExpanded && (
                 <div className="px-4 pb-4 pt-0 space-y-3 border-t border-border/50">
                   {quest.description && (
-                    <p className="text-text-muted text-sm pt-3">{quest.description}</p>
+                    <p className="text-text-muted text-sm pt-3">
+                      {quest.description}
+                    </p>
                   )}
 
                   {/* Objectives */}
                   {quest.objectives && quest.objectives.length > 0 && (
                     <div className="space-y-2 pt-2">
-                      <h5 className="text-xs font-medium text-text-muted uppercase">Objectives</h5>
+                      <h5 className="text-xs font-medium text-text-muted uppercase">
+                        Objectives
+                      </h5>
                       {quest.objectives.map((obj, i) => (
-                        <label key={i} className="flex items-start gap-2 cursor-pointer group">
+                        <label
+                          key={i}
+                          className="flex items-start gap-2 cursor-pointer group"
+                        >
                           <input
                             type="checkbox"
                             checked={obj.completed}
@@ -273,7 +313,9 @@ export default function QuestTracker() {
                           />
                           <span
                             className={`text-sm ${
-                              obj.completed ? 'text-text-muted line-through' : 'text-text'
+                              obj.completed
+                                ? "text-text-muted line-through"
+                                : "text-text"
                             }`}
                           >
                             {obj.text}
@@ -284,16 +326,18 @@ export default function QuestTracker() {
                   )}
 
                   {quest.notes && (
-                    <p className="text-text-muted/70 text-xs italic pt-2">{quest.notes}</p>
+                    <p className="text-text-muted/70 text-xs italic pt-2">
+                      {quest.notes}
+                    </p>
                   )}
                 </div>
               )}
             </div>
-          )
+          );
         })}
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -311,7 +355,9 @@ export default function QuestTracker() {
         <div className="flex items-center gap-3">
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as QuestStatus | '')}
+            onChange={(e) =>
+              setFilterStatus(e.target.value as QuestStatus | "")
+            }
             className="px-3 py-2 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary"
           >
             <option value="">All Quests</option>
@@ -347,7 +393,10 @@ export default function QuestTracker() {
       {/* Empty State */}
       {!loading && quests.length === 0 && (
         <div className="text-center py-12 bg-background-panel border border-border rounded-xl">
-          <Icon name="Target" className="w-12 h-12 text-text-muted mx-auto mb-4" />
+          <Icon
+            name="Target"
+            className="w-12 h-12 text-text-muted mx-auto mb-4"
+          />
           <h3 className="text-lg font-medium text-text mb-2">No quests yet</h3>
           <p className="text-text-muted mb-4">
             Start tracking your adventures by adding quests and personal goals.
@@ -363,9 +412,9 @@ export default function QuestTracker() {
 
       {/* Quest Lists */}
       <div className="space-y-6">
-        {renderQuestList(activeQuests, 'Active Quests')}
-        {renderQuestList(completedQuests, 'Completed')}
-        {renderQuestList(otherQuests, 'Other')}
+        {renderQuestList(activeQuests, "Active Quests")}
+        {renderQuestList(completedQuests, "Completed")}
+        {renderQuestList(otherQuests, "Other")}
       </div>
 
       {/* Add/Edit Form Modal */}
@@ -380,7 +429,7 @@ export default function QuestTracker() {
           >
             <div className="border-b border-border px-5 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-text">
-                {editingQuest ? 'Edit Quest' : 'New Quest'}
+                {editingQuest ? "Edit Quest" : "New Quest"}
               </h3>
               <button
                 type="button"
@@ -393,11 +442,15 @@ export default function QuestTracker() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Title *</label>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Title *
+                </label>
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   placeholder="Quest title"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary"
                 />
@@ -405,11 +458,16 @@ export default function QuestTracker() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-muted mb-1">Type</label>
+                  <label className="block text-sm font-medium text-text-muted mb-1">
+                    Type
+                  </label>
                   <select
                     value={formData.quest_type}
                     onChange={(e) =>
-                      setFormData({ ...formData, quest_type: e.target.value as QuestType })
+                      setFormData({
+                        ...formData,
+                        quest_type: e.target.value as QuestType,
+                      })
                     }
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
                   >
@@ -419,10 +477,14 @@ export default function QuestTracker() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-muted mb-1">Priority</label>
+                  <label className="block text-sm font-medium text-text-muted mb-1">
+                    Priority
+                  </label>
                   <select
                     value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, priority: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
                   >
                     <option value="0">Normal</option>
@@ -438,7 +500,9 @@ export default function QuestTracker() {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   placeholder="Quest description"
                   rows={2}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary resize-y"
@@ -447,7 +511,9 @@ export default function QuestTracker() {
 
               {/* Objectives */}
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Objectives</label>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Objectives
+                </label>
                 <div className="space-y-2">
                   {formData.objectives.map((obj, i) => (
                     <div key={i} className="flex items-center gap-2">
@@ -471,9 +537,9 @@ export default function QuestTracker() {
                       placeholder="Add objective..."
                       className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary text-sm"
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          addObjective()
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addObjective();
                         }
                       }}
                     />
@@ -489,10 +555,14 @@ export default function QuestTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Notes</label>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Notes
+                </label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   placeholder="Personal notes"
                   rows={2}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary resize-y"
@@ -513,7 +583,7 @@ export default function QuestTracker() {
                 disabled={loading || !formData.title.trim()}
                 className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
               >
-                {editingQuest ? 'Save' : 'Create'}
+                {editingQuest ? "Save" : "Create"}
               </button>
             </div>
           </form>
@@ -527,15 +597,15 @@ export default function QuestTracker() {
           onClose={() => setViewingQuest(null)}
           onEdit={() => handleEdit(viewingQuest)}
           onDelete={() => {
-            handleDelete(viewingQuest.id)
-            setViewingQuest(null)
+            handleDelete(viewingQuest.id);
+            setViewingQuest(null);
           }}
           onToggleObjective={(index) => toggleObjective(viewingQuest.id, index)}
           onStatusChange={(newStatus) => {
-            handleStatusChange(viewingQuest, newStatus)
+            handleStatusChange(viewingQuest, newStatus);
           }}
         />
       )}
     </div>
-  )
+  );
 }

@@ -1,143 +1,157 @@
-import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import Icon from '../../common/Icon'
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import Icon from "../../common/Icon";
 
 interface NextSessionProps {
-  campaignId: string
+  campaignId: string;
 }
 
 export default function NextSession({ campaignId }: NextSessionProps) {
-  const [nextSessionDate, setNextSessionDate] = useState<Date | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [dateValue, setDateValue] = useState('')
-  const [timeValue, setTimeValue] = useState('')
+  const [nextSessionDate, setNextSessionDate] = useState<Date | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dateValue, setDateValue] = useState("");
+  const [timeValue, setTimeValue] = useState("");
 
   useEffect(() => {
-    const stored = localStorage.getItem(`next-session-${campaignId}`)
+    const stored = localStorage.getItem(`next-session-${campaignId}`);
     if (stored) {
-      setNextSessionDate(new Date(stored))
+      setNextSessionDate(new Date(stored));
     }
-  }, [campaignId])
+  }, [campaignId]);
 
   // Handle escape key
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsModalOpen(false)
+      if (event.key === "Escape") {
+        setIsModalOpen(false);
       }
-    }
+    };
 
     if (isModalOpen) {
-      document.addEventListener('keydown', handleEscape)
+      document.addEventListener("keydown", handleEscape);
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [isModalOpen])
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isModalOpen]);
 
   const formatSessionDate = (date: Date) => {
-    const now = new Date()
-    const diffInMs = date.getTime() - now.getTime()
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+    const now = new Date();
+    const diffInMs = date.getTime() - now.getTime();
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
 
     if (diffInMs < 0) {
       return {
-        text: 'Session was scheduled for ' + date.toLocaleDateString(),
-        subtext: 'Past session',
-        status: 'past',
-      }
+        text: "Session was scheduled for " + date.toLocaleDateString(),
+        subtext: "Past session",
+        status: "past",
+      };
     }
 
     if (diffInDays === 0) {
       if (diffInHours <= 0) {
-        return { text: 'Session starts soon!', subtext: 'Get ready to run!', status: 'imminent' }
+        return {
+          text: "Session starts soon!",
+          subtext: "Get ready to run!",
+          status: "imminent",
+        };
       }
       return {
-        text: `Session in ${diffInHours} hour${diffInHours === 1 ? '' : 's'}`,
-        subtext: `Today at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
-        status: 'today',
-      }
+        text: `Session in ${diffInHours} hour${diffInHours === 1 ? "" : "s"}`,
+        subtext: `Today at ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+        status: "today",
+      };
     }
 
     if (diffInDays === 1) {
       return {
-        text: 'Session tomorrow',
-        subtext: `at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
-        status: 'soon',
-      }
+        text: "Session tomorrow",
+        subtext: `at ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+        status: "soon",
+      };
     }
 
     if (diffInDays < 7) {
       return {
         text: `Session in ${diffInDays} days`,
-        subtext: date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }),
-        status: 'soon',
-      }
+        subtext: date.toLocaleDateString([], {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+        }),
+        status: "soon",
+      };
     }
 
     return {
-      text: date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }),
-      subtext: `at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
-      status: 'future',
-    }
-  }
+      text: date.toLocaleDateString([], {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      }),
+      subtext: `at ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+      status: "future",
+    };
+  };
 
   const openModal = () => {
     if (nextSessionDate) {
-      const d = nextSessionDate
-      setDateValue(d.toISOString().split('T')[0])
-      setTimeValue(d.toTimeString().slice(0, 5))
+      const d = nextSessionDate;
+      setDateValue(d.toISOString().split("T")[0]);
+      setTimeValue(d.toTimeString().slice(0, 5));
     } else {
       // Default to next Saturday at 7pm
-      const today = new Date()
-      const daysUntilSaturday = (6 - today.getDay() + 7) % 7 || 7
-      const nextSaturday = new Date(today)
-      nextSaturday.setDate(today.getDate() + daysUntilSaturday)
-      setDateValue(nextSaturday.toISOString().split('T')[0])
-      setTimeValue('19:00')
+      const today = new Date();
+      const daysUntilSaturday = (6 - today.getDay() + 7) % 7 || 7;
+      const nextSaturday = new Date(today);
+      nextSaturday.setDate(today.getDate() + daysUntilSaturday);
+      setDateValue(nextSaturday.toISOString().split("T")[0]);
+      setTimeValue("19:00");
     }
-    setIsModalOpen(true)
-  }
+    setIsModalOpen(true);
+  };
 
   const handleSave = () => {
     if (dateValue) {
-      const dateTimeStr = timeValue ? `${dateValue}T${timeValue}` : `${dateValue}T19:00`
-      const date = new Date(dateTimeStr)
+      const dateTimeStr = timeValue
+        ? `${dateValue}T${timeValue}`
+        : `${dateValue}T19:00`;
+      const date = new Date(dateTimeStr);
       if (!isNaN(date.getTime())) {
-        setNextSessionDate(date)
-        localStorage.setItem(`next-session-${campaignId}`, date.toISOString())
-        setIsModalOpen(false)
+        setNextSessionDate(date);
+        localStorage.setItem(`next-session-${campaignId}`, date.toISOString());
+        setIsModalOpen(false);
       }
     }
-  }
+  };
 
   const handleClearDate = () => {
-    setNextSessionDate(null)
-    localStorage.removeItem(`next-session-${campaignId}`)
-    setIsModalOpen(false)
-  }
+    setNextSessionDate(null);
+    localStorage.removeItem(`next-session-${campaignId}`);
+    setIsModalOpen(false);
+  };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      setIsModalOpen(false)
+      setIsModalOpen(false);
     }
-  }
+  };
 
   // Quick select buttons for common times
   const quickSelectDays = [
-    { label: 'Today', days: 0 },
-    { label: 'Tomorrow', days: 1 },
-    { label: 'This Weekend', days: (6 - new Date().getDay() + 7) % 7 || 7 },
-    { label: 'Next Week', days: 7 },
-  ]
+    { label: "Today", days: 0 },
+    { label: "Tomorrow", days: 1 },
+    { label: "This Weekend", days: (6 - new Date().getDay() + 7) % 7 || 7 },
+    { label: "Next Week", days: 7 },
+  ];
 
   const handleQuickSelect = (daysFromNow: number) => {
-    const date = new Date()
-    date.setDate(date.getDate() + daysFromNow)
-    setDateValue(date.toISOString().split('T')[0])
-  }
+    const date = new Date();
+    date.setDate(date.getDate() + daysFromNow);
+    setDateValue(date.toISOString().split("T")[0]);
+  };
 
   const modalContent = (
     <div
@@ -153,8 +167,12 @@ export default function NextSession({ campaignId }: NextSessionProps) {
                 <Icon name="Calendar" className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-text">Schedule Session</h3>
-                <p className="text-sm text-text-muted">When's your next game?</p>
+                <h3 className="text-lg font-semibold text-text">
+                  Schedule Session
+                </h3>
+                <p className="text-sm text-text-muted">
+                  When's your next game?
+                </p>
               </div>
             </div>
             <button
@@ -170,7 +188,9 @@ export default function NextSession({ campaignId }: NextSessionProps) {
         <div className="p-6 space-y-5">
           {/* Quick Select */}
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-2">Quick Select</label>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Quick Select
+            </label>
             <div className="grid grid-cols-4 gap-2">
               {quickSelectDays.map((option) => (
                 <button
@@ -186,7 +206,9 @@ export default function NextSession({ campaignId }: NextSessionProps) {
 
           {/* Date Input */}
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-2">Date</label>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Date
+            </label>
             <div className="relative">
               <input
                 type="date"
@@ -199,7 +221,9 @@ export default function NextSession({ campaignId }: NextSessionProps) {
 
           {/* Time Input */}
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-2">Time</label>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Time
+            </label>
             <div className="relative">
               <input
                 type="time"
@@ -210,19 +234,19 @@ export default function NextSession({ campaignId }: NextSessionProps) {
             </div>
             {/* Common Times */}
             <div className="flex gap-2 mt-2">
-              {['18:00', '19:00', '20:00', '21:00'].map((time) => (
+              {["18:00", "19:00", "20:00", "21:00"].map((time) => (
                 <button
                   key={time}
                   onClick={() => setTimeValue(time)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
                     timeValue === time
-                      ? 'border-amber-500 bg-amber-500/20 text-amber-400'
-                      : 'border-border bg-background hover:border-amber-500/40 text-text-muted hover:text-text'
+                      ? "border-amber-500 bg-amber-500/20 text-amber-400"
+                      : "border-border bg-background hover:border-amber-500/40 text-text-muted hover:text-text"
                   }`}
                 >
                   {new Date(`2000-01-01T${time}`).toLocaleTimeString([], {
-                    hour: 'numeric',
-                    minute: '2-digit',
+                    hour: "numeric",
+                    minute: "2-digit",
                   })}
                 </button>
               ))}
@@ -264,9 +288,9 @@ export default function NextSession({ campaignId }: NextSessionProps) {
         </div>
       </div>
     </div>
-  )
+  );
 
-  const modal = isModalOpen ? createPortal(modalContent, document.body) : null
+  const modal = isModalOpen ? createPortal(modalContent, document.body) : null;
 
   // No session scheduled state
   if (!nextSessionDate) {
@@ -292,40 +316,40 @@ export default function NextSession({ campaignId }: NextSessionProps) {
         </div>
         {modal}
       </>
-    )
+    );
   }
 
   // Session scheduled state
-  const { text, subtext, status } = formatSessionDate(nextSessionDate)
+  const { text, subtext, status } = formatSessionDate(nextSessionDate);
   const statusStyles = {
     past: {
-      container: 'bg-background/50 border-text-muted/20',
-      icon: 'text-text-muted',
-      text: 'text-text-muted',
+      container: "bg-background/50 border-text-muted/20",
+      icon: "text-text-muted",
+      text: "text-text-muted",
     },
     imminent: {
-      container: 'bg-red-500/10 border-red-500/40 animate-pulse',
-      icon: 'text-red-400',
-      text: 'text-red-400',
+      container: "bg-red-500/10 border-red-500/40 animate-pulse",
+      icon: "text-red-400",
+      text: "text-red-400",
     },
     today: {
-      container: 'bg-yellow-500/10 border-yellow-500/40',
-      icon: 'text-yellow-400',
-      text: 'text-yellow-400',
+      container: "bg-yellow-500/10 border-yellow-500/40",
+      icon: "text-yellow-400",
+      text: "text-yellow-400",
     },
     soon: {
-      container: 'bg-amber-500/10 border-amber-500/40',
-      icon: 'text-amber-400',
-      text: 'text-amber-400',
+      container: "bg-amber-500/10 border-amber-500/40",
+      icon: "text-amber-400",
+      text: "text-amber-400",
     },
     future: {
-      container: 'bg-blue-500/10 border-blue-500/40',
-      icon: 'text-blue-400',
-      text: 'text-blue-400',
+      container: "bg-blue-500/10 border-blue-500/40",
+      icon: "text-blue-400",
+      text: "text-blue-400",
     },
-  }
+  };
 
-  const styles = statusStyles[status as keyof typeof statusStyles]
+  const styles = statusStyles[status as keyof typeof statusStyles];
 
   return (
     <>
@@ -339,7 +363,9 @@ export default function NextSession({ campaignId }: NextSessionProps) {
             </div>
             <div className="min-w-0">
               <p className={`font-semibold ${styles.text}`}>{text}</p>
-              {subtext && <p className="text-sm text-text-muted truncate">{subtext}</p>}
+              {subtext && (
+                <p className="text-sm text-text-muted truncate">{subtext}</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -355,5 +381,5 @@ export default function NextSession({ campaignId }: NextSessionProps) {
       </div>
       {modal}
     </>
-  )
+  );
 }

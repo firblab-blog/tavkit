@@ -1,16 +1,28 @@
-import { useState, useEffect, useRef } from 'react'
-import { GeneratorLayout } from './GeneratorLayout'
-import { FormField } from '@/components/ui/FormField'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import { useCampaignStore } from '../../store/campaignStore'
-import Icon from '../common/Icon'
-import CampaignSelector from '../common/CampaignSelector'
-import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
-import { emitContentSaved } from '@/lib/contentEvents'
-import { EntryModeToggle, type EntryMode } from './shared/EntryModeToggle'
-import { ArrayFieldEditor, ObjectArrayEditor, AbilityScoresEditor } from './shared/fields'
-import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import { useState, useEffect, useRef } from "react";
+import { GeneratorLayout } from "./GeneratorLayout";
+import { FormField } from "@/components/ui/FormField";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { useCampaignStore } from "../../store/campaignStore";
+import Icon from "../common/Icon";
+import CampaignSelector from "../common/CampaignSelector";
+import AISettings, {
+  AIGenerationSettings,
+  getMaxTokensFromSettings,
+} from "./AISettings";
+import { emitContentSaved } from "@/lib/contentEvents";
+import { EntryModeToggle, type EntryMode } from "./shared/EntryModeToggle";
+import {
+  ArrayFieldEditor,
+  ObjectArrayEditor,
+  AbilityScoresEditor,
+} from "./shared/fields";
+import {
+  SaveModal,
+  ParseWarning,
+  RawDataViewer,
+  ManualEntryPreview,
+} from "./shared";
 import {
   defaultCritterData,
   critterTypeOptions,
@@ -18,226 +30,254 @@ import {
   temperamentOptions,
   habitatOptions,
   type ManualCritterData,
-} from './shared/schemas/critterSchema'
+} from "./shared/schemas/critterSchema";
 import {
   generateCritter as generateCritterApi,
   saveCritter as saveCritterApi,
   getErrorMessage,
-} from '@/api/generators'
-import { normalizeStringArray } from '@/utils/aiResponseNormalizer'
-import { logger } from '@/utils/logger'
+} from "@/api/generators";
+import { normalizeStringArray } from "@/utils/aiResponseNormalizer";
+import { logger } from "@/utils/logger";
 
 // Expected critter structure
 interface CritterData {
-  name: string
-  species: string
-  critter_type: string
-  size: string
-  temperament: string
-  habitat: string
-  description: string
-  behavior: string
-  stats: Stats
-  special_abilities: SpecialAbility[]
-  uses: string[]
-  training_difficulty: string
-  diet: string
-  lifespan: string
-  interesting_facts: string[]
-  encounter_notes: string
-  _raw?: Record<string, unknown>
-  _parseError?: string
+  name: string;
+  species: string;
+  critter_type: string;
+  size: string;
+  temperament: string;
+  habitat: string;
+  description: string;
+  behavior: string;
+  stats: Stats;
+  special_abilities: SpecialAbility[];
+  uses: string[];
+  training_difficulty: string;
+  diet: string;
+  lifespan: string;
+  interesting_facts: string[];
+  encounter_notes: string;
+  _raw?: Record<string, unknown>;
+  _parseError?: string;
 }
 
 interface Stats {
-  ac: number | null
-  hp: number | null
-  speed: string
-  str: number | null
-  dex: number | null
-  con: number | null
-  int: number | null
-  wis: number | null
-  cha: number | null
+  ac: number | null;
+  hp: number | null;
+  speed: string;
+  str: number | null;
+  dex: number | null;
+  con: number | null;
+  int: number | null;
+  wis: number | null;
+  cha: number | null;
 }
 
 interface SpecialAbility {
-  name: string
-  description: string
+  name: string;
+  description: string;
 }
 
 function normalizeStats(value: unknown): Stats {
   const result: Stats = {
     ac: null,
     hp: null,
-    speed: '',
+    speed: "",
     str: null,
     dex: null,
     con: null,
     int: null,
     wis: null,
     cha: null,
-  }
+  };
 
-  if (!value || typeof value !== 'object') return result
+  if (!value || typeof value !== "object") return result;
 
-  const stats = value as Record<string, unknown>
+  const stats = value as Record<string, unknown>;
 
   const toNumber = (v: unknown): number | null => {
-    if (v === null || v === undefined) return null
-    if (typeof v === 'number') return v
-    if (typeof v === 'string') {
-      const parsed = parseInt(v, 10)
-      return isNaN(parsed) ? null : parsed
+    if (v === null || v === undefined) return null;
+    if (typeof v === "number") return v;
+    if (typeof v === "string") {
+      const parsed = parseInt(v, 10);
+      return isNaN(parsed) ? null : parsed;
     }
-    return null
-  }
+    return null;
+  };
 
-  result.ac = toNumber(stats.ac || stats.armor_class)
-  result.hp = toNumber(stats.hp || stats.hit_points)
-  result.speed = String(stats.speed || '')
-  result.str = toNumber(stats.str || stats.strength)
-  result.dex = toNumber(stats.dex || stats.dexterity)
-  result.con = toNumber(stats.con || stats.constitution)
-  result.int = toNumber(stats.int || stats.intelligence)
-  result.wis = toNumber(stats.wis || stats.wisdom)
-  result.cha = toNumber(stats.cha || stats.charisma)
+  result.ac = toNumber(stats.ac || stats.armor_class);
+  result.hp = toNumber(stats.hp || stats.hit_points);
+  result.speed = String(stats.speed || "");
+  result.str = toNumber(stats.str || stats.strength);
+  result.dex = toNumber(stats.dex || stats.dexterity);
+  result.con = toNumber(stats.con || stats.constitution);
+  result.int = toNumber(stats.int || stats.intelligence);
+  result.wis = toNumber(stats.wis || stats.wisdom);
+  result.cha = toNumber(stats.cha || stats.charisma);
 
-  return result
+  return result;
 }
 
 function normalizeSpecialAbility(value: unknown): SpecialAbility | null {
-  if (!value) return null
-  if (typeof value === 'string') return { name: value, description: '' }
-  if (typeof value === 'object' && value !== null) {
-    const ability = value as Record<string, unknown>
+  if (!value) return null;
+  if (typeof value === "string") return { name: value, description: "" };
+  if (typeof value === "object" && value !== null) {
+    const ability = value as Record<string, unknown>;
     return {
-      name: String(ability.name || ability.title || ability.ability || 'Unknown Ability'),
-      description: String(ability.description || ability.desc || ability.effect || ''),
-    }
+      name: String(
+        ability.name || ability.title || ability.ability || "Unknown Ability",
+      ),
+      description: String(
+        ability.description || ability.desc || ability.effect || "",
+      ),
+    };
   }
-  return null
+  return null;
 }
 
 function normalizeSpecialAbilities(value: unknown): SpecialAbility[] {
-  if (!value || !Array.isArray(value)) return []
+  if (!value || !Array.isArray(value)) return [];
   return value
     .map((ability) => normalizeSpecialAbility(ability))
-    .filter((ability): ability is SpecialAbility => ability !== null)
+    .filter((ability): ability is SpecialAbility => ability !== null);
 }
 
 function normalizeCritterResponse(raw: Record<string, unknown>): CritterData {
-  logger.debug('[CritterGenerator] normalizeCritterResponse input:', raw)
+  logger.debug("[CritterGenerator] normalizeCritterResponse input:", raw);
 
-  let processedRaw = raw
-  if (raw.description && typeof raw.description === 'string') {
-    const descStr = (raw.description as string).trim()
-    if (descStr.startsWith('{') && descStr.endsWith('}')) {
+  let processedRaw = raw;
+  if (raw.description && typeof raw.description === "string") {
+    const descStr = (raw.description as string).trim();
+    if (descStr.startsWith("{") && descStr.endsWith("}")) {
       try {
-        const parsedCritter = JSON.parse(descStr)
-        processedRaw = parsedCritter
+        const parsedCritter = JSON.parse(descStr);
+        processedRaw = parsedCritter;
       } catch (e) {
-        logger.warn('[CritterGenerator] Failed to parse description as JSON:', e)
+        logger.warn(
+          "[CritterGenerator] Failed to parse description as JSON:",
+          e,
+        );
       }
     }
   }
 
   const expectedFields = [
-    'name',
-    'title',
-    'creature_name',
-    'species',
-    'critter_type',
-    'type',
-    'creature_type',
-    'size',
-    'temperament',
-    'habitat',
-    'description',
-    'behavior',
-    'stats',
-    'special_abilities',
-    'abilities',
-    'traits',
-    'uses',
-    'purposes',
-    'utility',
-    'training_difficulty',
-    'diet',
-    'lifespan',
-    'interesting_facts',
-    'facts',
-    'trivia',
-    'encounter_notes',
-    'notes',
-    'dm_notes',
-    'provider',
-    '_parse_warning',
-  ]
+    "name",
+    "title",
+    "creature_name",
+    "species",
+    "critter_type",
+    "type",
+    "creature_type",
+    "size",
+    "temperament",
+    "habitat",
+    "description",
+    "behavior",
+    "stats",
+    "special_abilities",
+    "abilities",
+    "traits",
+    "uses",
+    "purposes",
+    "utility",
+    "training_difficulty",
+    "diet",
+    "lifespan",
+    "interesting_facts",
+    "facts",
+    "trivia",
+    "encounter_notes",
+    "notes",
+    "dm_notes",
+    "provider",
+    "_parse_warning",
+  ];
 
-  const unexpectedFields: Record<string, unknown> = {}
+  const unexpectedFields: Record<string, unknown> = {};
   for (const key of Object.keys(processedRaw)) {
     if (!expectedFields.includes(key)) {
-      unexpectedFields[key] = processedRaw[key]
+      unexpectedFields[key] = processedRaw[key];
     }
   }
 
-  let description = ''
-  if (processedRaw.description && typeof processedRaw.description === 'string') {
-    const descText = processedRaw.description as string
-    if (!descText.trim().startsWith('{')) {
-      description = descText
+  let description = "";
+  if (
+    processedRaw.description &&
+    typeof processedRaw.description === "string"
+  ) {
+    const descText = processedRaw.description as string;
+    if (!descText.trim().startsWith("{")) {
+      description = descText;
     }
   }
 
-  let specialAbilities = normalizeSpecialAbilities(processedRaw.special_abilities)
+  let specialAbilities = normalizeSpecialAbilities(
+    processedRaw.special_abilities,
+  );
   if (specialAbilities.length === 0) {
-    specialAbilities = normalizeSpecialAbilities(processedRaw.abilities || processedRaw.traits)
+    specialAbilities = normalizeSpecialAbilities(
+      processedRaw.abilities || processedRaw.traits,
+    );
   }
 
-  let uses = normalizeStringArray(processedRaw.uses)
+  let uses = normalizeStringArray(processedRaw.uses);
   if (uses.length === 0) {
-    uses = normalizeStringArray(processedRaw.purposes || processedRaw.utility)
+    uses = normalizeStringArray(processedRaw.purposes || processedRaw.utility);
   }
 
-  let interestingFacts = normalizeStringArray(processedRaw.interesting_facts)
+  let interestingFacts = normalizeStringArray(processedRaw.interesting_facts);
   if (interestingFacts.length === 0) {
-    interestingFacts = normalizeStringArray(processedRaw.facts || processedRaw.trivia)
+    interestingFacts = normalizeStringArray(
+      processedRaw.facts || processedRaw.trivia,
+    );
   }
 
   return {
     name: String(
-      processedRaw.name || processedRaw.title || processedRaw.creature_name || 'Unknown Critter'
+      processedRaw.name ||
+        processedRaw.title ||
+        processedRaw.creature_name ||
+        "Unknown Critter",
     ),
-    species: String(processedRaw.species || ''),
+    species: String(processedRaw.species || ""),
     critter_type: String(
-      processedRaw.critter_type || processedRaw.type || processedRaw.creature_type || ''
+      processedRaw.critter_type ||
+        processedRaw.type ||
+        processedRaw.creature_type ||
+        "",
     ),
-    size: String(processedRaw.size || ''),
-    temperament: String(processedRaw.temperament || ''),
-    habitat: String(processedRaw.habitat || ''),
+    size: String(processedRaw.size || ""),
+    temperament: String(processedRaw.temperament || ""),
+    habitat: String(processedRaw.habitat || ""),
     description: description,
-    behavior: String(processedRaw.behavior || ''),
+    behavior: String(processedRaw.behavior || ""),
     stats: normalizeStats(processedRaw.stats),
     special_abilities: specialAbilities,
     uses: uses,
-    training_difficulty: String(processedRaw.training_difficulty || ''),
-    diet: String(processedRaw.diet || ''),
-    lifespan: String(processedRaw.lifespan || ''),
+    training_difficulty: String(processedRaw.training_difficulty || ""),
+    diet: String(processedRaw.diet || ""),
+    lifespan: String(processedRaw.lifespan || ""),
     interesting_facts: interestingFacts,
     encounter_notes: String(
-      processedRaw.encounter_notes || processedRaw.notes || processedRaw.dm_notes || ''
+      processedRaw.encounter_notes ||
+        processedRaw.notes ||
+        processedRaw.dm_notes ||
+        "",
     ),
-    _raw: Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
-  }
+    _raw:
+      Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
+  };
 }
 
 function hasValidCritterContent(critter: CritterData): boolean {
   return !!(
     critter.name &&
-    critter.name !== 'Unknown Critter' &&
-    (critter.description || critter.behavior || critter.special_abilities.length > 0)
-  )
+    critter.name !== "Unknown Critter" &&
+    (critter.description ||
+      critter.behavior ||
+      critter.special_abilities.length > 0)
+  );
 }
 
 // ============================================================================
@@ -246,52 +286,53 @@ function hasValidCritterContent(critter: CritterData): boolean {
 
 export default function CritterGenerator() {
   // Entry mode
-  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [entryMode, setEntryMode] = useState<EntryMode>("ai");
 
   // Manual entry state
-  const [manualData, setManualData] = useState<ManualCritterData>(defaultCritterData)
-  const [manualSaving, setManualSaving] = useState(false)
-  const [manualSaved, setManualSaved] = useState(false)
+  const [manualData, setManualData] =
+    useState<ManualCritterData>(defaultCritterData);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualSaved, setManualSaved] = useState(false);
 
   // AI generation state
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [critter, setCritter] = useState<CritterData | null>(null)
-  const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
-  const [campaignId, setCampaignId] = useState<string | null>(null)
-  const { activeCampaignId } = useCampaignStore()
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [critter, setCritter] = useState<CritterData | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showRawResponse, setShowRawResponse] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const { activeCampaignId } = useCampaignStore();
 
-  const hasUserSelectedCampaign = useRef(false)
+  const hasUserSelectedCampaign = useRef(false);
 
   useEffect(() => {
     if (activeCampaignId && !hasUserSelectedCampaign.current) {
-      setCampaignId(activeCampaignId)
+      setCampaignId(activeCampaignId);
     }
-  }, [activeCampaignId])
+  }, [activeCampaignId]);
 
   useEffect(() => {
-    setManualSaved(false)
-  }, [entryMode, manualData])
+    setManualSaved(false);
+  }, [entryMode, manualData]);
 
   // AI form inputs
-  const [critterType, setCritterType] = useState('mammal')
-  const [size, setSize] = useState('medium')
-  const [temperament, setTemperament] = useState('neutral')
-  const [habitat, setHabitat] = useState('forest')
-  const [specialRequests, setSpecialRequests] = useState('')
+  const [critterType, setCritterType] = useState("mammal");
+  const [size, setSize] = useState("medium");
+  const [temperament, setTemperament] = useState("neutral");
+  const [habitat, setHabitat] = useState("forest");
+  const [specialRequests, setSpecialRequests] = useState("");
   const [aiSettings, setAiSettings] = useState<AIGenerationSettings>({
-    detailLevel: 'high',
+    detailLevel: "high",
     timeout: 120,
-  })
+  });
 
   const generateCritter = async () => {
-    setLoading(true)
-    setError(null)
-    setCritter(null)
-    setShowRawResponse(false)
-    setIsSaved(false)
+    setLoading(true);
+    setError(null);
+    setCritter(null);
+    setShowRawResponse(false);
+    setIsSaved(false);
 
     try {
       const data = await generateCritterApi(
@@ -305,137 +346,140 @@ export default function CritterGenerator() {
           max_tokens: getMaxTokensFromSettings(aiSettings),
           timeout: aiSettings.timeout,
         },
-        aiSettings.timeout
-      )
-      logger.debug('[CritterGenerator] Raw API response:', data)
+        aiSettings.timeout,
+      );
+      logger.debug("[CritterGenerator] Raw API response:", data);
 
       if (data.critter) {
-        const normalized = normalizeCritterResponse(data.critter)
+        const normalized = normalizeCritterResponse(data.critter);
         if (!hasValidCritterContent(normalized)) {
           normalized._parseError =
-            'AI response missing essential critter content. Showing raw response.'
-          setShowRawResponse(true)
+            "AI response missing essential critter content. Showing raw response.";
+          setShowRawResponse(true);
         }
-        setCritter(normalized)
+        setCritter(normalized);
       } else {
-        const normalized = normalizeCritterResponse(data as unknown as Record<string, unknown>)
-        normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
-        setCritter(normalized)
+        const normalized = normalizeCritterResponse(
+          data as unknown as Record<string, unknown>,
+        );
+        normalized._parseError =
+          "Unexpected response format. Attempting to display.";
+        setShowRawResponse(true);
+        setCritter(normalized);
       }
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const saveCritter = async () => {
-    if (!critter) return
+    if (!critter) return;
 
     try {
       await saveCritterApi({
-        name: critter.name || 'Unnamed Critter',
-        species: critter.species || '',
+        name: critter.name || "Unnamed Critter",
+        species: critter.species || "",
         critter_type: critter.critter_type || critterType,
         size: critter.size || size,
         temperament: critter.temperament || temperament,
         habitat: critter.habitat || habitat,
-        description: critter.description || '',
-        behavior: critter.behavior || '',
+        description: critter.description || "",
+        behavior: critter.behavior || "",
         stats: critter.stats || {},
         special_abilities: critter.special_abilities || [],
         uses: critter.uses || [],
-        training_difficulty: critter.training_difficulty || '',
-        diet: critter.diet || '',
-        lifespan: critter.lifespan || '',
+        training_difficulty: critter.training_difficulty || "",
+        diet: critter.diet || "",
+        lifespan: critter.lifespan || "",
         interesting_facts: critter.interesting_facts || [],
-        encounter_notes: critter.encounter_notes || '',
+        encounter_notes: critter.encounter_notes || "",
         campaign_id: campaignId || undefined,
         ai_generated: true,
-      })
+      });
 
-      setShowSaveModal(false)
-      setIsSaved(true)
-      emitContentSaved()
+      setShowSaveModal(false);
+      setIsSaved(true);
+      emitContentSaved();
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     }
-  }
+  };
 
   const handleManualSave = async () => {
-    if (!manualData.name.trim()) return
+    if (!manualData.name.trim()) return;
 
-    setManualSaving(true)
-    setError(null)
+    setManualSaving(true);
+    setError(null);
 
     try {
       await saveCritterApi({
         name: manualData.name,
-        species: manualData.species || '',
+        species: manualData.species || "",
         critter_type: manualData.critter_type,
         size: manualData.size,
         temperament: manualData.temperament,
         habitat: manualData.habitat,
-        description: manualData.description || '',
-        behavior: manualData.behavior || '',
+        description: manualData.description || "",
+        behavior: manualData.behavior || "",
         stats: manualData.stats || {},
         special_abilities: manualData.special_abilities || [],
         uses: manualData.uses || [],
-        training_difficulty: manualData.training_difficulty || '',
-        diet: manualData.diet || '',
-        lifespan: manualData.lifespan || '',
+        training_difficulty: manualData.training_difficulty || "",
+        diet: manualData.diet || "",
+        lifespan: manualData.lifespan || "",
         interesting_facts: manualData.interesting_facts || [],
-        encounter_notes: manualData.encounter_notes || '',
+        encounter_notes: manualData.encounter_notes || "",
         campaign_id: campaignId || undefined,
         ai_generated: false,
-      })
+      });
 
-      setManualSaved(true)
-      emitContentSaved()
+      setManualSaved(true);
+      emitContentSaved();
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setManualSaving(false)
+      setManualSaving(false);
     }
-  }
+  };
 
   const handleManualReset = () => {
-    setManualData(defaultCritterData)
-    setManualSaved(false)
-    setError(null)
-  }
+    setManualData(defaultCritterData);
+    setManualSaved(false);
+    setError(null);
+  };
 
   const handleCopy = () => {
-    if (!critter) return
-    const text = `${critter.name}${critter.species ? ` (${critter.species})` : ''}
-${critter.critter_type} • ${critter.size}${critter.temperament ? ` • ${critter.temperament}` : ''}${critter.habitat ? ` • ${critter.habitat}` : ''}
+    if (!critter) return;
+    const text = `${critter.name}${critter.species ? ` (${critter.species})` : ""}
+${critter.critter_type} • ${critter.size}${critter.temperament ? ` • ${critter.temperament}` : ""}${critter.habitat ? ` • ${critter.habitat}` : ""}
 
-${critter.description || ''}
+${critter.description || ""}
 
-Behavior: ${critter.behavior || 'N/A'}
+Behavior: ${critter.behavior || "N/A"}
 
 Stats:
 ${
   critter.stats
-    ? `AC: ${critter.stats.ac ?? 'N/A'}, HP: ${critter.stats.hp ?? 'N/A'}, Speed: ${critter.stats.speed || 'N/A'}
-Abilities: STR ${critter.stats.str ?? '-'}, DEX ${critter.stats.dex ?? '-'}, CON ${critter.stats.con ?? '-'}, INT ${critter.stats.int ?? '-'}, WIS ${critter.stats.wis ?? '-'}, CHA ${critter.stats.cha ?? '-'}`
-    : 'N/A'
+    ? `AC: ${critter.stats.ac ?? "N/A"}, HP: ${critter.stats.hp ?? "N/A"}, Speed: ${critter.stats.speed || "N/A"}
+Abilities: STR ${critter.stats.str ?? "-"}, DEX ${critter.stats.dex ?? "-"}, CON ${critter.stats.con ?? "-"}, INT ${critter.stats.int ?? "-"}, WIS ${critter.stats.wis ?? "-"}, CHA ${critter.stats.cha ?? "-"}`
+    : "N/A"
 }
 
-${critter.special_abilities?.length ? `Special Abilities:\n${critter.special_abilities.map((a) => `- ${a.name}: ${a.description}`).join('\n')}` : ''}
+${critter.special_abilities?.length ? `Special Abilities:\n${critter.special_abilities.map((a) => `- ${a.name}: ${a.description}`).join("\n")}` : ""}
 
-${critter.uses?.length ? `Potential Uses:\n${critter.uses.map((u) => `- ${u}`).join('\n')}` : ''}
+${critter.uses?.length ? `Potential Uses:\n${critter.uses.map((u) => `- ${u}`).join("\n")}` : ""}
 
-${critter.training_difficulty ? `Training: ${critter.training_difficulty}` : ''}
-${critter.diet ? `Diet: ${critter.diet}` : ''}
-${critter.lifespan ? `Lifespan: ${critter.lifespan}` : ''}
+${critter.training_difficulty ? `Training: ${critter.training_difficulty}` : ""}
+${critter.diet ? `Diet: ${critter.diet}` : ""}
+${critter.lifespan ? `Lifespan: ${critter.lifespan}` : ""}
 
-${critter.interesting_facts?.length ? `Interesting Facts:\n${critter.interesting_facts.map((f) => `- ${f}`).join('\n')}` : ''}
+${critter.interesting_facts?.length ? `Interesting Facts:\n${critter.interesting_facts.map((f) => `- ${f}`).join("\n")}` : ""}
 
-${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
-    navigator.clipboard.writeText(text)
-  }
+${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ""}`;
+    navigator.clipboard.writeText(text);
+  };
 
   // AI Form content
   const aiFormContent = (
@@ -444,8 +488,8 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -515,7 +559,7 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         />
       </FormField>
     </>
-  )
+  );
 
   // Manual entry form content
   const manualFormContent = (
@@ -523,8 +567,8 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -533,17 +577,24 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., 'Glimmerwing', 'Forest Prowler'"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </FormField>
 
-      <FormField label="Species" description="Scientific or common species name">
+      <FormField
+        label="Species"
+        description="Scientific or common species name"
+      >
         <input
           type="text"
           value={manualData.species}
-          onChange={(e) => setManualData({ ...manualData, species: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, species: e.target.value })
+          }
           placeholder="e.g., 'Felis luminosa', 'Giant Beetle'"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -553,7 +604,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         <FormField label="Type">
           <select
             value={manualData.critter_type}
-            onChange={(e) => setManualData({ ...manualData, critter_type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, critter_type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {critterTypeOptions.map((opt) => (
@@ -567,7 +620,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         <FormField label="Size">
           <select
             value={manualData.size}
-            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, size: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {sizeOptions.map((opt) => (
@@ -583,7 +638,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         <FormField label="Temperament">
           <select
             value={manualData.temperament}
-            onChange={(e) => setManualData({ ...manualData, temperament: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, temperament: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {temperamentOptions.map((opt) => (
@@ -597,7 +654,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         <FormField label="Habitat">
           <select
             value={manualData.habitat}
-            onChange={(e) => setManualData({ ...manualData, habitat: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, habitat: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {habitatOptions.map((opt) => (
@@ -612,7 +671,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Physical appearance, coloring, distinguishing features..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={3}
@@ -622,7 +683,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
       <FormField label="Behavior">
         <textarea
           value={manualData.behavior}
-          onChange={(e) => setManualData({ ...manualData, behavior: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, behavior: e.target.value })
+          }
           placeholder="How it acts, hunting patterns, social structure..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={2}
@@ -636,7 +699,7 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
             <FormField label="AC">
               <input
                 type="number"
-                value={manualData.stats.ac ?? ''}
+                value={manualData.stats.ac ?? ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -653,7 +716,7 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
             <FormField label="HP">
               <input
                 type="number"
-                value={manualData.stats.hp ?? ''}
+                value={manualData.stats.hp ?? ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -686,14 +749,21 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           <AbilityScoresEditor
             values={manualData.stats}
             onChange={(stats) =>
-              setManualData({ ...manualData, stats: { ...manualData.stats, ...stats } })
+              setManualData({
+                ...manualData,
+                stats: { ...manualData.stats, ...stats },
+              })
             }
           />
         </div>
       </CollapsibleSection>
 
       {/* Special Abilities */}
-      <CollapsibleSection title="Special Abilities" icon="Sparkles" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Special Abilities"
+        icon="Sparkles"
+        defaultExpanded={false}
+      >
         <ObjectArrayEditor
           label=""
           values={manualData.special_abilities.map((a) => ({
@@ -717,7 +787,11 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
       </CollapsibleSection>
 
       {/* Uses */}
-      <CollapsibleSection title="Potential Uses" icon="Wrench" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Potential Uses"
+        icon="Wrench"
+        defaultExpanded={false}
+      >
         <ArrayFieldEditor
           label=""
           values={manualData.uses}
@@ -728,14 +802,21 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
       </CollapsibleSection>
 
       {/* Additional Details */}
-      <CollapsibleSection title="Additional Details" icon="FileText" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Additional Details"
+        icon="FileText"
+        defaultExpanded={false}
+      >
         <div className="space-y-4">
           <FormField label="Training Difficulty">
             <input
               type="text"
               value={manualData.training_difficulty}
               onChange={(e) =>
-                setManualData({ ...manualData, training_difficulty: e.target.value })
+                setManualData({
+                  ...manualData,
+                  training_difficulty: e.target.value,
+                })
               }
               placeholder="e.g., 'Easy', 'Moderate', 'Nearly Impossible'"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
@@ -746,7 +827,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
             <input
               type="text"
               value={manualData.diet}
-              onChange={(e) => setManualData({ ...manualData, diet: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, diet: e.target.value })
+              }
               placeholder="e.g., 'Carnivore', 'Omnivore', 'Magical energy'"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -756,7 +839,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
             <input
               type="text"
               value={manualData.lifespan}
-              onChange={(e) => setManualData({ ...manualData, lifespan: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, lifespan: e.target.value })
+              }
               placeholder="e.g., '5-10 years', 'Centuries', 'Unknown'"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -765,14 +850,21 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           <ArrayFieldEditor
             label="Interesting Facts"
             values={manualData.interesting_facts}
-            onChange={(facts) => setManualData({ ...manualData, interesting_facts: facts })}
+            onChange={(facts) =>
+              setManualData({ ...manualData, interesting_facts: facts })
+            }
             placeholder="Add a fact..."
           />
 
           <FormField label="Encounter Notes">
             <textarea
               value={manualData.encounter_notes}
-              onChange={(e) => setManualData({ ...manualData, encounter_notes: e.target.value })}
+              onChange={(e) =>
+                setManualData({
+                  ...manualData,
+                  encounter_notes: e.target.value,
+                })
+              }
               placeholder="DM notes for encounters..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -814,17 +906,21 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </button>
       )}
     </>
-  )
+  );
 
   const formContent = (
     <>
-      <EntryModeToggle mode={entryMode} onChange={setEntryMode} disabled={loading} />
-      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={setEntryMode}
+        disabled={loading}
+      />
+      {entryMode === "ai" ? aiFormContent : manualFormContent}
     </>
-  )
+  );
 
   // Manual mode: no preview needed, just show a simple message
-  const manualPreviewContent = <ManualEntryPreview entityType="critter" />
+  const manualPreviewContent = <ManualEntryPreview entityType="critter" />;
 
   // AI generated content - keep the existing display logic
   const aiGeneratedContent = critter ? (
@@ -836,7 +932,10 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         <h2 className="text-2xl font-bold text-primary">
           {critter.name}
           {critter.species && (
-            <span className="text-text-muted font-normal"> ({critter.species})</span>
+            <span className="text-text-muted font-normal">
+              {" "}
+              ({critter.species})
+            </span>
           )}
         </h2>
         <p className="text-sm text-text-muted capitalize">
@@ -867,7 +966,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
       )}
 
       {critter.stats &&
-        (critter.stats.ac !== null || critter.stats.hp !== null || critter.stats.speed) && (
+        (critter.stats.ac !== null ||
+          critter.stats.hp !== null ||
+          critter.stats.speed) && (
           <div>
             <h3 className="text-lg font-semibold text-text mb-3 flex items-center gap-2">
               <Icon name="Shield" className="w-5 h-5 text-primary" />
@@ -877,19 +978,25 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
               {critter.stats.ac !== null && (
                 <div className="bg-background p-3 rounded border border-border">
                   <p className="text-xs text-text-muted mb-1">Armor Class</p>
-                  <p className="text-xl font-bold text-primary">{critter.stats.ac}</p>
+                  <p className="text-xl font-bold text-primary">
+                    {critter.stats.ac}
+                  </p>
                 </div>
               )}
               {critter.stats.hp !== null && (
                 <div className="bg-background p-3 rounded border border-border">
                   <p className="text-xs text-text-muted mb-1">Hit Points</p>
-                  <p className="text-xl font-bold text-red-400">{critter.stats.hp}</p>
+                  <p className="text-xl font-bold text-red-400">
+                    {critter.stats.hp}
+                  </p>
                 </div>
               )}
               {critter.stats.speed && (
                 <div className="bg-background p-3 rounded border border-border">
                   <p className="text-xs text-text-muted mb-1">Speed</p>
-                  <p className="text-xl font-bold text-blue-400">{critter.stats.speed}</p>
+                  <p className="text-xl font-bold text-blue-400">
+                    {critter.stats.speed}
+                  </p>
                 </div>
               )}
             </div>
@@ -903,37 +1010,49 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
                 {critter.stats.str !== null && (
                   <div className="bg-background p-2 rounded border border-border text-center">
                     <p className="text-xs text-text-muted mb-1">STR</p>
-                    <p className="text-lg font-bold text-text">{critter.stats.str}</p>
+                    <p className="text-lg font-bold text-text">
+                      {critter.stats.str}
+                    </p>
                   </div>
                 )}
                 {critter.stats.dex !== null && (
                   <div className="bg-background p-2 rounded border border-border text-center">
                     <p className="text-xs text-text-muted mb-1">DEX</p>
-                    <p className="text-lg font-bold text-text">{critter.stats.dex}</p>
+                    <p className="text-lg font-bold text-text">
+                      {critter.stats.dex}
+                    </p>
                   </div>
                 )}
                 {critter.stats.con !== null && (
                   <div className="bg-background p-2 rounded border border-border text-center">
                     <p className="text-xs text-text-muted mb-1">CON</p>
-                    <p className="text-lg font-bold text-text">{critter.stats.con}</p>
+                    <p className="text-lg font-bold text-text">
+                      {critter.stats.con}
+                    </p>
                   </div>
                 )}
                 {critter.stats.int !== null && (
                   <div className="bg-background p-2 rounded border border-border text-center">
                     <p className="text-xs text-text-muted mb-1">INT</p>
-                    <p className="text-lg font-bold text-text">{critter.stats.int}</p>
+                    <p className="text-lg font-bold text-text">
+                      {critter.stats.int}
+                    </p>
                   </div>
                 )}
                 {critter.stats.wis !== null && (
                   <div className="bg-background p-2 rounded border border-border text-center">
                     <p className="text-xs text-text-muted mb-1">WIS</p>
-                    <p className="text-lg font-bold text-text">{critter.stats.wis}</p>
+                    <p className="text-lg font-bold text-text">
+                      {critter.stats.wis}
+                    </p>
                   </div>
                 )}
                 {critter.stats.cha !== null && (
                   <div className="bg-background p-2 rounded border border-border text-center">
                     <p className="text-xs text-text-muted mb-1">CHA</p>
-                    <p className="text-lg font-bold text-text">{critter.stats.cha}</p>
+                    <p className="text-lg font-bold text-text">
+                      {critter.stats.cha}
+                    </p>
                   </div>
                 )}
               </div>
@@ -949,9 +1068,16 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           </h3>
           <div className="space-y-3">
             {critter.special_abilities.map((ability, idx) => (
-              <div key={idx} className="bg-background p-4 rounded border border-primary/30">
-                <h4 className="font-medium text-primary mb-2">{ability.name}</h4>
-                {ability.description && <p className="text-text text-sm">{ability.description}</p>}
+              <div
+                key={idx}
+                className="bg-background p-4 rounded border border-primary/30"
+              >
+                <h4 className="font-medium text-primary mb-2">
+                  {ability.name}
+                </h4>
+                {ability.description && (
+                  <p className="text-text text-sm">{ability.description}</p>
+                )}
               </div>
             ))}
           </div>
@@ -967,7 +1093,10 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           <ul className="space-y-2">
             {critter.uses.map((use, idx) => (
               <li key={idx} className="flex items-start gap-2 text-text">
-                <Icon name="ChevronRight" className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <Icon
+                  name="ChevronRight"
+                  className="w-4 h-4 text-primary mt-0.5 flex-shrink-0"
+                />
                 <span>{use}</span>
               </li>
             ))}
@@ -1036,7 +1165,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </div>
       )}
 
-      {critter._raw && <RawDataViewer data={critter._raw} defaultExpanded={showRawResponse} />}
+      {critter._raw && (
+        <RawDataViewer data={critter._raw} defaultExpanded={showRawResponse} />
+      )}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -1045,9 +1176,10 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         isSaved={isSaved}
       />
     </div>
-  ) : null
+  ) : null;
 
-  const generatedContent = entryMode === 'manual' ? manualPreviewContent : aiGeneratedContent
+  const generatedContent =
+    entryMode === "manual" ? manualPreviewContent : aiGeneratedContent;
 
   return (
     <>
@@ -1055,15 +1187,15 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         title="Critter Generator"
         description="Generate wildlife, companions, and creatures for your campaign"
         icon="PawPrint"
-        formTitle={entryMode === 'ai' ? 'Critter Details' : 'Create Critter'}
-        formIcon={entryMode === 'ai' ? 'Settings' : 'Pencil'}
-        resultsTitle={entryMode === 'ai' ? 'Generated Critter' : 'Preview'}
+        formTitle={entryMode === "ai" ? "Critter Details" : "Create Critter"}
+        formIcon={entryMode === "ai" ? "Settings" : "Pencil"}
+        resultsTitle={entryMode === "ai" ? "Generated Critter" : "Preview"}
         formContent={formContent}
         generatedContent={generatedContent}
         isGenerating={loading}
         onGenerate={generateCritter}
         generateButtonText="Generate Critter"
-        hideGenerateButton={entryMode === 'manual'}
+        hideGenerateButton={entryMode === "manual"}
         error={error || undefined}
       />
 
@@ -1071,9 +1203,9 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={saveCritter}
-        entityName={critter?.name || 'Critter'}
+        entityName={critter?.name || "Critter"}
         campaignId={campaignId}
       />
     </>
-  )
+  );
 }

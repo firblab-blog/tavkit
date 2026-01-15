@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom'
-import { useCampaignStore, Campaign } from '../store/campaignStore'
-import { useContextStore, ContextType } from '../store/contextStore'
-import { storeEvents, CAMPAIGN_CHANGED } from '../lib/storeEvents'
-import { logger } from '../utils/logger'
+import { useNavigate } from "react-router-dom";
+import { useCampaignStore, Campaign } from "../store/campaignStore";
+import { useContextStore, ContextType } from "../store/contextStore";
+import { storeEvents, CAMPAIGN_CHANGED } from "../lib/storeEvents";
+import { logger } from "../utils/logger";
 
 /**
  * useCampaignNavigation - Hook for switching campaigns with proper state management.
@@ -19,9 +19,10 @@ import { logger } from '../utils/logger'
  * contextStore is the canonical source of truth, but campaignStore is kept in sync.
  */
 export function useCampaignNavigation() {
-  const navigate = useNavigate()
-  const { campaigns, setActiveCampaignSync: setCampaignStoreActiveCampaign } = useCampaignStore()
-  const { updateContextSync, persistContext, userContext } = useContextStore()
+  const navigate = useNavigate();
+  const { campaigns, setActiveCampaignSync: setCampaignStoreActiveCampaign } =
+    useCampaignStore();
+  const { updateContextSync, persistContext, userContext } = useContextStore();
 
   /**
    * Determines if a campaign is a player campaign based on role and membership_type.
@@ -29,11 +30,11 @@ export function useCampaignNavigation() {
    * Otherwise it's a player campaign.
    */
   const isPlayerCampaign = (campaign: Campaign): boolean => {
-    if (campaign.role === 'owner' || campaign.membership_type === 'owner') {
-      return false
+    if (campaign.role === "owner" || campaign.membership_type === "owner") {
+      return false;
     }
-    return true
-  }
+    return true;
+  };
 
   /**
    * Activates a campaign and navigates to the appropriate dashboard.
@@ -49,35 +50,37 @@ export function useCampaignNavigation() {
    */
   const activateCampaignWithNavigation = (
     campaignId: string,
-    options?: { skipNavigation?: boolean }
+    options?: { skipNavigation?: boolean },
   ) => {
-    const campaign = campaigns.find((c) => c.id === campaignId)
+    const campaign = campaigns.find((c) => c.id === campaignId);
     if (!campaign) {
-      logger.error('[useCampaignNavigation] Campaign not found:', campaignId)
-      return
+      logger.error("[useCampaignNavigation] Campaign not found:", campaignId);
+      return;
     }
 
     // Determine if it's a player or GM campaign
-    const isPlayer = isPlayerCampaign(campaign)
-    const newContextType: ContextType = isPlayer ? 'player_campaign' : 'gm_campaign'
+    const isPlayer = isPlayerCampaign(campaign);
+    const newContextType: ContextType = isPlayer
+      ? "player_campaign"
+      : "gm_campaign";
 
     // Get current state for comparison and logging
-    const currentCampaignId = userContext?.last_campaign_id ?? null
-    const currentContextType = userContext?.last_context_type ?? null
+    const currentCampaignId = userContext?.last_campaign_id ?? null;
+    const currentContextType = userContext?.last_context_type ?? null;
 
     // Check if anything is actually changing
-    const campaignChanged = campaignId !== currentCampaignId
-    const contextChanged = newContextType !== currentContextType
+    const campaignChanged = campaignId !== currentCampaignId;
+    const contextChanged = newContextType !== currentContextType;
 
     if (!campaignChanged && !contextChanged) {
-      logger.debug('[useCampaignNavigation] No change needed, skipping')
-      return
+      logger.debug("[useCampaignNavigation] No change needed, skipping");
+      return;
     }
 
-    logger.debug('[useCampaignNavigation] Switching campaign', {
+    logger.debug("[useCampaignNavigation] Switching campaign", {
       from: { campaignId: currentCampaignId, contextType: currentContextType },
       to: { campaignId, contextType: newContextType },
-    })
+    });
 
     // 1. Update BOTH stores synchronously
     // contextStore is the source of truth, but we also update campaignStore
@@ -86,8 +89,8 @@ export function useCampaignNavigation() {
       last_context_type: newContextType,
       last_campaign_id: campaignId,
       last_character_id: null, // Clear character when switching campaigns
-    })
-    setCampaignStoreActiveCampaign(campaignId)
+    });
+    setCampaignStoreActiveCampaign(campaignId);
 
     // 2. Emit CAMPAIGN_CHANGED event for all dependent stores to invalidate caches
     // This is critical - all stores (characterStore, playerJournalStore, etc.) listen for this
@@ -96,11 +99,11 @@ export function useCampaignNavigation() {
       previousCampaignId: currentCampaignId,
       contextType: newContextType,
       previousContextType: currentContextType,
-    })
+    });
 
     // 3. Navigate to the correct dashboard (if not skipped)
     if (!options?.skipNavigation) {
-      navigate(isPlayer ? '/dashboard/player' : '/dashboard/gm')
+      navigate(isPlayer ? "/dashboard/player" : "/dashboard/gm");
     }
 
     // 4. Persist to backend in background (fire-and-forget, with error logging)
@@ -109,56 +112,56 @@ export function useCampaignNavigation() {
       last_campaign_id: campaignId,
       last_character_id: null,
     }).catch((error) => {
-      logger.error('[useCampaignNavigation] Failed to persist context:', error)
-    })
-  }
+      logger.error("[useCampaignNavigation] Failed to persist context:", error);
+    });
+  };
 
   /**
    * Switches to library mode (no campaign).
    */
   const switchToLibrary = () => {
-    const currentCampaignId = userContext?.last_campaign_id ?? null
-    const currentContextType = userContext?.last_context_type ?? null
+    const currentCampaignId = userContext?.last_campaign_id ?? null;
+    const currentContextType = userContext?.last_context_type ?? null;
 
-    if (currentContextType === 'library' && !currentCampaignId) {
-      logger.debug('[useCampaignNavigation] Already in library mode, skipping')
-      return
+    if (currentContextType === "library" && !currentCampaignId) {
+      logger.debug("[useCampaignNavigation] Already in library mode, skipping");
+      return;
     }
 
-    logger.debug('[useCampaignNavigation] Switching to library')
+    logger.debug("[useCampaignNavigation] Switching to library");
 
     // 1. Update both stores
     updateContextSync({
-      last_context_type: 'library',
+      last_context_type: "library",
       last_campaign_id: null,
-    })
-    setCampaignStoreActiveCampaign(null)
+    });
+    setCampaignStoreActiveCampaign(null);
 
     // 2. Emit event for cache invalidation
     storeEvents.emit(CAMPAIGN_CHANGED, {
       campaignId: null,
       previousCampaignId: currentCampaignId,
-      contextType: 'library',
+      contextType: "library",
       previousContextType: currentContextType,
-    })
+    });
 
     // 3. Navigate
-    navigate('/dashboard/sandbox')
+    navigate("/dashboard/sandbox");
 
     // 4. Persist in background
     persistContext({
-      last_context_type: 'library',
+      last_context_type: "library",
       last_campaign_id: null,
     }).catch((error) => {
-      logger.error('[useCampaignNavigation] Failed to persist context:', error)
-    })
-  }
+      logger.error("[useCampaignNavigation] Failed to persist context:", error);
+    });
+  };
 
   return {
     activateCampaignWithNavigation,
     switchToLibrary,
     isPlayerCampaign,
-  }
+  };
 }
 
-export default useCampaignNavigation
+export default useCampaignNavigation;

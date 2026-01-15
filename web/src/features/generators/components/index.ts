@@ -1,11 +1,11 @@
 // Layout
-export { GeneratorLayout } from './GeneratorLayout'
+export { GeneratorLayout } from "./GeneratorLayout";
 
 // Form components
-export * from './GeneratorForm'
+export * from "./GeneratorForm";
 
 // Result components
-export * from './GeneratorResult'
+export * from "./GeneratorResult";
 
 // Field editors
-export * from './Fields'
+export * from "./Fields";

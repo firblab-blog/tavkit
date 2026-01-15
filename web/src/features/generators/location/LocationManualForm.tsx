@@ -1,21 +1,29 @@
 // Manual Entry Form for Locations
 
-import Icon from '@/components/common/Icon'
-import { FormField } from '@/components/ui/FormField'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import { ArrayFieldEditor } from '../components/Fields'
-import { locationTypeOptions, locationSizeOptions, type ManualLocationData } from '../schemas/location'
+import Icon from "@/components/common/Icon";
+import { FormField } from "@/components/ui/FormField";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import { ArrayFieldEditor } from "../components/Fields";
+import {
+  locationTypeOptions,
+  locationSizeOptions,
+  type ManualLocationData,
+} from "../schemas/location";
 
 interface LocationManualFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  manualData: ManualLocationData
-  setManualData: (data: ManualLocationData | ((prev: ManualLocationData) => ManualLocationData)) => void
-  onSave: () => void
-  saving: boolean
-  saved: boolean
-  error: string | null
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  manualData: ManualLocationData;
+  setManualData: (
+    data:
+      | ManualLocationData
+      | ((prev: ManualLocationData) => ManualLocationData),
+  ) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  error: string | null;
 }
 
 export function LocationManualForm({
@@ -30,14 +38,19 @@ export function LocationManualForm({
 }: LocationManualFormProps) {
   return (
     <>
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       {/* Basic Information */}
       <FormField label="Location Name" required>
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., The Sunken Crypt, Willowbrook Village"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -47,7 +60,9 @@ export function LocationManualForm({
         <FormField label="Location Type">
           <select
             value={manualData.location_type}
-            onChange={(e) => setManualData({ ...manualData, location_type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, location_type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {locationTypeOptions.map((opt) => (
@@ -61,7 +76,9 @@ export function LocationManualForm({
         <FormField label="Size">
           <select
             value={manualData.size}
-            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, size: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {locationSizeOptions.map((opt) => (
@@ -76,7 +93,9 @@ export function LocationManualForm({
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Describe the location..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={3}
@@ -87,7 +106,9 @@ export function LocationManualForm({
         <input
           type="text"
           value={manualData.atmosphere}
-          onChange={(e) => setManualData({ ...manualData, atmosphere: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, atmosphere: e.target.value })
+          }
           placeholder="e.g., Dark and foreboding, Peaceful and serene"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -98,7 +119,9 @@ export function LocationManualForm({
         <ArrayFieldEditor
           label="Features"
           values={manualData.notable_features}
-          onChange={(notable_features) => setManualData({ ...manualData, notable_features })}
+          onChange={(notable_features) =>
+            setManualData({ ...manualData, notable_features })
+          }
           placeholder="Add a notable feature..."
         />
       </CollapsibleSection>
@@ -108,7 +131,9 @@ export function LocationManualForm({
         <ArrayFieldEditor
           label="Inhabitants"
           values={manualData.inhabitants}
-          onChange={(inhabitants) => setManualData({ ...manualData, inhabitants })}
+          onChange={(inhabitants) =>
+            setManualData({ ...manualData, inhabitants })
+          }
           placeholder="Add an inhabitant or NPC..."
         />
       </CollapsibleSection>
@@ -144,11 +169,16 @@ export function LocationManualForm({
       </CollapsibleSection>
 
       {/* Connections */}
-      <CollapsibleSection title="Connections to Other Locations" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Connections to Other Locations"
+        defaultExpanded={false}
+      >
         <ArrayFieldEditor
           label="Connections"
           values={manualData.connections}
-          onChange={(connections) => setManualData({ ...manualData, connections })}
+          onChange={(connections) =>
+            setManualData({ ...manualData, connections })
+          }
           placeholder="Add a connection..."
         />
       </CollapsibleSection>
@@ -158,7 +188,9 @@ export function LocationManualForm({
         <FormField label="History">
           <textarea
             value={manualData.history}
-            onChange={(e) => setManualData({ ...manualData, history: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, history: e.target.value })
+            }
             placeholder="Historical background of this location..."
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             rows={3}
@@ -199,5 +231,5 @@ export function LocationManualForm({
         </div>
       )}
     </>
-  )
+  );
 }

@@ -1,19 +1,19 @@
 // Quest Result Renderer
 // Displays generated Quest data in a structured format
 
-import Icon from '@/components/common/Icon'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { RawDataViewer, ParseWarning } from '../components'
-import type { GeneratedQuestData } from '../normalizers/quest'
+import Icon from "@/components/common/Icon";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { RawDataViewer, ParseWarning } from "../components";
+import type { GeneratedQuestData } from "../normalizers/quest";
 
 interface QuestRendererProps {
-  quest: GeneratedQuestData
-  showRawResponse: boolean
-  isSaved: boolean
-  onSave: () => void
-  onCopy: () => void
-  formDifficulty?: string
-  formPartyLevel?: number
+  quest: GeneratedQuestData;
+  showRawResponse: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onCopy: () => void;
+  formDifficulty?: string;
+  formPartyLevel?: number;
 }
 
 export function QuestRenderer({
@@ -22,7 +22,7 @@ export function QuestRenderer({
   isSaved,
   onSave,
   onCopy,
-  formDifficulty = 'medium',
+  formDifficulty = "medium",
   formPartyLevel = 5,
 }: QuestRendererProps) {
   return (
@@ -44,7 +44,9 @@ export function QuestRenderer({
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-background p-3 rounded border border-border">
           <p className="text-xs text-text-muted mb-1">Type</p>
-          <p className="text-lg font-bold text-primary capitalize">{quest.type || 'Main'}</p>
+          <p className="text-lg font-bold text-primary capitalize">
+            {quest.type || "Main"}
+          </p>
         </div>
         <div className="bg-background p-3 rounded border border-border">
           <p className="text-xs text-text-muted mb-1">Difficulty</p>
@@ -54,7 +56,9 @@ export function QuestRenderer({
         </div>
         <div className="bg-background p-3 rounded border border-border">
           <p className="text-xs text-text-muted mb-1">Party Level</p>
-          <p className="text-lg font-bold text-amber-400">{quest.party_level || formPartyLevel}</p>
+          <p className="text-lg font-bold text-amber-400">
+            {quest.party_level || formPartyLevel}
+          </p>
         </div>
       </div>
 
@@ -182,7 +186,9 @@ export function QuestRenderer({
       )}
 
       {/* Raw/unexpected fields */}
-      {quest._raw && <RawDataViewer data={quest._raw} defaultExpanded={showRawResponse} />}
+      {quest._raw && (
+        <RawDataViewer data={quest._raw} defaultExpanded={showRawResponse} />
+      )}
 
       <ActionsBar
         onCopy={onCopy}
@@ -191,42 +197,42 @@ export function QuestRenderer({
         isSaved={isSaved}
       />
     </div>
-  )
+  );
 }
 
 // Helper to format Quest for clipboard
 export function formatQuestForClipboard(quest: GeneratedQuestData): string {
-  let text = `${quest.title}\n${quest.type}`
-  if (quest.category) text += ` • ${quest.category}`
-  if (quest.party_level > 0) text += ` • Level ${quest.party_level}`
+  let text = `${quest.title}\n${quest.type}`;
+  if (quest.category) text += ` • ${quest.category}`;
+  if (quest.party_level > 0) text += ` • Level ${quest.party_level}`;
 
   if (quest.description) {
-    text += `\n\nDescription:\n${quest.description}`
+    text += `\n\nDescription:\n${quest.description}`;
   }
 
   if (quest.objectives.length > 0) {
-    text += `\n\nObjectives:\n${quest.objectives.map((o, i) => `${i + 1}. ${o}`).join('\n')}`
+    text += `\n\nObjectives:\n${quest.objectives.map((o, i) => `${i + 1}. ${o}`).join("\n")}`;
   }
 
   if (quest.rewards.length > 0) {
-    text += `\n\nRewards:\n${quest.rewards.map((r) => `- ${r}`).join('\n')}`
+    text += `\n\nRewards:\n${quest.rewards.map((r) => `- ${r}`).join("\n")}`;
   }
 
   if (quest.complications.length > 0) {
-    text += `\n\nComplications:\n${quest.complications.map((c) => `- ${c}`).join('\n')}`
+    text += `\n\nComplications:\n${quest.complications.map((c) => `- ${c}`).join("\n")}`;
   }
 
   if (quest.npcs_involved.length > 0) {
-    text += `\n\nNPCs Involved:\n${quest.npcs_involved.map((n) => `- ${n}`).join('\n')}`
+    text += `\n\nNPCs Involved:\n${quest.npcs_involved.map((n) => `- ${n}`).join("\n")}`;
   }
 
   if (quest.locations_involved.length > 0) {
-    text += `\n\nLocations:\n${quest.locations_involved.map((l) => `- ${l}`).join('\n')}`
+    text += `\n\nLocations:\n${quest.locations_involved.map((l) => `- ${l}`).join("\n")}`;
   }
 
   if (quest.time_limit) {
-    text += `\n\nTime Limit: ${quest.time_limit}`
+    text += `\n\nTime Limit: ${quest.time_limit}`;
   }
 
-  return text
+  return text;
 }

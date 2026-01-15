@@ -1,11 +1,11 @@
-import Icon from '../../common/Icon'
-import { JournalEntry } from '../../../store/playerJournalStore'
+import Icon from "../../common/Icon";
+import { JournalEntry } from "../../../store/playerJournalStore";
 
 interface JournalEntryModalProps {
-  entry: JournalEntry
-  onClose: () => void
-  onEdit: () => void
-  onDelete: () => void
+  entry: JournalEntry;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 export default function JournalEntryModal({
@@ -15,36 +15,43 @@ export default function JournalEntryModal({
   onDelete,
 }: JournalEntryModalProps) {
   const formatDate = (dateString?: string) => {
-    if (!dateString) return null
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   const tagCount =
     (entry.tagged_npcs?.length || 0) +
     (entry.tagged_locations?.length || 0) +
-    (entry.tagged_quests?.length || 0)
+    (entry.tagged_quests?.length || 0);
 
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 p-4 overflow-y-auto"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="bg-background-panel border border-border rounded-xl w-full max-w-3xl my-8 relative">
         {/* Modal Header */}
         <div className="sticky top-0 bg-background-panel border-b border-border rounded-t-xl px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <Icon name="BookOpen" className="w-6 h-6 text-purple-400 flex-shrink-0" />
+            <Icon
+              name="BookOpen"
+              className="w-6 h-6 text-purple-400 flex-shrink-0"
+            />
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-bold text-text truncate">{entry.title}</h2>
+              <h2 className="text-xl font-bold text-text truncate">
+                {entry.title}
+              </h2>
               {entry.session_date && (
-                <p className="text-sm text-text-muted">{formatDate(entry.session_date)}</p>
+                <p className="text-sm text-text-muted">
+                  {formatDate(entry.session_date)}
+                </p>
               )}
             </div>
           </div>
@@ -97,14 +104,18 @@ export default function JournalEntryModal({
           {/* Content */}
           {entry.content && (
             <div className="prose prose-invert max-w-none">
-              <div className="text-text whitespace-pre-wrap leading-relaxed">{entry.content}</div>
+              <div className="text-text whitespace-pre-wrap leading-relaxed">
+                {entry.content}
+              </div>
             </div>
           )}
 
           {/* Tags */}
           {tagCount > 0 && (
             <div className="space-y-3 pt-4 border-t border-border">
-              <h3 className="text-sm font-medium text-text-muted uppercase">Tags</h3>
+              <h3 className="text-sm font-medium text-text-muted uppercase">
+                Tags
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {entry.tagged_npcs?.map((npc, i) => (
                   <span
@@ -112,7 +123,7 @@ export default function JournalEntryModal({
                     className="px-3 py-1 bg-blue-500/10 text-blue-300 text-sm rounded-lg flex items-center gap-1.5"
                   >
                     <Icon name="User" className="w-3.5 h-3.5" />
-                    {typeof npc === 'string' ? npc : npc.name || 'Unknown'}
+                    {typeof npc === "string" ? npc : npc.name || "Unknown"}
                   </span>
                 ))}
                 {entry.tagged_locations?.map((location, i) => (
@@ -121,7 +132,9 @@ export default function JournalEntryModal({
                     className="px-3 py-1 bg-emerald-500/10 text-emerald-300 text-sm rounded-lg flex items-center gap-1.5"
                   >
                     <Icon name="MapPin" className="w-3.5 h-3.5" />
-                    {typeof location === 'string' ? location : location.name || 'Unknown'}
+                    {typeof location === "string"
+                      ? location
+                      : location.name || "Unknown"}
                   </span>
                 ))}
                 {entry.tagged_quests?.map((quest, i) => (
@@ -130,9 +143,9 @@ export default function JournalEntryModal({
                     className="px-3 py-1 bg-amber-500/10 text-amber-300 text-sm rounded-lg flex items-center gap-1.5"
                   >
                     <Icon name="Scroll" className="w-3.5 h-3.5" />
-                    {typeof quest === 'string'
+                    {typeof quest === "string"
                       ? quest
-                      : (quest as any).title || quest.name || 'Unknown'}
+                      : (quest as any).title || quest.name || "Unknown"}
                   </span>
                 ))}
               </div>
@@ -141,5 +154,5 @@ export default function JournalEntryModal({
         </div>
       </div>
     </div>
-  )
+  );
 }

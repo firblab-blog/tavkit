@@ -1,16 +1,16 @@
-import { useState } from 'react'
-import Icon from '../common/Icon'
-import { TavernTab } from './TavernSession'
+import { useState } from "react";
+import Icon from "../common/Icon";
+import { TavernTab } from "./TavernSession";
 
 interface TabManagerProps {
-  tabs: TavernTab[]
+  tabs: TavernTab[];
   onAddTab: (data: {
-    character_name: string
-    items_ordered: { name: string; price: string }[]
-    total_cost: string
-  }) => void
-  onUpdateTab: (tabId: string, updates: Partial<TavernTab>) => void
-  disabled?: boolean
+    character_name: string;
+    items_ordered: { name: string; price: string }[];
+    total_cost: string;
+  }) => void;
+  onUpdateTab: (tabId: string, updates: Partial<TavernTab>) => void;
+  disabled?: boolean;
 }
 
 export default function TabManager({
@@ -19,60 +19,68 @@ export default function TabManager({
   onUpdateTab,
   disabled = false,
 }: TabManagerProps) {
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [characterName, setCharacterName] = useState('')
-  const [items, setItems] = useState<{ name: string; price: string }[]>([{ name: '', price: '' }])
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [characterName, setCharacterName] = useState("");
+  const [items, setItems] = useState<{ name: string; price: string }[]>([
+    { name: "", price: "" },
+  ]);
 
   const handleAddItem = () => {
-    setItems([...items, { name: '', price: '' }])
-  }
+    setItems([...items, { name: "", price: "" }]);
+  };
 
   const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index))
-  }
+    setItems(items.filter((_, i) => i !== index));
+  };
 
-  const handleItemChange = (index: number, field: 'name' | 'price', value: string) => {
-    const newItems = [...items]
-    newItems[index][field] = value
-    setItems(newItems)
-  }
+  const handleItemChange = (
+    index: number,
+    field: "name" | "price",
+    value: string,
+  ) => {
+    const newItems = [...items];
+    newItems[index][field] = value;
+    setItems(newItems);
+  };
 
   const calculateTotal = () => {
-    let total = 0
+    let total = 0;
     for (const item of items) {
-      const price = parseFloat(item.price.replace(/[^\d.]/g, ''))
+      const price = parseFloat(item.price.replace(/[^\d.]/g, ""));
       if (!isNaN(price)) {
-        total += price
+        total += price;
       }
     }
-    return total.toFixed(2)
-  }
+    return total.toFixed(2);
+  };
 
   const handleAddTab = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!characterName.trim()) return
+    e.preventDefault();
+    if (!characterName.trim()) return;
 
-    const validItems = items.filter((item) => item.name.trim() && item.price.trim())
-    if (validItems.length === 0) return
+    const validItems = items.filter(
+      (item) => item.name.trim() && item.price.trim(),
+    );
+    if (validItems.length === 0) return;
 
     onAddTab({
       character_name: characterName.trim(),
       items_ordered: validItems,
       total_cost: `${calculateTotal()} gp`,
-    })
+    });
 
-    setCharacterName('')
-    setItems([{ name: '', price: '' }])
-    setShowAddForm(false)
-  }
+    setCharacterName("");
+    setItems([{ name: "", price: "" }]);
+    setShowAddForm(false);
+  };
 
-  const unpaidTabs = tabs.filter((t) => !t.paid)
-  const paidTabs = tabs.filter((t) => t.paid)
+  const unpaidTabs = tabs.filter((t) => !t.paid);
+  const paidTabs = tabs.filter((t) => t.paid);
 
   const totalUnpaid = unpaidTabs.reduce((acc, tab) => {
-    const cost = parseFloat(tab.total_cost.replace(/[^\d.]/g, ''))
-    return acc + (isNaN(cost) ? 0 : cost)
-  }, 0)
+    const cost = parseFloat(tab.total_cost.replace(/[^\d.]/g, ""));
+    return acc + (isNaN(cost) ? 0 : cost);
+  }, 0);
 
   return (
     <div className="bg-background-panel border border-border rounded-xl overflow-hidden">
@@ -85,8 +93,10 @@ export default function TabManager({
           </h3>
           {totalUnpaid > 0 && (
             <p className="text-xs text-text-muted mt-0.5">
-              Outstanding:{' '}
-              <span className="text-primary font-medium">{totalUnpaid.toFixed(2)} gp</span>
+              Outstanding:{" "}
+              <span className="text-primary font-medium">
+                {totalUnpaid.toFixed(2)} gp
+              </span>
             </p>
           )}
         </div>
@@ -95,14 +105,17 @@ export default function TabManager({
             onClick={() => setShowAddForm(!showAddForm)}
             className="p-1.5 hover:bg-background rounded-lg transition-colors text-text-muted hover:text-primary"
           >
-            <Icon name={showAddForm ? 'X' : 'Plus'} className="w-4 h-4" />
+            <Icon name={showAddForm ? "X" : "Plus"} className="w-4 h-4" />
           </button>
         )}
       </div>
 
       {/* Add Tab Form */}
       {showAddForm && !disabled && (
-        <form onSubmit={handleAddTab} className="p-4 border-b border-border bg-background/50">
+        <form
+          onSubmit={handleAddTab}
+          className="p-4 border-b border-border bg-background/50"
+        >
           <div className="space-y-3">
             <input
               type="text"
@@ -114,20 +127,26 @@ export default function TabManager({
             />
 
             <div className="space-y-2">
-              <label className="block text-xs text-text-muted">Items Ordered</label>
+              <label className="block text-xs text-text-muted">
+                Items Ordered
+              </label>
               {items.map((item, index) => (
                 <div key={index} className="flex gap-2">
                   <input
                     type="text"
                     value={item.name}
-                    onChange={(e) => handleItemChange(index, 'name', e.target.value)}
+                    onChange={(e) =>
+                      handleItemChange(index, "name", e.target.value)
+                    }
                     placeholder="Item name..."
                     className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-text-muted focus:border-primary focus:outline-none"
                   />
                   <input
                     type="text"
                     value={item.price}
-                    onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                    onChange={(e) =>
+                      handleItemChange(index, "price", e.target.value)
+                    }
                     placeholder="Price"
                     className="w-20 px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-text-muted text-center focus:border-primary focus:outline-none"
                   />
@@ -160,7 +179,8 @@ export default function TabManager({
             <button
               type="submit"
               disabled={
-                !characterName.trim() || items.filter((i) => i.name && i.price).length === 0
+                !characterName.trim() ||
+                items.filter((i) => i.name && i.price).length === 0
               }
               className="w-full px-3 py-2 bg-primary hover:bg-primary/90 text-background font-medium rounded-lg transition-colors disabled:opacity-50"
             >
@@ -215,7 +235,7 @@ export default function TabManager({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function TabItem({
@@ -223,16 +243,16 @@ function TabItem({
   onUpdate,
   disabled,
 }: {
-  tab: TavernTab
-  onUpdate: (updates: Partial<TavernTab>) => void
-  disabled?: boolean
+  tab: TavernTab;
+  onUpdate: (updates: Partial<TavernTab>) => void;
+  disabled?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const items = Array.isArray(tab.items_ordered) ? tab.items_ordered : []
+  const items = Array.isArray(tab.items_ordered) ? tab.items_ordered : [];
 
   return (
-    <div className={`p-4 ${tab.paid ? 'bg-emerald-500/5' : ''}`}>
+    <div className={`p-4 ${tab.paid ? "bg-emerald-500/5" : ""}`}>
       <div className="flex items-center gap-3">
         {/* Paid Toggle */}
         <button
@@ -240,10 +260,10 @@ function TabItem({
           disabled={disabled}
           className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
             tab.paid
-              ? 'bg-emerald-500 border-emerald-500'
-              : 'border-border hover:border-emerald-500/50'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          title={tab.paid ? 'Mark as unpaid' : 'Mark as paid'}
+              ? "bg-emerald-500 border-emerald-500"
+              : "border-border hover:border-emerald-500/50"
+          } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+          title={tab.paid ? "Mark as unpaid" : "Mark as paid"}
         >
           {tab.paid && <Icon name="Check" className="w-3 h-3 text-white" />}
         </button>
@@ -252,12 +272,14 @@ function TabItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <span className="font-medium text-text">{tab.character_name}</span>
-            <span className={`font-bold ${tab.paid ? 'text-emerald-400' : 'text-primary'}`}>
+            <span
+              className={`font-bold ${tab.paid ? "text-emerald-400" : "text-primary"}`}
+            >
               {tab.total_cost}
             </span>
           </div>
           <p className="text-xs text-text-muted mt-0.5">
-            {items.length} item{items.length !== 1 ? 's' : ''}
+            {items.length} item{items.length !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -266,7 +288,10 @@ function TabItem({
           onClick={() => setIsExpanded(!isExpanded)}
           className="p-1 hover:bg-background rounded transition-colors text-text-muted"
         >
-          <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} className="w-4 h-4" />
+          <Icon
+            name={isExpanded ? "ChevronUp" : "ChevronDown"}
+            className="w-4 h-4"
+          />
         </button>
       </div>
 
@@ -275,7 +300,10 @@ function TabItem({
         <div className="mt-3 pl-9">
           <div className="bg-background rounded-lg p-3 space-y-1">
             {items.map((item, index) => (
-              <div key={index} className="flex items-center justify-between text-sm">
+              <div
+                key={index}
+                className="flex items-center justify-between text-sm"
+              >
                 <span className="text-text-muted">{item.name}</span>
                 <span className="text-text">{item.price}</span>
               </div>
@@ -285,9 +313,11 @@ function TabItem({
               <span className="text-text">{tab.total_cost}</span>
             </div>
           </div>
-          {tab.notes && <p className="text-xs text-text-muted mt-2 italic">{tab.notes}</p>}
+          {tab.notes && (
+            <p className="text-xs text-text-muted mt-2 italic">{tab.notes}</p>
+          )}
         </div>
       )}
     </div>
-  )
+  );
 }

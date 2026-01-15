@@ -1,6 +1,6 @@
 // Main content detail component - routes to type-specific renderers
 
-import { ContentDetailLayout, type ContentType } from './ContentDetailLayout'
+import { ContentDetailLayout, type ContentType } from "./ContentDetailLayout";
 import {
   NPCDetail,
   MonsterDetail,
@@ -15,16 +15,19 @@ import {
   TrapDetail,
   CritterDetail,
   ChaseDetail,
-} from './types'
+} from "./types";
 
 interface ContentDetailProps {
-  content: any
-  type: ContentType
-  onClose: () => void
+  content: any;
+  type: ContentType;
+  onClose: () => void;
 }
 
 // Map content types to their detail components
-const ContentRenderers: Record<ContentType, React.ComponentType<{ [key: string]: any }>> = {
+const ContentRenderers: Record<
+  ContentType,
+  React.ComponentType<{ [key: string]: any }>
+> = {
   npcs: ({ npc }) => <NPCDetail npc={npc} />,
   monsters: ({ monster }) => <MonsterDetail monster={monster} />,
   encounters: ({ encounter }) => <EncounterDetail encounter={encounter} />,
@@ -38,28 +41,28 @@ const ContentRenderers: Record<ContentType, React.ComponentType<{ [key: string]:
   traps: ({ trap }) => <TrapDetail trap={trap} />,
   critters: ({ critter }) => <CritterDetail critter={critter} />,
   chases: ({ chase }) => <ChaseDetail chase={chase} />,
-}
+};
 
 // Map content types to the prop name used by each renderer
 const contentPropNames: Record<ContentType, string> = {
-  npcs: 'npc',
-  monsters: 'monster',
-  encounters: 'encounter',
-  dialogues: 'dialogue',
-  locations: 'location',
-  quests: 'quest',
-  items: 'item',
-  rumors: 'rumor',
-  taverns: 'tavern',
-  merchants: 'merchant',
-  traps: 'trap',
-  critters: 'critter',
-  chases: 'chase',
-}
+  npcs: "npc",
+  monsters: "monster",
+  encounters: "encounter",
+  dialogues: "dialogue",
+  locations: "location",
+  quests: "quest",
+  items: "item",
+  rumors: "rumor",
+  taverns: "tavern",
+  merchants: "merchant",
+  traps: "trap",
+  critters: "critter",
+  chases: "chase",
+};
 
 export function ContentDetail({ content, type, onClose }: ContentDetailProps) {
-  const Renderer = ContentRenderers[type]
-  const propName = contentPropNames[type]
+  const Renderer = ContentRenderers[type];
+  const propName = contentPropNames[type];
 
   return (
     <ContentDetailLayout
@@ -70,8 +73,8 @@ export function ContentDetail({ content, type, onClose }: ContentDetailProps) {
     >
       <Renderer {...{ [propName]: content }} />
     </ContentDetailLayout>
-  )
+  );
 }
 
-export { ContentDetailLayout, type ContentType } from './ContentDetailLayout'
-export default ContentDetail
+export { ContentDetailLayout, type ContentType } from "./ContentDetailLayout";
+export default ContentDetail;

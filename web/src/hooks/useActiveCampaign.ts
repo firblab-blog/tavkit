@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
-import { useContextStore } from '../store/contextStore'
-import { useCampaignStore } from '../store/campaignStore'
+import { useMemo } from "react";
+import { useContextStore } from "../store/contextStore";
+import { useCampaignStore } from "../store/campaignStore";
 
 /**
  * useActiveCampaign - Single source of truth for the active campaign.
@@ -20,23 +20,23 @@ import { useCampaignStore } from '../store/campaignStore'
  *   - isLibraryContext: Whether the current context is Library/Sandbox mode
  */
 export function useActiveCampaign() {
-  const { userContext } = useContextStore()
-  const { campaigns } = useCampaignStore()
+  const { userContext } = useContextStore();
+  const { campaigns } = useCampaignStore();
 
   // Derive active campaign from context (single source of truth)
-  const activeCampaignId = userContext?.last_campaign_id ?? null
-  const contextType = userContext?.last_context_type ?? null
+  const activeCampaignId = userContext?.last_campaign_id ?? null;
+  const contextType = userContext?.last_context_type ?? null;
 
   // Look up the full campaign object
   const activeCampaign = useMemo(() => {
-    if (!activeCampaignId) return null
-    return campaigns.find((c) => c.id === activeCampaignId) ?? null
-  }, [activeCampaignId, campaigns])
+    if (!activeCampaignId) return null;
+    return campaigns.find((c) => c.id === activeCampaignId) ?? null;
+  }, [activeCampaignId, campaigns]);
 
   // Derived context flags
-  const isGMContext = contextType === 'gm_campaign'
-  const isPlayerContext = contextType === 'player_campaign'
-  const isLibraryContext = contextType === 'library'
+  const isGMContext = contextType === "gm_campaign";
+  const isPlayerContext = contextType === "player_campaign";
+  const isLibraryContext = contextType === "library";
 
   return {
     activeCampaignId,
@@ -45,7 +45,7 @@ export function useActiveCampaign() {
     isGMContext,
     isPlayerContext,
     isLibraryContext,
-  }
+  };
 }
 
 /**
@@ -55,14 +55,18 @@ export function useActiveCampaign() {
  * For React components, always use useActiveCampaign() hook.
  */
 export function getActiveCampaignId(): string | null {
-  return useContextStore.getState().userContext?.last_campaign_id ?? null
+  return useContextStore.getState().userContext?.last_campaign_id ?? null;
 }
 
 /**
  * getContextType - Non-hook version for use outside React components.
  */
-export function getContextType(): 'gm_campaign' | 'player_campaign' | 'library' | null {
-  return useContextStore.getState().userContext?.last_context_type ?? null
+export function getContextType():
+  | "gm_campaign"
+  | "player_campaign"
+  | "library"
+  | null {
+  return useContextStore.getState().userContext?.last_context_type ?? null;
 }
 
-export default useActiveCampaign
+export default useActiveCampaign;

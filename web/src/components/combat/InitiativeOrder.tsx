@@ -1,11 +1,13 @@
-import { useState } from 'react'
-import Icon from '../common/Icon'
-import { CombatParticipant } from './CombatTracker'
+import { useState } from "react";
+import Icon from "../common/Icon";
+import { CombatParticipant } from "./CombatTracker";
 
 interface InitiativeOrderProps {
-  participants: CombatParticipant[]
-  currentTurn: number
-  onAddParticipant: (participant: Omit<CombatParticipant, 'id' | 'combat_id'>) => void
+  participants: CombatParticipant[];
+  currentTurn: number;
+  onAddParticipant: (
+    participant: Omit<CombatParticipant, "id" | "combat_id">,
+  ) => void;
 }
 
 export default function InitiativeOrder({
@@ -13,18 +15,18 @@ export default function InitiativeOrder({
   currentTurn,
   onAddParticipant,
 }: InitiativeOrderProps) {
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false);
   const [newParticipant, setNewParticipant] = useState({
-    name: '',
-    participant_type: 'monster' as 'pc' | 'npc' | 'monster',
+    name: "",
+    participant_type: "monster" as "pc" | "npc" | "monster",
     max_hp: 10,
     ac: 10,
     initiative: 10,
     initiative_bonus: 0,
-  })
+  });
 
   const handleAddParticipant = () => {
-    if (!newParticipant.name.trim()) return
+    if (!newParticipant.name.trim()) return;
 
     onAddParticipant({
       ...newParticipant,
@@ -35,47 +37,47 @@ export default function InitiativeOrder({
       legendary_actions_used: 0,
       legendary_actions_max: 0,
       position: participants.length,
-    })
+    });
 
     // Reset form
     setNewParticipant({
-      name: '',
-      participant_type: 'monster',
+      name: "",
+      participant_type: "monster",
       max_hp: 10,
       ac: 10,
       initiative: 10,
       initiative_bonus: 0,
-    })
-    setShowAddForm(false)
-  }
+    });
+    setShowAddForm(false);
+  };
 
   const rollInitiative = () => {
-    const roll = Math.floor(Math.random() * 20) + 1
+    const roll = Math.floor(Math.random() * 20) + 1;
     setNewParticipant({
       ...newParticipant,
       initiative: roll + newParticipant.initiative_bonus,
-    })
-  }
+    });
+  };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'pc':
-        return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-      case 'npc':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/40'
-      case 'monster':
-        return 'bg-red-500/20 text-red-400 border-red-500/40'
+      case "pc":
+        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+      case "npc":
+        return "bg-blue-500/20 text-blue-400 border-blue-500/40";
+      case "monster":
+        return "bg-red-500/20 text-red-400 border-red-500/40";
       default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/40'
+        return "bg-gray-500/20 text-gray-400 border-gray-500/40";
     }
-  }
+  };
 
   const getHPColor = (current: number, max: number) => {
-    const ratio = current / max
-    if (ratio > 0.5) return 'bg-emerald-500'
-    if (ratio > 0.25) return 'bg-amber-500'
-    return 'bg-red-500'
-  }
+    const ratio = current / max;
+    if (ratio > 0.5) return "bg-emerald-500";
+    if (ratio > 0.25) return "bg-amber-500";
+    return "bg-red-500";
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -99,21 +101,28 @@ export default function InitiativeOrder({
           <input
             type="text"
             value={newParticipant.name}
-            onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
+            onChange={(e) =>
+              setNewParticipant({ ...newParticipant, name: e.target.value })
+            }
             placeholder="Name"
             className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none"
             autoFocus
           />
 
           <div className="flex gap-2">
-            {(['pc', 'npc', 'monster'] as const).map((type) => (
+            {(["pc", "npc", "monster"] as const).map((type) => (
               <button
                 key={type}
-                onClick={() => setNewParticipant({ ...newParticipant, participant_type: type })}
+                onClick={() =>
+                  setNewParticipant({
+                    ...newParticipant,
+                    participant_type: type,
+                  })
+                }
                 className={`flex-1 px-2 py-1.5 text-xs font-medium rounded border transition-colors ${
                   newParticipant.participant_type === type
                     ? getTypeColor(type)
-                    : 'bg-background border-border text-text-muted hover:border-primary/40'
+                    : "bg-background border-border text-text-muted hover:border-primary/40"
                 }`}
               >
                 {type.toUpperCase()}
@@ -128,7 +137,10 @@ export default function InitiativeOrder({
                 type="number"
                 value={newParticipant.max_hp}
                 onChange={(e) =>
-                  setNewParticipant({ ...newParticipant, max_hp: parseInt(e.target.value) || 0 })
+                  setNewParticipant({
+                    ...newParticipant,
+                    max_hp: parseInt(e.target.value) || 0,
+                  })
                 }
                 className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm text-text focus:border-primary focus:outline-none"
               />
@@ -139,7 +151,10 @@ export default function InitiativeOrder({
                 type="number"
                 value={newParticipant.ac}
                 onChange={(e) =>
-                  setNewParticipant({ ...newParticipant, ac: parseInt(e.target.value) || 0 })
+                  setNewParticipant({
+                    ...newParticipant,
+                    ac: parseInt(e.target.value) || 0,
+                  })
                 }
                 className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm text-text focus:border-primary focus:outline-none"
               />
@@ -198,14 +213,14 @@ export default function InitiativeOrder({
         ) : (
           <div className="divide-y divide-border">
             {participants.map((p, index) => {
-              const isCurrentTurn = index === currentTurn % participants.length
+              const isCurrentTurn = index === currentTurn % participants.length;
               return (
                 <div
                   key={p.id}
                   className={`p-3 transition-colors ${
                     isCurrentTurn
-                      ? 'bg-primary/10 border-l-4 border-l-primary'
-                      : 'hover:bg-background'
+                      ? "bg-primary/10 border-l-4 border-l-primary"
+                      : "hover:bg-background"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -217,9 +232,14 @@ export default function InitiativeOrder({
                     {/* Name & Type */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-text truncate">{p.name}</span>
+                        <span className="font-medium text-text truncate">
+                          {p.name}
+                        </span>
                         {isCurrentTurn && (
-                          <Icon name="ArrowRight" className="w-4 h-4 text-primary flex-shrink-0" />
+                          <Icon
+                            name="ArrowRight"
+                            className="w-4 h-4 text-primary flex-shrink-0"
+                          />
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -228,7 +248,9 @@ export default function InitiativeOrder({
                         >
                           {p.participant_type.toUpperCase()}
                         </span>
-                        <span className="text-xs text-text-muted">AC {p.ac}</span>
+                        <span className="text-xs text-text-muted">
+                          AC {p.ac}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -239,20 +261,26 @@ export default function InitiativeOrder({
                       <span className="text-text-muted">HP</span>
                       <span className="text-text">
                         {p.current_hp}
-                        {p.temp_hp > 0 && <span className="text-blue-400"> +{p.temp_hp}</span>}
+                        {p.temp_hp > 0 && (
+                          <span className="text-blue-400"> +{p.temp_hp}</span>
+                        )}
                         <span className="text-text-muted">/{p.max_hp}</span>
                       </span>
                     </div>
                     <div className="h-1.5 bg-background rounded-full overflow-hidden">
                       <div
                         className={`h-full transition-all ${getHPColor(p.current_hp, p.max_hp)}`}
-                        style={{ width: `${Math.min(100, (p.current_hp / p.max_hp) * 100)}%` }}
+                        style={{
+                          width: `${Math.min(100, (p.current_hp / p.max_hp) * 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
 
                   {/* Status indicators */}
-                  {(p.is_surprised || !p.has_reaction || p.concentration_spell) && (
+                  {(p.is_surprised ||
+                    !p.has_reaction ||
+                    p.concentration_spell) && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {p.is_surprised && (
                         <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded">
@@ -272,11 +300,11 @@ export default function InitiativeOrder({
                     </div>
                   )}
                 </div>
-              )
+              );
             })}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,64 +1,65 @@
 // Critter content detail view
 
-import Icon from '@/components/common/Icon'
+import Icon from "@/components/common/Icon";
 
 interface CritterStats {
-  ac?: number
-  hp?: number
-  speed?: string
-  str?: number
-  dex?: number
-  con?: number
-  int?: number
-  wis?: number
-  cha?: number
+  ac?: number;
+  hp?: number;
+  speed?: string;
+  str?: number;
+  dex?: number;
+  con?: number;
+  int?: number;
+  wis?: number;
+  cha?: number;
 }
 
 interface SpecialAbility {
-  name: string
-  description: string
+  name: string;
+  description: string;
 }
 
 interface CritterData {
-  name: string
-  species?: string
-  critter_type: string
-  size: string
-  temperament?: string
-  habitat?: string
-  description?: string
-  behavior?: string
-  stats?: string | CritterStats
-  special_abilities?: string | SpecialAbility[]
-  uses?: string | string[]
-  training_difficulty?: string
-  diet?: string
-  lifespan?: string
-  interesting_facts?: string | string[]
-  encounter_notes?: string
+  name: string;
+  species?: string;
+  critter_type: string;
+  size: string;
+  temperament?: string;
+  habitat?: string;
+  description?: string;
+  behavior?: string;
+  stats?: string | CritterStats;
+  special_abilities?: string | SpecialAbility[];
+  uses?: string | string[];
+  training_difficulty?: string;
+  diet?: string;
+  lifespan?: string;
+  interesting_facts?: string | string[];
+  encounter_notes?: string;
 }
 
 interface CritterDetailProps {
-  critter: CritterData
+  critter: CritterData;
 }
 
 function parseJSON<T>(value: string | T | undefined): T | null {
-  if (!value) return null
-  if (typeof value === 'string') {
+  if (!value) return null;
+  if (typeof value === "string") {
     try {
-      return JSON.parse(value)
+      return JSON.parse(value);
     } catch {
-      return null
+      return null;
     }
   }
-  return value
+  return value;
 }
 
 export function CritterDetail({ critter }: CritterDetailProps) {
-  const stats = parseJSON<CritterStats>(critter.stats)
-  const specialAbilities = parseJSON<SpecialAbility[]>(critter.special_abilities) || []
-  const uses = parseJSON<string[]>(critter.uses) || []
-  const interestingFacts = parseJSON<string[]>(critter.interesting_facts) || []
+  const stats = parseJSON<CritterStats>(critter.stats);
+  const specialAbilities =
+    parseJSON<SpecialAbility[]>(critter.special_abilities) || [];
+  const uses = parseJSON<string[]>(critter.uses) || [];
+  const interestingFacts = parseJSON<string[]>(critter.interesting_facts) || [];
 
   return (
     <div className="space-y-6">
@@ -66,7 +67,9 @@ export function CritterDetail({ critter }: CritterDetailProps) {
       <div>
         <h2 className="text-2xl font-bold text-primary">{critter.name}</h2>
         {critter.species && (
-          <p className="text-sm text-text-muted italic mt-1">{critter.species}</p>
+          <p className="text-sm text-text-muted italic mt-1">
+            {critter.species}
+          </p>
         )}
         <div className="flex gap-2 mt-2 flex-wrap">
           <span className="px-3 py-1 bg-primary/40 text-text rounded text-sm capitalize">
@@ -196,8 +199,13 @@ export function CritterDetail({ critter }: CritterDetailProps) {
           </h3>
           <div className="space-y-3">
             {specialAbilities.map((ability, idx) => (
-              <div key={idx} className="bg-surface p-4 rounded border border-border">
-                <h4 className="font-semibold text-primary mb-2">{ability.name}</h4>
+              <div
+                key={idx}
+                className="bg-surface p-4 rounded border border-border"
+              >
+                <h4 className="font-semibold text-primary mb-2">
+                  {ability.name}
+                </h4>
                 <p className="text-text text-sm">{ability.description}</p>
               </div>
             ))}
@@ -214,7 +222,9 @@ export function CritterDetail({ critter }: CritterDetailProps) {
           </h3>
           <ul className="list-disc list-inside space-y-1">
             {uses.map((use, idx) => (
-              <li key={idx} className="text-text">{use}</li>
+              <li key={idx} className="text-text">
+                {use}
+              </li>
             ))}
           </ul>
         </div>
@@ -262,7 +272,9 @@ export function CritterDetail({ critter }: CritterDetailProps) {
           </h3>
           <ul className="list-disc list-inside space-y-1">
             {interestingFacts.map((fact, idx) => (
-              <li key={idx} className="text-text">{fact}</li>
+              <li key={idx} className="text-text">
+                {fact}
+              </li>
             ))}
           </ul>
         </div>
@@ -276,10 +288,12 @@ export function CritterDetail({ critter }: CritterDetailProps) {
             Encounter Notes
           </h3>
           <div className="bg-amber-900/20 p-4 rounded border border-amber-700">
-            <p className="text-text leading-relaxed">{critter.encounter_notes}</p>
+            <p className="text-text leading-relaxed">
+              {critter.encounter_notes}
+            </p>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

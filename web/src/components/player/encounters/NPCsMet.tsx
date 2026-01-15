@@ -1,96 +1,126 @@
-import { useEffect, useState } from 'react'
-import Icon from '../../common/Icon'
+import { useEffect, useState } from "react";
+import Icon from "../../common/Icon";
 import {
   usePlayerEncountersStore,
   NPCEncounter,
   RelationshipType,
-} from '../../../store/playerEncountersStore'
-import { useCampaignStore } from '../../../store/campaignStore'
-import NPCDetailModal from './NPCDetailModal'
+} from "../../../store/playerEncountersStore";
+import { useCampaignStore } from "../../../store/campaignStore";
+import NPCDetailModal from "./NPCDetailModal";
 
-const relationshipColors: Record<RelationshipType, { bg: string; text: string; border: string }> = {
-  friendly: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/30' },
-  neutral: { bg: 'bg-blue-500/10', text: 'text-blue-300', border: 'border-blue-500/30' },
-  hostile: { bg: 'bg-red-500/10', text: 'text-red-300', border: 'border-red-500/30' },
-  unknown: { bg: 'bg-gray-500/10', text: 'text-gray-300', border: 'border-gray-500/30' },
-}
+const relationshipColors: Record<
+  RelationshipType,
+  { bg: string; text: string; border: string }
+> = {
+  friendly: {
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-300",
+    border: "border-emerald-500/30",
+  },
+  neutral: {
+    bg: "bg-blue-500/10",
+    text: "text-blue-300",
+    border: "border-blue-500/30",
+  },
+  hostile: {
+    bg: "bg-red-500/10",
+    text: "text-red-300",
+    border: "border-red-500/30",
+  },
+  unknown: {
+    bg: "bg-gray-500/10",
+    text: "text-gray-300",
+    border: "border-gray-500/30",
+  },
+};
 
 export default function NPCsMet() {
-  const { npcs, loadingNPCs, error, fetchNPCs, createNPC, updateNPC, deleteNPC } =
-    usePlayerEncountersStore()
-  const getActiveCampaign = useCampaignStore((state) => state.getActiveCampaign)
-  const activeCampaign = getActiveCampaign()
+  const {
+    npcs,
+    loadingNPCs,
+    error,
+    fetchNPCs,
+    createNPC,
+    updateNPC,
+    deleteNPC,
+  } = usePlayerEncountersStore();
+  const getActiveCampaign = useCampaignStore(
+    (state) => state.getActiveCampaign,
+  );
+  const activeCampaign = getActiveCampaign();
 
-  const [showForm, setShowForm] = useState(false)
-  const [editingNPC, setEditingNPC] = useState<NPCEncounter | null>(null)
-  const [viewingNPC, setViewingNPC] = useState<NPCEncounter | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterRelationship, setFilterRelationship] = useState<RelationshipType | ''>('')
+  const [showForm, setShowForm] = useState(false);
+  const [editingNPC, setEditingNPC] = useState<NPCEncounter | null>(null);
+  const [viewingNPC, setViewingNPC] = useState<NPCEncounter | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterRelationship, setFilterRelationship] = useState<
+    RelationshipType | ""
+  >("");
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    relationship: 'neutral' as RelationshipType,
-    first_met_session: '',
-    first_met_location: '',
-    notes: '',
-  })
+    name: "",
+    description: "",
+    relationship: "neutral" as RelationshipType,
+    first_met_session: "",
+    first_met_location: "",
+    notes: "",
+  });
 
   useEffect(() => {
-    fetchNPCs(activeCampaign?.id)
-  }, [fetchNPCs, activeCampaign?.id])
+    fetchNPCs(activeCampaign?.id);
+  }, [fetchNPCs, activeCampaign?.id]);
 
   const filteredNPCs = npcs.filter((npc) => {
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       if (
         !npc.name.toLowerCase().includes(query) &&
         !npc.description?.toLowerCase().includes(query)
       ) {
-        return false
+        return false;
       }
     }
     if (filterRelationship && npc.relationship !== filterRelationship) {
-      return false
+      return false;
     }
-    return true
-  })
+    return true;
+  });
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      description: '',
-      relationship: 'neutral',
-      first_met_session: '',
-      first_met_location: '',
-      notes: '',
-    })
-    setEditingNPC(null)
-    setShowForm(false)
-  }
+      name: "",
+      description: "",
+      relationship: "neutral",
+      first_met_session: "",
+      first_met_location: "",
+      notes: "",
+    });
+    setEditingNPC(null);
+    setShowForm(false);
+  };
 
   const handleView = (npc: NPCEncounter) => {
-    setViewingNPC(npc)
-  }
+    setViewingNPC(npc);
+  };
 
   const handleEdit = (npc: NPCEncounter) => {
-    setViewingNPC(null)
-    setEditingNPC(npc)
+    setViewingNPC(null);
+    setEditingNPC(npc);
     setFormData({
       name: npc.name,
-      description: npc.description || '',
+      description: npc.description || "",
       relationship: npc.relationship,
-      first_met_session: npc.first_met_session?.toString() || '',
-      first_met_location: npc.first_met_location || '',
-      notes: npc.notes || '',
-    })
-    setShowForm(true)
-  }
+      first_met_session: npc.first_met_session?.toString() || "",
+      first_met_location: npc.first_met_location || "",
+      notes: npc.notes || "",
+    });
+    setShowForm(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formData.name.trim()) return
+    e.preventDefault();
+    if (!formData.name.trim()) return;
 
     const data = {
       campaign_id: activeCampaign?.id,
@@ -102,21 +132,21 @@ export default function NPCsMet() {
         : undefined,
       first_met_location: formData.first_met_location.trim() || undefined,
       notes: formData.notes.trim() || undefined,
-    }
+    };
 
     if (editingNPC) {
-      await updateNPC(editingNPC.id, data)
+      await updateNPC(editingNPC.id, data);
     } else {
-      await createNPC(data)
+      await createNPC(data);
     }
-    resetForm()
-  }
+    resetForm();
+  };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to remove this NPC?')) {
-      await deleteNPC(id)
+    if (window.confirm("Are you sure you want to remove this NPC?")) {
+      await deleteNPC(id);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -138,7 +168,9 @@ export default function NPCsMet() {
           </div>
           <select
             value={filterRelationship}
-            onChange={(e) => setFilterRelationship(e.target.value as RelationshipType | '')}
+            onChange={(e) =>
+              setFilterRelationship(e.target.value as RelationshipType | "")
+            }
             className="px-3 py-2 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary"
           >
             <option value="">All</option>
@@ -174,14 +206,19 @@ export default function NPCsMet() {
       {/* Empty State */}
       {!loadingNPCs && filteredNPCs.length === 0 && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name="User" className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name="User"
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery || filterRelationship ? 'No matching NPCs' : 'No NPCs logged yet'}
+            {searchQuery || filterRelationship
+              ? "No matching NPCs"
+              : "No NPCs logged yet"}
           </h3>
           <p className="text-text-muted text-sm">
             {searchQuery || filterRelationship
-              ? 'Try adjusting your search.'
-              : 'Start tracking NPCs you meet in your adventures!'}
+              ? "Try adjusting your search."
+              : "Start tracking NPCs you meet in your adventures!"}
           </p>
         </div>
       )}
@@ -189,7 +226,7 @@ export default function NPCsMet() {
       {/* NPC Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredNPCs.map((npc) => {
-          const colors = relationshipColors[npc.relationship]
+          const colors = relationshipColors[npc.relationship];
           return (
             <div
               key={npc.id}
@@ -204,8 +241,12 @@ export default function NPCsMet() {
                     <Icon name="User" className={`w-4 h-4 ${colors.text}`} />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-text font-medium truncate">{npc.name}</h4>
-                    <span className={`text-xs ${colors.text} capitalize`}>{npc.relationship}</span>
+                    <h4 className="text-text font-medium truncate">
+                      {npc.name}
+                    </h4>
+                    <span className={`text-xs ${colors.text} capitalize`}>
+                      {npc.relationship}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -216,8 +257,8 @@ export default function NPCsMet() {
                   )}
                   <button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      handleEdit(npc)
+                      e.stopPropagation();
+                      handleEdit(npc);
                     }}
                     className="p-1 hover:bg-background rounded text-text-muted hover:text-text"
                   >
@@ -225,8 +266,8 @@ export default function NPCsMet() {
                   </button>
                   <button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      handleDelete(npc.id)
+                      e.stopPropagation();
+                      handleDelete(npc.id);
                     }}
                     className="p-1 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400"
                   >
@@ -236,7 +277,9 @@ export default function NPCsMet() {
               </div>
 
               {npc.description && (
-                <p className="text-text-muted text-sm mb-2 line-clamp-2">{npc.description}</p>
+                <p className="text-text-muted text-sm mb-2 line-clamp-2">
+                  {npc.description}
+                </p>
               )}
 
               <div className="flex flex-wrap gap-2 text-xs text-text-muted">
@@ -254,7 +297,7 @@ export default function NPCsMet() {
                 )}
               </div>
             </div>
-          )
+          );
         })}
       </div>
 
@@ -270,7 +313,7 @@ export default function NPCsMet() {
           >
             <div className="border-b border-border px-5 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-text">
-                {editingNPC ? 'Edit NPC' : 'Add NPC'}
+                {editingNPC ? "Edit NPC" : "Add NPC"}
               </h3>
               <button
                 type="button"
@@ -283,11 +326,15 @@ export default function NPCsMet() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Name *</label>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Name *
+                </label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   placeholder="NPC name"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary"
                 />
@@ -300,7 +347,10 @@ export default function NPCsMet() {
                 <select
                   value={formData.relationship}
                   onChange={(e) =>
-                    setFormData({ ...formData, relationship: e.target.value as RelationshipType })
+                    setFormData({
+                      ...formData,
+                      relationship: e.target.value as RelationshipType,
+                    })
                   }
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
                 >
@@ -317,7 +367,9 @@ export default function NPCsMet() {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   placeholder="Brief description of this NPC"
                   rows={2}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary resize-y"
@@ -333,7 +385,10 @@ export default function NPCsMet() {
                     type="number"
                     value={formData.first_met_session}
                     onChange={(e) =>
-                      setFormData({ ...formData, first_met_session: e.target.value })
+                      setFormData({
+                        ...formData,
+                        first_met_session: e.target.value,
+                      })
                     }
                     placeholder="e.g., 5"
                     min="1"
@@ -348,7 +403,10 @@ export default function NPCsMet() {
                     type="text"
                     value={formData.first_met_location}
                     onChange={(e) =>
-                      setFormData({ ...formData, first_met_location: e.target.value })
+                      setFormData({
+                        ...formData,
+                        first_met_location: e.target.value,
+                      })
                     }
                     placeholder="e.g., Tavern"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary"
@@ -357,10 +415,14 @@ export default function NPCsMet() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">Notes</label>
+                <label className="block text-sm font-medium text-text-muted mb-1">
+                  Notes
+                </label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   placeholder="Personal notes about this NPC"
                   rows={2}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary resize-y"
@@ -381,7 +443,7 @@ export default function NPCsMet() {
                 disabled={loadingNPCs || !formData.name.trim()}
                 className="px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
               >
-                {editingNPC ? 'Save' : 'Add'}
+                {editingNPC ? "Save" : "Add"}
               </button>
             </div>
           </form>
@@ -395,11 +457,11 @@ export default function NPCsMet() {
           onClose={() => setViewingNPC(null)}
           onEdit={() => handleEdit(viewingNPC)}
           onDelete={() => {
-            handleDelete(viewingNPC.id)
-            setViewingNPC(null)
+            handleDelete(viewingNPC.id);
+            setViewingNPC(null);
           }}
         />
       )}
     </div>
-  )
+  );
 }

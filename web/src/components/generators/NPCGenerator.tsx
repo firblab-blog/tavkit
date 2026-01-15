@@ -1,76 +1,87 @@
-import { useState, useEffect, useRef } from 'react'
-import { GeneratorLayout } from './GeneratorLayout'
-import { FormField } from '@/components/ui/FormField'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { useCampaignStore } from '../../store/campaignStore'
-import Icon from '../common/Icon'
-import CampaignSelector from '../common/CampaignSelector'
-import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
-import { emitContentSaved } from '@/lib/contentEvents'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
-import { ArrayFieldEditor } from './shared/fields'
-import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import { useState, useEffect, useRef } from "react";
+import { GeneratorLayout } from "./GeneratorLayout";
+import { FormField } from "@/components/ui/FormField";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { useCampaignStore } from "../../store/campaignStore";
+import Icon from "../common/Icon";
+import CampaignSelector from "../common/CampaignSelector";
+import AISettings, {
+  AIGenerationSettings,
+  getMaxTokensFromSettings,
+} from "./AISettings";
+import { emitContentSaved } from "@/lib/contentEvents";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { EntryModeToggle, EntryMode } from "./shared/EntryModeToggle";
+import { ArrayFieldEditor } from "./shared/fields";
+import {
+  SaveModal,
+  ParseWarning,
+  RawDataViewer,
+  ManualEntryPreview,
+} from "./shared";
 import {
   ManualNPCData,
   defaultNPCData,
   raceOptions,
   classOptions,
-} from './shared/schemas/npcSchema'
+} from "./shared/schemas/npcSchema";
 import {
   generateNPC as generateNPCApi,
   saveNPC as saveNPCApi,
   getErrorMessage,
-} from '@/api/generators'
-import { normalizeStringArray, flattenCategorizedArray } from '@/utils/aiResponseNormalizer'
-import { logger } from '@/utils/logger'
+} from "@/api/generators";
+import {
+  normalizeStringArray,
+  flattenCategorizedArray,
+} from "@/utils/aiResponseNormalizer";
+import { logger } from "@/utils/logger";
 
 // Expected NPC structure
 interface NPCData {
-  name: string
-  race: string
-  class: string
-  level: number
-  alignment: string
-  appearance: string
-  personality: Personality
-  background: string
-  motivation: string
-  abilities: Abilities
-  combat?: CombatStats
-  skills: string[]
-  equipment: string[]
-  role: string
-  plot_hooks: string[]
+  name: string;
+  race: string;
+  class: string;
+  level: number;
+  alignment: string;
+  appearance: string;
+  personality: Personality;
+  background: string;
+  motivation: string;
+  abilities: Abilities;
+  combat?: CombatStats;
+  skills: string[];
+  equipment: string[];
+  role: string;
+  plot_hooks: string[];
   // For any unexpected fields from AI
-  _raw?: Record<string, unknown>
-  _parseError?: string
+  _raw?: Record<string, unknown>;
+  _parseError?: string;
 }
 
 interface Personality {
-  traits: string[]
-  ideals: string
-  bonds: string
-  flaws: string
+  traits: string[];
+  ideals: string;
+  bonds: string;
+  flaws: string;
 }
 
 interface Abilities {
-  STR: number
-  DEX: number
-  CON: number
-  INT: number
-  WIS: number
-  CHA: number
+  STR: number;
+  DEX: number;
+  CON: number;
+  INT: number;
+  WIS: number;
+  CHA: number;
 }
 
 interface CombatStats {
-  hp?: number
-  ac?: number
-  speed?: string
-  hit_points?: number
-  armor_class?: number
-  movement?: string
-  initiative?: number
+  hp?: number;
+  ac?: number;
+  speed?: string;
+  hit_points?: number;
+  armor_class?: number;
+  movement?: string;
+  initiative?: number;
 }
 
 /**
@@ -79,47 +90,55 @@ interface CombatStats {
 function normalizePersonality(data: Record<string, unknown>): Personality {
   const result: Personality = {
     traits: [],
-    ideals: '',
-    bonds: '',
-    flaws: '',
-  }
+    ideals: "",
+    bonds: "",
+    flaws: "",
+  };
 
   // Try to find personality in various locations
-  let personality = data.personality
+  let personality = data.personality;
   if (!personality) {
-    for (const altName of ['personality_traits', 'traits', 'character_traits']) {
+    for (const altName of [
+      "personality_traits",
+      "traits",
+      "character_traits",
+    ]) {
       if (data[altName]) {
-        personality = data[altName]
-        break
+        personality = data[altName];
+        break;
       }
     }
   }
 
-  if (!personality) return result
+  if (!personality) return result;
 
   // Handle personality as a map (expected format)
-  if (typeof personality === 'object' && personality !== null && !Array.isArray(personality)) {
-    const pMap = personality as Record<string, unknown>
-    result.traits = normalizeStringArray(pMap.traits)
-    result.ideals = String(pMap.ideals || '')
-    result.bonds = String(pMap.bonds || '')
-    result.flaws = String(pMap.flaws || '')
-    return result
+  if (
+    typeof personality === "object" &&
+    personality !== null &&
+    !Array.isArray(personality)
+  ) {
+    const pMap = personality as Record<string, unknown>;
+    result.traits = normalizeStringArray(pMap.traits);
+    result.ideals = String(pMap.ideals || "");
+    result.bonds = String(pMap.bonds || "");
+    result.flaws = String(pMap.flaws || "");
+    return result;
   }
 
   // Handle personality as a string
-  if (typeof personality === 'string') {
-    result.traits = [personality]
-    return result
+  if (typeof personality === "string") {
+    result.traits = [personality];
+    return result;
   }
 
   // Handle personality as an array of traits
   if (Array.isArray(personality)) {
-    result.traits = normalizeStringArray(personality)
-    return result
+    result.traits = normalizeStringArray(personality);
+    return result;
   }
 
-  return result
+  return result;
 }
 
 /**
@@ -133,49 +152,50 @@ function normalizeAbilities(data: Record<string, unknown>): Abilities {
     INT: 10,
     WIS: 10,
     CHA: 10,
-  }
+  };
 
   // Try to find abilities in various field names
-  let rawAbilities: unknown = null
-  for (const name of ['abilities', 'stats', 'ability_scores', 'attributes']) {
+  let rawAbilities: unknown = null;
+  for (const name of ["abilities", "stats", "ability_scores", "attributes"]) {
     if (data[name]) {
-      rawAbilities = data[name]
-      break
+      rawAbilities = data[name];
+      break;
     }
   }
 
   // Also check for flat stat fields at root level
   const statMap: Record<string, keyof Abilities> = {
-    str: 'STR',
-    strength: 'STR',
-    dex: 'DEX',
-    dexterity: 'DEX',
-    con: 'CON',
-    constitution: 'CON',
-    int: 'INT',
-    intelligence: 'INT',
-    wis: 'WIS',
-    wisdom: 'WIS',
-    cha: 'CHA',
-    charisma: 'CHA',
-  }
+    str: "STR",
+    strength: "STR",
+    dex: "DEX",
+    dexterity: "DEX",
+    con: "CON",
+    constitution: "CON",
+    int: "INT",
+    intelligence: "INT",
+    wis: "WIS",
+    wisdom: "WIS",
+    cha: "CHA",
+    charisma: "CHA",
+  };
 
   // Extract from abilities object
-  if (rawAbilities && typeof rawAbilities === 'object') {
-    const abilitiesMap = rawAbilities as Record<string, unknown>
+  if (rawAbilities && typeof rawAbilities === "object") {
+    const abilitiesMap = rawAbilities as Record<string, unknown>;
     for (const [key, mappedKey] of Object.entries(statMap)) {
-      const value = abilitiesMap[key] || abilitiesMap[key.toUpperCase()]
+      const value = abilitiesMap[key] || abilitiesMap[key.toUpperCase()];
       if (value !== undefined) {
         // Handle verbose format like { value: 10, modifier: 0 }
-        if (typeof value === 'object' && value !== null) {
-          const vObj = value as Record<string, unknown>
-          if (typeof vObj.value === 'number') result[mappedKey] = vObj.value
-          else if (typeof vObj.score === 'number') result[mappedKey] = vObj.score
-        } else if (typeof value === 'number') {
-          result[mappedKey] = value
-        } else if (typeof value === 'string') {
-          const parsed = parseInt(value, 10)
-          if (!isNaN(parsed)) result[mappedKey] = parsed
+        if (typeof value === "object" && value !== null) {
+          const vObj = value as Record<string, unknown>;
+          if (typeof vObj.value === "number") result[mappedKey] = vObj.value;
+          else if (typeof vObj.score === "number")
+            result[mappedKey] = vObj.score;
+        } else if (typeof value === "number") {
+          result[mappedKey] = value;
+        } else if (typeof value === "string") {
+          const parsed = parseInt(value, 10);
+          if (!isNaN(parsed)) result[mappedKey] = parsed;
         }
       }
     }
@@ -183,166 +203,172 @@ function normalizeAbilities(data: Record<string, unknown>): Abilities {
 
   // Also check flat fields at root
   for (const [key, mappedKey] of Object.entries(statMap)) {
-    const value = data[key] || data[key.toUpperCase()]
-    if (value !== undefined && typeof value === 'number') {
-      result[mappedKey] = value
+    const value = data[key] || data[key.toUpperCase()];
+    if (value !== undefined && typeof value === "number") {
+      result[mappedKey] = value;
     }
   }
 
-  return result
+  return result;
 }
 
 /**
  * Extract combat stats if present
  */
-function extractCombatStats(data: Record<string, unknown>): CombatStats | undefined {
-  const combat: CombatStats = {}
+function extractCombatStats(
+  data: Record<string, unknown>,
+): CombatStats | undefined {
+  const combat: CombatStats = {};
 
   // Extract HP (check multiple field names)
-  const hpValue = data.hp || data.hit_points || data.health
+  const hpValue = data.hp || data.hit_points || data.health;
   if (hpValue !== undefined) {
-    if (typeof hpValue === 'number') {
-      combat.hp = hpValue
-    } else if (typeof hpValue === 'string') {
-      const parsed = parseInt(hpValue, 10)
-      if (!isNaN(parsed)) combat.hp = parsed
+    if (typeof hpValue === "number") {
+      combat.hp = hpValue;
+    } else if (typeof hpValue === "string") {
+      const parsed = parseInt(hpValue, 10);
+      if (!isNaN(parsed)) combat.hp = parsed;
     }
   }
 
   // Extract AC
-  const acValue = data.ac || data.armor_class
+  const acValue = data.ac || data.armor_class;
   if (acValue !== undefined) {
-    if (typeof acValue === 'number') {
-      combat.ac = acValue
-    } else if (typeof acValue === 'string') {
-      const parsed = parseInt(acValue, 10)
-      if (!isNaN(parsed)) combat.ac = parsed
+    if (typeof acValue === "number") {
+      combat.ac = acValue;
+    } else if (typeof acValue === "string") {
+      const parsed = parseInt(acValue, 10);
+      if (!isNaN(parsed)) combat.ac = parsed;
     }
   }
 
   // Extract Speed
-  const speedValue = data.speed || data.movement
+  const speedValue = data.speed || data.movement;
   if (speedValue !== undefined) {
-    combat.speed = String(speedValue)
+    combat.speed = String(speedValue);
   }
 
   // Extract Initiative
   if (data.initiative !== undefined) {
-    if (typeof data.initiative === 'number') {
-      combat.initiative = data.initiative
-    } else if (typeof data.initiative === 'string') {
-      const parsed = parseInt(data.initiative, 10)
-      if (!isNaN(parsed)) combat.initiative = parsed
+    if (typeof data.initiative === "number") {
+      combat.initiative = data.initiative;
+    } else if (typeof data.initiative === "string") {
+      const parsed = parseInt(data.initiative, 10);
+      if (!isNaN(parsed)) combat.initiative = parsed;
     }
   }
 
-  return Object.keys(combat).length > 0 ? combat : undefined
+  return Object.keys(combat).length > 0 ? combat : undefined;
 }
 
 /**
  * Main normalization function - converts raw AI response to typed NPCData
  */
 function normalizeNPCResponse(raw: Record<string, unknown>): NPCData {
-  logger.debug('[NPCGenerator] normalizeNPCResponse input:', raw)
+  logger.debug("[NPCGenerator] normalizeNPCResponse input:", raw);
 
   // Handle case where background contains the entire JSON response
-  let processedRaw = raw
-  if (raw.background && typeof raw.background === 'string') {
-    const bgStr = (raw.background as string).trim()
-    if (bgStr.startsWith('{') && bgStr.endsWith('}')) {
+  let processedRaw = raw;
+  if (raw.background && typeof raw.background === "string") {
+    const bgStr = (raw.background as string).trim();
+    if (bgStr.startsWith("{") && bgStr.endsWith("}")) {
       try {
-        const parsedNPC = JSON.parse(bgStr)
-        logger.debug('[NPCGenerator] Parsed NPC from JSON background:', parsedNPC)
-        processedRaw = parsedNPC
+        const parsedNPC = JSON.parse(bgStr);
+        logger.debug(
+          "[NPCGenerator] Parsed NPC from JSON background:",
+          parsedNPC,
+        );
+        processedRaw = parsedNPC;
       } catch (e) {
-        logger.warn('[NPCGenerator] Failed to parse background as JSON:', e)
+        logger.warn("[NPCGenerator] Failed to parse background as JSON:", e);
       }
     }
   }
 
   // Expected fields for tracking unexpected ones
   const expectedFields = [
-    'name',
-    'race',
-    'class',
-    'level',
-    'alignment',
-    'appearance',
-    'personality',
-    'personality_traits',
-    'traits',
-    'character_traits',
-    'background',
-    'motivation',
-    'abilities',
-    'stats',
-    'ability_scores',
-    'attributes',
-    'combat',
-    'skills',
-    'equipment',
-    'role',
-    'plot_hooks',
-    'provider',
-    '_parse_warning',
-    '_raw',
+    "name",
+    "race",
+    "class",
+    "level",
+    "alignment",
+    "appearance",
+    "personality",
+    "personality_traits",
+    "traits",
+    "character_traits",
+    "background",
+    "motivation",
+    "abilities",
+    "stats",
+    "ability_scores",
+    "attributes",
+    "combat",
+    "skills",
+    "equipment",
+    "role",
+    "plot_hooks",
+    "provider",
+    "_parse_warning",
+    "_raw",
     // Flat stat fields
-    'str',
-    'dex',
-    'con',
-    'int',
-    'wis',
-    'cha',
-    'strength',
-    'dexterity',
-    'constitution',
-    'intelligence',
-    'wisdom',
-    'charisma',
-    'hp',
-    'ac',
-    'speed',
-    'hit_points',
-    'armor_class',
-  ]
+    "str",
+    "dex",
+    "con",
+    "int",
+    "wis",
+    "cha",
+    "strength",
+    "dexterity",
+    "constitution",
+    "intelligence",
+    "wisdom",
+    "charisma",
+    "hp",
+    "ac",
+    "speed",
+    "hit_points",
+    "armor_class",
+  ];
 
   // Collect unexpected fields
-  const unexpectedFields: Record<string, unknown> = {}
+  const unexpectedFields: Record<string, unknown> = {};
   for (const key of Object.keys(processedRaw)) {
     if (!expectedFields.includes(key.toLowerCase())) {
-      unexpectedFields[key] = processedRaw[key]
+      unexpectedFields[key] = processedRaw[key];
     }
   }
 
   const result: NPCData = {
-    name: String(processedRaw.name || 'Unknown NPC'),
-    race: String(processedRaw.race || ''),
-    class: String(processedRaw.class || ''),
+    name: String(processedRaw.name || "Unknown NPC"),
+    race: String(processedRaw.race || ""),
+    class: String(processedRaw.class || ""),
     level:
-      typeof processedRaw.level === 'number'
+      typeof processedRaw.level === "number"
         ? processedRaw.level
-        : parseInt(String(processedRaw.level || '1'), 10) || 1,
-    alignment: String(processedRaw.alignment || ''),
-    appearance: String(processedRaw.appearance || ''),
+        : parseInt(String(processedRaw.level || "1"), 10) || 1,
+    alignment: String(processedRaw.alignment || ""),
+    appearance: String(processedRaw.appearance || ""),
     personality: normalizePersonality(processedRaw),
-    background: String(processedRaw.background || ''),
-    motivation: String(processedRaw.motivation || ''),
+    background: String(processedRaw.background || ""),
+    motivation: String(processedRaw.motivation || ""),
     abilities: normalizeAbilities(processedRaw),
     combat: extractCombatStats(processedRaw),
     skills: normalizeStringArray(processedRaw.skills),
     equipment: flattenCategorizedArray(processedRaw.equipment),
-    role: String(processedRaw.role || ''),
+    role: String(processedRaw.role || ""),
     plot_hooks: normalizeStringArray(processedRaw.plot_hooks),
-    _raw: Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
-  }
+    _raw:
+      Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
+  };
 
   // Check for parse warning from backend
   if (processedRaw._parse_warning) {
-    result._parseError = String(processedRaw._parse_warning)
+    result._parseError = String(processedRaw._parse_warning);
   }
 
-  logger.debug('[NPCGenerator] Normalized result:', result)
-  return result
+  logger.debug("[NPCGenerator] Normalized result:", result);
+  return result;
 }
 
 /**
@@ -351,9 +377,9 @@ function normalizeNPCResponse(raw: Record<string, unknown>): NPCData {
 function hasValidNPCContent(npc: NPCData): boolean {
   return !!(
     npc.name &&
-    npc.name !== 'Unknown NPC' &&
+    npc.name !== "Unknown NPC" &&
     (npc.appearance || npc.background || npc.personality.traits.length > 0)
-  )
+  );
 }
 
 // ============================================================================
@@ -361,51 +387,51 @@ function hasValidNPCContent(npc: NPCData): boolean {
 // ============================================================================
 
 export default function NPCGenerator() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [npc, setNpc] = useState<NPCData | null>(null)
-  const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
-  const [campaignId, setCampaignId] = useState<string | null>(null)
-  const { activeCampaignId } = useCampaignStore()
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [npc, setNpc] = useState<NPCData | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showRawResponse, setShowRawResponse] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const { activeCampaignId } = useCampaignStore();
 
   // Manual entry mode state
-  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
-  const [manualData, setManualData] = useState<ManualNPCData>(defaultNPCData)
-  const [manualSaving, setManualSaving] = useState(false)
-  const [manualSaved, setManualSaved] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode>("ai");
+  const [manualData, setManualData] = useState<ManualNPCData>(defaultNPCData);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualSaved, setManualSaved] = useState(false);
 
   // Track if user has made an explicit campaign selection
-  const hasUserSelectedCampaign = useRef(false)
+  const hasUserSelectedCampaign = useRef(false);
 
   // Auto-select active campaign ONLY on initial mount
   useEffect(() => {
     if (activeCampaignId && !hasUserSelectedCampaign.current) {
-      setCampaignId(activeCampaignId)
+      setCampaignId(activeCampaignId);
     }
-  }, [activeCampaignId])
+  }, [activeCampaignId]);
 
   // Form inputs - all required now
-  const [race, setRace] = useState('human')
-  const [npcClass, setNpcClass] = useState('commoner')
-  const [level, setLevel] = useState(5)
-  const [role, setRole] = useState('merchant')
-  const [personality, setPersonality] = useState('balanced')
-  const [specialRequests, setSpecialRequests] = useState('')
+  const [race, setRace] = useState("human");
+  const [npcClass, setNpcClass] = useState("commoner");
+  const [level, setLevel] = useState(5);
+  const [role, setRole] = useState("merchant");
+  const [personality, setPersonality] = useState("balanced");
+  const [specialRequests, setSpecialRequests] = useState("");
 
   // AI settings
   const [aiSettings, setAiSettings] = useState<AIGenerationSettings>({
-    detailLevel: 'high',
+    detailLevel: "high",
     timeout: 120,
-  })
+  });
 
   const generateNPC = async () => {
-    setLoading(true)
-    setError(null)
-    setNpc(null)
-    setShowRawResponse(false)
-    setIsSaved(false)
+    setLoading(true);
+    setError(null);
+    setNpc(null);
+    setShowRawResponse(false);
+    setIsSaved(false);
 
     try {
       const data = await generateNPCApi(
@@ -420,44 +446,47 @@ export default function NPCGenerator() {
           max_tokens: getMaxTokensFromSettings(aiSettings),
           timeout: aiSettings.timeout,
         },
-        aiSettings.timeout
-      )
-      logger.debug('[NPCGenerator] Raw API response:', data)
+        aiSettings.timeout,
+      );
+      logger.debug("[NPCGenerator] Raw API response:", data);
 
       // Normalize the response
       if (data.npc) {
-        const normalized = normalizeNPCResponse(data.npc)
+        const normalized = normalizeNPCResponse(data.npc);
 
         if (!hasValidNPCContent(normalized)) {
           normalized._parseError =
-            'AI response missing essential NPC content. Showing raw response.'
-          setShowRawResponse(true)
+            "AI response missing essential NPC content. Showing raw response.";
+          setShowRawResponse(true);
         }
 
-        setNpc(normalized)
+        setNpc(normalized);
       } else {
         // No npc wrapper - try to normalize the raw response
-        const normalized = normalizeNPCResponse(data as unknown as Record<string, unknown>)
-        normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
-        setNpc(normalized)
+        const normalized = normalizeNPCResponse(
+          data as unknown as Record<string, unknown>,
+        );
+        normalized._parseError =
+          "Unexpected response format. Attempting to display.";
+        setShowRawResponse(true);
+        setNpc(normalized);
       }
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const saveNPC = async () => {
-    if (!npc) return
+    if (!npc) return;
 
     try {
       // Build complete personality string from traits object
-      const personalityText = `Traits: ${npc.personality.traits.join(', ') || 'N/A'}\nIdeals: ${npc.personality.ideals || 'N/A'}\nBonds: ${npc.personality.bonds || 'N/A'}\nFlaws: ${npc.personality.flaws || 'N/A'}`
+      const personalityText = `Traits: ${npc.personality.traits.join(", ") || "N/A"}\nIdeals: ${npc.personality.ideals || "N/A"}\nBonds: ${npc.personality.bonds || "N/A"}\nFlaws: ${npc.personality.flaws || "N/A"}`;
 
       // Build complete backstory with all narrative fields
-      const backstoryText = `${npc.appearance || ''}\n\n${npc.background || ''}\n\nMotivation: ${npc.motivation || ''}`
+      const backstoryText = `${npc.appearance || ""}\n\n${npc.background || ""}\n\nMotivation: ${npc.motivation || ""}`;
 
       await saveNPCApi({
         name: npc.name,
@@ -476,76 +505,76 @@ export default function NPCGenerator() {
         },
         campaign_id: campaignId || undefined,
         ai_generated: true,
-      })
+      });
 
-      setShowSaveModal(false)
-      setIsSaved(true)
-      emitContentSaved()
+      setShowSaveModal(false);
+      setIsSaved(true);
+      emitContentSaved();
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     }
-  }
+  };
 
   const handleCopy = () => {
-    if (!npc) return
-    const traits = npc.personality.traits.join(', ') || 'N/A'
+    if (!npc) return;
+    const traits = npc.personality.traits.join(", ") || "N/A";
     const abilities = Object.entries(npc.abilities)
       .map(([stat, value]) => `${stat} ${value}`)
-      .join(', ')
+      .join(", ");
 
     const text = `${npc.name}
 ${npc.race} ${npc.class} ${npc.level}, ${npc.alignment}
 
-Appearance: ${npc.appearance || 'N/A'}
+Appearance: ${npc.appearance || "N/A"}
 
 Personality:
 Traits: ${traits}
-Ideals: ${npc.personality.ideals || 'N/A'}
-Bonds: ${npc.personality.bonds || 'N/A'}
-Flaws: ${npc.personality.flaws || 'N/A'}
+Ideals: ${npc.personality.ideals || "N/A"}
+Bonds: ${npc.personality.bonds || "N/A"}
+Flaws: ${npc.personality.flaws || "N/A"}
 
-Background: ${npc.background || 'N/A'}
+Background: ${npc.background || "N/A"}
 
-Motivation: ${npc.motivation || 'N/A'}
+Motivation: ${npc.motivation || "N/A"}
 
 Abilities: ${abilities}
 
-Skills: ${npc.skills.join(', ') || 'N/A'}
+Skills: ${npc.skills.join(", ") || "N/A"}
 
-Equipment: ${npc.equipment.join(', ') || 'N/A'}
+Equipment: ${npc.equipment.join(", ") || "N/A"}
 
-Role: ${npc.role || 'N/A'}
-${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).join('\n')}` : ''}`
-    navigator.clipboard.writeText(text)
-  }
+Role: ${npc.role || "N/A"}
+${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).join("\n")}` : ""}`;
+    navigator.clipboard.writeText(text);
+  };
 
   // Handle manual entry save
   const handleManualSave = async () => {
     if (!manualData.name.trim()) {
-      setError('NPC name is required')
-      return
+      setError("NPC name is required");
+      return;
     }
 
-    setManualSaving(true)
-    setError(null)
+    setManualSaving(true);
+    setError(null);
 
     try {
       // Build personality text from manual fields
-      const personalityText = `Traits: ${manualData.traits.join(', ') || 'N/A'}\nIdeals: ${manualData.ideals || 'N/A'}\nBonds: ${manualData.bonds || 'N/A'}\nFlaws: ${manualData.flaws || 'N/A'}`
+      const personalityText = `Traits: ${manualData.traits.join(", ") || "N/A"}\nIdeals: ${manualData.ideals || "N/A"}\nBonds: ${manualData.bonds || "N/A"}\nFlaws: ${manualData.flaws || "N/A"}`;
 
       // Build backstory
-      const backstoryText = `${manualData.appearance || ''}\n\n${manualData.backstory || ''}\n\nMotivation: ${manualData.motivation || ''}`
+      const backstoryText = `${manualData.appearance || ""}\n\n${manualData.backstory || ""}\n\nMotivation: ${manualData.motivation || ""}`;
 
       await saveNPCApi({
         campaign_id: campaignId || undefined,
         name: manualData.name.trim(),
         race: manualData.race,
-        class: manualData.class || 'commoner',
+        class: manualData.class || "commoner",
         personality: personalityText,
         backstory: backstoryText.trim(),
         stats: {
           level: manualData.level || 1,
-          alignment: '',
+          alignment: "",
           abilities: {
             STR: manualData.stats.str || 10,
             DEX: manualData.stats.dex || 10,
@@ -556,28 +585,28 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
           },
           skills: manualData.skills.filter((s) => s.trim()),
           equipment: manualData.equipment.filter((e) => e.trim()),
-          role: manualData.occupation.trim() || '',
+          role: manualData.occupation.trim() || "",
           plot_hooks: manualData.plot_hooks.filter((h) => h.trim()),
         },
         ai_generated: false,
-      })
+      });
 
-      setManualSaved(true)
-      emitContentSaved()
+      setManualSaved(true);
+      emitContentSaved();
       // Reset form after successful save
-      setManualData(defaultNPCData)
+      setManualData(defaultNPCData);
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setManualSaving(false)
+      setManualSaving(false);
     }
-  }
+  };
 
   // Calculate ability modifier
   const getModifier = (score: number): string => {
-    const mod = Math.floor((score - 10) / 2)
-    return mod >= 0 ? `+${mod}` : `${mod}`
-  }
+    const mod = Math.floor((score - 10) / 2);
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+  };
 
   const aiFormContent = (
     <>
@@ -585,8 +614,8 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -634,7 +663,10 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         </select>
       </FormField>
 
-      <FormField label="Level" description="Determines abilities, stats, and power level">
+      <FormField
+        label="Level"
+        description="Determines abilities, stats, and power level"
+      >
         <input
           type="number"
           min="1"
@@ -696,7 +728,7 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         />
       </FormField>
     </>
-  )
+  );
 
   // Manual entry form content
   const manualFormContent = (
@@ -704,8 +736,8 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -714,7 +746,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., Theron Blackwood, Lady Mira"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -724,7 +758,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         <FormField label="Race">
           <select
             value={manualData.race}
-            onChange={(e) => setManualData({ ...manualData, race: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, race: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {raceOptions.map((opt) => (
@@ -738,7 +774,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         <FormField label="Class">
           <select
             value={manualData.class}
-            onChange={(e) => setManualData({ ...manualData, class: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, class: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {classOptions.map((opt) => (
@@ -754,7 +792,7 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             type="number"
             min={1}
             max={20}
-            value={manualData.level || ''}
+            value={manualData.level || ""}
             onChange={(e) =>
               setManualData({
                 ...manualData,
@@ -771,7 +809,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         <input
           type="text"
           value={manualData.occupation}
-          onChange={(e) => setManualData({ ...manualData, occupation: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, occupation: e.target.value })
+          }
           placeholder="e.g., Blacksmith, Tavern owner, Merchant"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -783,7 +823,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
           <FormField label="Appearance">
             <textarea
               value={manualData.appearance}
-              onChange={(e) => setManualData({ ...manualData, appearance: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, appearance: e.target.value })
+              }
               placeholder="Physical description..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -793,7 +835,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
           <FormField label="Personality Summary">
             <textarea
               value={manualData.personality}
-              onChange={(e) => setManualData({ ...manualData, personality: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, personality: e.target.value })
+              }
               placeholder="Brief personality description..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -804,7 +848,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             <input
               type="text"
               value={manualData.voice_notes}
-              onChange={(e) => setManualData({ ...manualData, voice_notes: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, voice_notes: e.target.value })
+              }
               placeholder="e.g., Deep gravelly voice, Speaks quickly"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -813,7 +859,10 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
       </CollapsibleSection>
 
       {/* Personality Traits */}
-      <CollapsibleSection title="Personality Traits (D&D Style)" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Personality Traits (D&D Style)"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <ArrayFieldEditor
             label="Traits"
@@ -826,7 +875,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             <input
               type="text"
               value={manualData.ideals}
-              onChange={(e) => setManualData({ ...manualData, ideals: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, ideals: e.target.value })
+              }
               placeholder="What do they believe in?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -836,7 +887,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             <input
               type="text"
               value={manualData.bonds}
-              onChange={(e) => setManualData({ ...manualData, bonds: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, bonds: e.target.value })
+              }
               placeholder="What/who are they connected to?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -846,7 +899,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             <input
               type="text"
               value={manualData.flaws}
-              onChange={(e) => setManualData({ ...manualData, flaws: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, flaws: e.target.value })
+              }
               placeholder="What are their weaknesses?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -855,12 +910,17 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
       </CollapsibleSection>
 
       {/* Background & Motivation */}
-      <CollapsibleSection title="Background & Motivation" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Background & Motivation"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <FormField label="Backstory">
             <textarea
               value={manualData.backstory}
-              onChange={(e) => setManualData({ ...manualData, backstory: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, backstory: e.target.value })
+              }
               placeholder="Their history..."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={3}
@@ -870,7 +930,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
           <FormField label="Motivation">
             <textarea
               value={manualData.motivation}
-              onChange={(e) => setManualData({ ...manualData, motivation: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, motivation: e.target.value })
+              }
               placeholder="What drives them?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -892,7 +954,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
           <ArrayFieldEditor
             label="Equipment"
             values={manualData.equipment}
-            onChange={(equipment) => setManualData({ ...manualData, equipment })}
+            onChange={(equipment) =>
+              setManualData({ ...manualData, equipment })
+            }
             placeholder="Add equipment..."
           />
         </div>
@@ -903,7 +967,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         <ArrayFieldEditor
           label="Plot Hooks"
           values={manualData.plot_hooks}
-          onChange={(plot_hooks) => setManualData({ ...manualData, plot_hooks })}
+          onChange={(plot_hooks) =>
+            setManualData({ ...manualData, plot_hooks })
+          }
           placeholder="Add a plot hook..."
         />
       </CollapsibleSection>
@@ -934,7 +1000,7 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         </div>
       )}
     </>
-  )
+  );
 
   // Combined form content with mode toggle
   const formContent = (
@@ -942,18 +1008,18 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
       <EntryModeToggle
         mode={entryMode}
         onChange={(mode) => {
-          setEntryMode(mode)
-          setManualSaved(false)
-          setError(null)
+          setEntryMode(mode);
+          setManualSaved(false);
+          setError(null);
         }}
         disabled={loading}
       />
-      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+      {entryMode === "ai" ? aiFormContent : manualFormContent}
     </>
-  )
+  );
 
   // Manual mode preview content (simple message)
-  const manualPreviewContent = <ManualEntryPreview entityType="NPC" />
+  const manualPreviewContent = <ManualEntryPreview entityType="NPC" />;
 
   const generatedContent = npc ? (
     <div className="space-y-6">
@@ -994,7 +1060,7 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             {npc.personality.traits.length > 0 && (
               <div className="bg-background p-3 rounded border border-primary/30">
                 <p className="text-xs text-text-muted mb-1">Traits</p>
-                <p className="text-text">{npc.personality.traits.join(', ')}</p>
+                <p className="text-text">{npc.personality.traits.join(", ")}</p>
               </div>
             )}
             {npc.personality.ideals && (
@@ -1049,7 +1115,10 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         </h3>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {Object.entries(npc.abilities).map(([stat, value]) => (
-            <div key={stat} className="bg-background p-2 rounded border border-border text-center">
+            <div
+              key={stat}
+              className="bg-background p-2 rounded border border-border text-center"
+            >
               <p className="text-xs text-text-muted mb-1">{stat}</p>
               <p className="text-lg font-bold text-text">{value}</p>
               <p className="text-xs text-primary">{getModifier(value)}</p>
@@ -1069,19 +1138,25 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             {npc.combat.ac !== undefined && (
               <div className="bg-background p-3 rounded border border-border">
                 <p className="text-xs text-text-muted mb-1">Armor Class</p>
-                <p className="text-xl font-bold text-primary">{npc.combat.ac}</p>
+                <p className="text-xl font-bold text-primary">
+                  {npc.combat.ac}
+                </p>
               </div>
             )}
             {npc.combat.hp !== undefined && (
               <div className="bg-background p-3 rounded border border-border">
                 <p className="text-xs text-text-muted mb-1">Hit Points</p>
-                <p className="text-xl font-bold text-red-400">{npc.combat.hp}</p>
+                <p className="text-xl font-bold text-red-400">
+                  {npc.combat.hp}
+                </p>
               </div>
             )}
             {npc.combat.speed && (
               <div className="bg-background p-3 rounded border border-border">
                 <p className="text-xs text-text-muted mb-1">Speed</p>
-                <p className="text-xl font-bold text-blue-400">{npc.combat.speed}</p>
+                <p className="text-xl font-bold text-blue-400">
+                  {npc.combat.speed}
+                </p>
               </div>
             )}
           </div>
@@ -1095,7 +1170,7 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             <Icon name="ListChecks" className="w-5 h-5 text-primary" />
             Skills
           </h3>
-          <p className="text-text">{npc.skills.join(', ')}</p>
+          <p className="text-text">{npc.skills.join(", ")}</p>
         </div>
       )}
 
@@ -1124,7 +1199,7 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
             <Icon name="Users" className="w-5 h-5 text-primary" />
             Role
           </h3>
-          <p className="text-text capitalize">{npc.role.replace(/_/g, ' ')}</p>
+          <p className="text-text capitalize">{npc.role.replace(/_/g, " ")}</p>
         </div>
       )}
 
@@ -1137,7 +1212,10 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
           </h3>
           <div className="space-y-2">
             {npc.plot_hooks.map((hook, i) => (
-              <div key={i} className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+              <div
+                key={i}
+                className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3"
+              >
                 <p className="text-text">{hook}</p>
               </div>
             ))}
@@ -1146,7 +1224,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {npc._raw && <RawDataViewer data={npc._raw} defaultExpanded={showRawResponse} />}
+      {npc._raw && (
+        <RawDataViewer data={npc._raw} defaultExpanded={showRawResponse} />
+      )}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -1155,7 +1235,7 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         isSaved={isSaved}
       />
     </div>
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -1165,14 +1245,16 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         icon="Users"
         formTitle="Character Details"
         formIcon="Settings"
-        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated NPC'}
+        resultsTitle={entryMode === "manual" ? "Manual Entry" : "Generated NPC"}
         formContent={formContent}
-        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
+        generatedContent={
+          entryMode === "manual" ? manualPreviewContent : generatedContent
+        }
         isGenerating={loading}
         onGenerate={generateNPC}
         generateButtonText="Generate NPC"
         error={error || undefined}
-        hideGenerateButton={entryMode === 'manual'}
+        hideGenerateButton={entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -1180,9 +1262,9 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={saveNPC}
-        entityName={npc?.name || 'NPC'}
+        entityName={npc?.name || "NPC"}
         campaignId={campaignId}
       />
     </>
-  )
+  );
 }

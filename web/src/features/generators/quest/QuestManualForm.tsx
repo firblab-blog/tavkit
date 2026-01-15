@@ -1,21 +1,27 @@
 // Manual Entry Form for Quests
 
-import Icon from '@/components/common/Icon'
-import { FormField } from '@/components/ui/FormField'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import CampaignSelector from '@/components/common/CampaignSelector'
-import { ArrayFieldEditor } from '../components/Fields'
-import { questTypeOptions, questDifficultyOptions, type ManualQuestData } from '../schemas/quest'
+import Icon from "@/components/common/Icon";
+import { FormField } from "@/components/ui/FormField";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import CampaignSelector from "@/components/common/CampaignSelector";
+import { ArrayFieldEditor } from "../components/Fields";
+import {
+  questTypeOptions,
+  questDifficultyOptions,
+  type ManualQuestData,
+} from "../schemas/quest";
 
 interface QuestManualFormProps {
-  campaignId: string | null
-  onCampaignSelect: (id: string | null) => void
-  manualData: ManualQuestData
-  setManualData: (data: ManualQuestData | ((prev: ManualQuestData) => ManualQuestData)) => void
-  onSave: () => void
-  saving: boolean
-  saved: boolean
-  error: string | null
+  campaignId: string | null;
+  onCampaignSelect: (id: string | null) => void;
+  manualData: ManualQuestData;
+  setManualData: (
+    data: ManualQuestData | ((prev: ManualQuestData) => ManualQuestData),
+  ) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  error: string | null;
 }
 
 export function QuestManualForm({
@@ -30,14 +36,19 @@ export function QuestManualForm({
 }: QuestManualFormProps) {
   return (
     <>
-      <CampaignSelector selectedCampaignId={campaignId} onSelect={onCampaignSelect} />
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={onCampaignSelect}
+      />
 
       {/* Basic Information */}
       <FormField label="Quest Title" required>
         <input
           type="text"
           value={manualData.title}
-          onChange={(e) => setManualData({ ...manualData, title: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, title: e.target.value })
+          }
           placeholder="e.g., The Lost Temple of Zandalar"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -47,7 +58,9 @@ export function QuestManualForm({
         <FormField label="Quest Type">
           <select
             value={manualData.type}
-            onChange={(e) => setManualData({ ...manualData, type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {questTypeOptions.map((opt) => (
@@ -61,7 +74,9 @@ export function QuestManualForm({
         <FormField label="Difficulty">
           <select
             value={manualData.combat_intensity}
-            onChange={(e) => setManualData({ ...manualData, combat_intensity: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, combat_intensity: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {questDifficultyOptions.map((opt) => (
@@ -77,7 +92,7 @@ export function QuestManualForm({
         <FormField label="Party Level">
           <input
             type="number"
-            value={manualData.party_level ?? ''}
+            value={manualData.party_level ?? ""}
             onChange={(e) =>
               setManualData({
                 ...manualData,
@@ -95,7 +110,9 @@ export function QuestManualForm({
           <input
             type="text"
             value={manualData.time_limit}
-            onChange={(e) => setManualData({ ...manualData, time_limit: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, time_limit: e.target.value })
+            }
             placeholder="e.g., 3 days, Full moon"
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
           />
@@ -105,7 +122,9 @@ export function QuestManualForm({
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Describe the quest's hook, background, and what the party needs to know..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={4}
@@ -121,7 +140,10 @@ export function QuestManualForm({
       />
 
       {/* Rewards & Complications */}
-      <CollapsibleSection title="Rewards & Complications" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Rewards & Complications"
+        defaultExpanded={false}
+      >
         <div className="space-y-4">
           <ArrayFieldEditor
             label="Rewards"
@@ -133,7 +155,9 @@ export function QuestManualForm({
           <ArrayFieldEditor
             label="Complications"
             values={manualData.complications}
-            onChange={(complications) => setManualData({ ...manualData, complications })}
+            onChange={(complications) =>
+              setManualData({ ...manualData, complications })
+            }
             placeholder="Add a complication..."
           />
         </div>
@@ -145,14 +169,18 @@ export function QuestManualForm({
           <ArrayFieldEditor
             label="NPCs Involved"
             values={manualData.npcs_involved}
-            onChange={(npcs_involved) => setManualData({ ...manualData, npcs_involved })}
+            onChange={(npcs_involved) =>
+              setManualData({ ...manualData, npcs_involved })
+            }
             placeholder="Add an NPC..."
           />
 
           <ArrayFieldEditor
             label="Locations Involved"
             values={manualData.locations_involved}
-            onChange={(locations_involved) => setManualData({ ...manualData, locations_involved })}
+            onChange={(locations_involved) =>
+              setManualData({ ...manualData, locations_involved })
+            }
             placeholder="Add a location..."
           />
         </div>
@@ -191,5 +219,5 @@ export function QuestManualForm({
         </div>
       )}
     </>
-  )
+  );
 }

@@ -6,227 +6,235 @@
  * - AI-powered campaign summary generation
  * - Edit campaign button
  */
-import { useState, useEffect, useCallback, useRef } from 'react'
-import ReactMarkdown from 'react-markdown'
-import Icon from '../../../../common/Icon'
-import { authFetch } from '@/utils/authFetch'
-import { useCampaignStore } from '../../../../../store/campaignStore'
-import { useAuthStore } from '../../../../../store/authStore'
-import { logger } from '@/utils/logger'
-import SummaryContentSettings from '../../../../campaign/SummaryContentSettings'
+import { useState, useEffect, useCallback, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import Icon from "../../../../common/Icon";
+import { authFetch } from "@/utils/authFetch";
+import { useCampaignStore } from "../../../../../store/campaignStore";
+import { useAuthStore } from "../../../../../store/authStore";
+import { logger } from "@/utils/logger";
+import SummaryContentSettings from "../../../../campaign/SummaryContentSettings";
 
 interface SummaryJob {
-  job_id: string
-  campaign_id: string
-  status: 'pending' | 'extracting' | 'synthesizing' | 'completed' | 'failed'
-  current_stage?: string
-  current_batch: number
-  total_batches: number
-  progress_percent: number
-  error_message?: string
-  started_at?: string
-  completed_at?: string
+  job_id: string;
+  campaign_id: string;
+  status: "pending" | "extracting" | "synthesizing" | "completed" | "failed";
+  current_stage?: string;
+  current_batch: number;
+  total_batches: number;
+  progress_percent: number;
+  error_message?: string;
+  started_at?: string;
+  completed_at?: string;
 }
 
 interface CampaignOverviewContentProps {
-  campaignId: string
+  campaignId: string;
 }
 
-const COMPLETION_COOLDOWN_MS = 5000
+const COMPLETION_COOLDOWN_MS = 5000;
 
 const STAGE_LABELS: Record<string, string> = {
-  npcs: 'NPCs',
-  locations: 'Locations',
-  quests: 'Quests',
-  monsters: 'Monsters',
-  items: 'Items',
-  encounters: 'Encounters',
-  rumors: 'Rumors',
-  dialogues: 'Dialogues',
-  taverns: 'Taverns',
-  merchants: 'Merchants',
-  traps: 'Traps',
-  critters: 'Critters',
-  chases: 'Chases',
-  campaign_content: 'Campaign Content',
-  overview: 'Overview',
-  setting: 'Setting',
-  characters: 'Characters',
-  plot: 'Plot',
-  tone: 'Tone',
-}
+  npcs: "NPCs",
+  locations: "Locations",
+  quests: "Quests",
+  monsters: "Monsters",
+  items: "Items",
+  encounters: "Encounters",
+  rumors: "Rumors",
+  dialogues: "Dialogues",
+  taverns: "Taverns",
+  merchants: "Merchants",
+  traps: "Traps",
+  critters: "Critters",
+  chases: "Chases",
+  campaign_content: "Campaign Content",
+  overview: "Overview",
+  setting: "Setting",
+  characters: "Characters",
+  plot: "Plot",
+  tone: "Tone",
+};
 
-export default function CampaignOverviewContent({ campaignId }: CampaignOverviewContentProps) {
-  const { campaigns, openEditCampaignModal } = useCampaignStore()
-  const { isAuthenticated } = useAuthStore()
+export default function CampaignOverviewContent({
+  campaignId,
+}: CampaignOverviewContentProps) {
+  const { campaigns, openEditCampaignModal } = useCampaignStore();
+  const { isAuthenticated } = useAuthStore();
 
-  const campaign = campaigns.find((c) => c.id === campaignId)
+  const campaign = campaigns.find((c) => c.id === campaignId);
 
   // Summary state
-  const [campaignContext, setCampaignContext] = useState<any>(null)
-  const [loadingSummary, setLoadingSummary] = useState(false)
-  const [activeJob, setActiveJob] = useState<SummaryJob | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [showContentSettings, setShowContentSettings] = useState(false)
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const lastCompletionRef = useRef<number>(0)
+  const [campaignContext, setCampaignContext] = useState<any>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [activeJob, setActiveJob] = useState<SummaryJob | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showContentSettings, setShowContentSettings] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastCompletionRef = useRef<number>(0);
 
-  const hasSummary = campaignContext?.summary_available === true
+  const hasSummary = campaignContext?.summary_available === true;
 
   // Fetch campaign context/summary
   const fetchCampaignContext = useCallback(async () => {
-    if (!campaignId || !isAuthenticated) return
+    if (!campaignId || !isAuthenticated) return;
 
-    setLoadingSummary(true)
+    setLoadingSummary(true);
     try {
-      const url = `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/context`
-      const response = await authFetch(url)
+      const url = `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/context`;
+      const response = await authFetch(url);
 
       if (response.ok) {
-        const data = await response.json()
-        setCampaignContext(data)
+        const data = await response.json();
+        setCampaignContext(data);
       } else {
-        logger.error('Failed to fetch campaign context:', response.status)
+        logger.error("Failed to fetch campaign context:", response.status);
       }
     } catch (err) {
-      logger.error('Failed to fetch campaign context:', err)
+      logger.error("Failed to fetch campaign context:", err);
     } finally {
-      setLoadingSummary(false)
+      setLoadingSummary(false);
     }
-  }, [campaignId, isAuthenticated])
+  }, [campaignId, isAuthenticated]);
 
   // Fetch on mount and when campaignId changes
   useEffect(() => {
-    fetchCampaignContext()
-  }, [fetchCampaignContext])
+    fetchCampaignContext();
+  }, [fetchCampaignContext]);
 
   // Poll for active job status
   const pollJobStatus = useCallback(
     async (jobId: string) => {
-      if (!campaignId) return
+      if (!campaignId) return;
 
       try {
         const response = await authFetch(
-          `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/summary/job/${jobId}`
-        )
+          `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/summary/job/${jobId}`,
+        );
         if (response.ok) {
-          const job: SummaryJob = await response.json()
-          setActiveJob(job)
+          const job: SummaryJob = await response.json();
+          setActiveJob(job);
 
-          if (job.status === 'completed' || job.status === 'failed') {
+          if (job.status === "completed" || job.status === "failed") {
             if (pollingRef.current) {
-              clearInterval(pollingRef.current)
-              pollingRef.current = null
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
             }
-            setIsGenerating(false)
-            lastCompletionRef.current = Date.now()
+            setIsGenerating(false);
+            lastCompletionRef.current = Date.now();
 
-            if (job.status === 'completed') {
-              fetchCampaignContext()
+            if (job.status === "completed") {
+              fetchCampaignContext();
             }
           }
         }
       } catch (err) {
-        logger.error('Failed to poll job status:', err)
+        logger.error("Failed to poll job status:", err);
       }
     },
-    [campaignId, fetchCampaignContext]
-  )
+    [campaignId, fetchCampaignContext],
+  );
 
   // Check for active job on mount
   useEffect(() => {
     const checkActiveJob = async () => {
-      if (!campaignId) return
+      if (!campaignId) return;
 
       if (Date.now() - lastCompletionRef.current < COMPLETION_COOLDOWN_MS) {
-        return
+        return;
       }
 
       try {
         const response = await authFetch(
-          `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/summary/job`
-        )
+          `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/summary/job`,
+        );
         if (response.ok) {
-          const data = await response.json()
+          const data = await response.json();
           if (data.active_job) {
-            setActiveJob(data.active_job)
-            setIsGenerating(true)
+            setActiveJob(data.active_job);
+            setIsGenerating(true);
             pollingRef.current = setInterval(() => {
-              pollJobStatus(data.active_job.job_id)
-            }, 2000)
+              pollJobStatus(data.active_job.job_id);
+            }, 2000);
           }
         }
       } catch (err) {
-        logger.error('Failed to check active job:', err)
+        logger.error("Failed to check active job:", err);
       }
-    }
+    };
 
-    checkActiveJob()
+    checkActiveJob();
 
     return () => {
       if (pollingRef.current) {
-        clearInterval(pollingRef.current)
+        clearInterval(pollingRef.current);
       }
-    }
-  }, [campaignId, pollJobStatus])
+    };
+  }, [campaignId, pollJobStatus]);
 
   // Start chunked generation
   const startChunkedGeneration = async () => {
-    if (!campaignId) return
+    if (!campaignId) return;
 
-    setIsGenerating(true)
+    setIsGenerating(true);
     try {
       const response = await authFetch(
         `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/summary/generate`,
-        { method: 'POST' }
-      )
+        { method: "POST" },
+      );
 
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json();
         setActiveJob({
           job_id: data.job_id,
           campaign_id: data.campaign_id,
-          status: 'pending',
+          status: "pending",
           current_batch: 0,
           total_batches: 0,
           progress_percent: 0,
-        })
+        });
 
         pollingRef.current = setInterval(() => {
-          pollJobStatus(data.job_id)
-        }, 2000)
+          pollJobStatus(data.job_id);
+        }, 2000);
       } else if (response.status === 409) {
         const activeResponse = await authFetch(
-          `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/summary/job`
-        )
+          `${import.meta.env.VITE_API_URL}/api/v1/campaigns/${campaignId}/summary/job`,
+        );
         if (activeResponse.ok) {
-          const data = await activeResponse.json()
+          const data = await activeResponse.json();
           if (data.active_job) {
-            setActiveJob(data.active_job)
+            setActiveJob(data.active_job);
             pollingRef.current = setInterval(() => {
-              pollJobStatus(data.active_job.job_id)
-            }, 2000)
+              pollJobStatus(data.active_job.job_id);
+            }, 2000);
           }
         }
       } else {
-        setIsGenerating(false)
+        setIsGenerating(false);
       }
     } catch (err) {
-      logger.error('Failed to start chunked generation:', err)
-      setIsGenerating(false)
+      logger.error("Failed to start chunked generation:", err);
+      setIsGenerating(false);
     }
-  }
+  };
 
   const showProgress =
-    isGenerating && activeJob && activeJob.status !== 'completed' && activeJob.status !== 'failed'
+    isGenerating &&
+    activeJob &&
+    activeJob.status !== "completed" &&
+    activeJob.status !== "failed";
 
   if (!campaign) {
     return (
       <div className="text-center py-12">
-        <Icon name="AlertCircle" className="w-12 h-12 text-text-muted mx-auto mb-3" />
+        <Icon
+          name="AlertCircle"
+          className="w-12 h-12 text-text-muted mx-auto mb-3"
+        />
         <p className="text-text-muted">Campaign not found</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -239,7 +247,9 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
               <Icon name="BookMarked" className="w-5 h-5 text-primary" />
               Campaign Details
             </h3>
-            <p className="text-sm text-text-muted mt-1">Basic information about your campaign</p>
+            <p className="text-sm text-text-muted mt-1">
+              Basic information about your campaign
+            </p>
           </div>
           <button
             onClick={() => openEditCampaignModal(campaignId)}
@@ -311,7 +321,9 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
             <label className="text-xs font-medium text-text-muted uppercase tracking-wider">
               World History
             </label>
-            <p className="mt-1 text-text whitespace-pre-wrap">{campaign.history}</p>
+            <p className="mt-1 text-text whitespace-pre-wrap">
+              {campaign.history}
+            </p>
           </div>
         )}
       </div>
@@ -322,8 +334,12 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
           <div className="flex items-center gap-3">
             <Icon name="Sparkles" className="w-6 h-6 text-primary" />
             <div>
-              <h3 className="text-lg font-bold text-text">AI Campaign Summary</h3>
-              <p className="text-sm text-text-muted mt-1">AI-generated overview of your campaign</p>
+              <h3 className="text-lg font-bold text-text">
+                AI Campaign Summary
+              </h3>
+              <p className="text-sm text-text-muted mt-1">
+                AI-generated overview of your campaign
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -333,7 +349,10 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
               className="p-2 hover:bg-background rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Configure summary content"
             >
-              <Icon name="Settings" className="w-5 h-5 text-text-muted hover:text-primary" />
+              <Icon
+                name="Settings"
+                className="w-5 h-5 text-text-muted hover:text-primary"
+              />
             </button>
 
             <button
@@ -363,17 +382,22 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
 
         {showProgress ? (
           <div className="text-center py-6">
-            <Icon name="Loader2" className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+            <Icon
+              name="Loader2"
+              className="w-8 h-8 text-primary animate-spin mx-auto mb-3"
+            />
             <p className="text-text font-medium">
-              {activeJob.status === 'extracting'
-                ? 'Extracting facts...'
-                : activeJob.status === 'synthesizing'
-                  ? 'Synthesizing summary...'
-                  : 'Preparing...'}
+              {activeJob.status === "extracting"
+                ? "Extracting facts..."
+                : activeJob.status === "synthesizing"
+                  ? "Synthesizing summary..."
+                  : "Preparing..."}
             </p>
             {activeJob.current_stage && (
               <p className="text-sm text-text-muted mt-1">
-                Processing: {STAGE_LABELS[activeJob.current_stage] || activeJob.current_stage}
+                Processing:{" "}
+                {STAGE_LABELS[activeJob.current_stage] ||
+                  activeJob.current_stage}
               </p>
             )}
 
@@ -387,22 +411,30 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
               {activeJob.progress_percent}% complete
               {activeJob.total_batches > 0 && (
                 <span className="ml-2">
-                  ({activeJob.current_batch} / {activeJob.total_batches} batches)
+                  ({activeJob.current_batch} / {activeJob.total_batches}{" "}
+                  batches)
                 </span>
               )}
             </p>
           </div>
-        ) : activeJob?.status === 'failed' ? (
+        ) : activeJob?.status === "failed" ? (
           <div className="text-center py-6 bg-red-500/10 rounded-lg">
-            <Icon name="AlertCircle" className="w-8 h-8 text-red-500 mx-auto mb-3" />
-            <p className="text-red-400 font-medium">Summary generation failed</p>
+            <Icon
+              name="AlertCircle"
+              className="w-8 h-8 text-red-500 mx-auto mb-3"
+            />
+            <p className="text-red-400 font-medium">
+              Summary generation failed
+            </p>
             {activeJob.error_message && (
-              <p className="text-sm text-red-400/70 mt-2">{activeJob.error_message}</p>
+              <p className="text-sm text-red-400/70 mt-2">
+                {activeJob.error_message}
+              </p>
             )}
             <button
               onClick={() => {
-                setActiveJob(null)
-                startChunkedGeneration()
+                setActiveJob(null);
+                startChunkedGeneration();
               }}
               className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
             >
@@ -411,7 +443,10 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
           </div>
         ) : loadingSummary ? (
           <div className="text-center py-12">
-            <Icon name="Loader2" className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+            <Icon
+              name="Loader2"
+              className="w-8 h-8 text-primary animate-spin mx-auto mb-3"
+            />
             <p className="text-text-muted">Loading campaign summary...</p>
           </div>
         ) : campaignContext?.summary ? (
@@ -423,7 +458,9 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
                   Overview
                 </h4>
                 <div className="prose prose-invert prose-sm max-w-none text-text-muted">
-                  <ReactMarkdown>{campaignContext.summary.overview}</ReactMarkdown>
+                  <ReactMarkdown>
+                    {campaignContext.summary.overview}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}
@@ -435,7 +472,9 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
                   World & Setting
                 </h4>
                 <div className="prose prose-invert prose-sm max-w-none text-text-muted">
-                  <ReactMarkdown>{campaignContext.summary.setting_summary}</ReactMarkdown>
+                  <ReactMarkdown>
+                    {campaignContext.summary.setting_summary}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}
@@ -447,7 +486,9 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
                   Characters & Factions
                 </h4>
                 <div className="prose prose-invert prose-sm max-w-none text-text-muted">
-                  <ReactMarkdown>{campaignContext.summary.characters_summary}</ReactMarkdown>
+                  <ReactMarkdown>
+                    {campaignContext.summary.characters_summary}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}
@@ -459,7 +500,9 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
                   Plot & Quests
                 </h4>
                 <div className="prose prose-invert prose-sm max-w-none text-text-muted">
-                  <ReactMarkdown>{campaignContext.summary.plot_summary}</ReactMarkdown>
+                  <ReactMarkdown>
+                    {campaignContext.summary.plot_summary}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}
@@ -471,7 +514,9 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
                   Recent Events
                 </h4>
                 <div className="prose prose-invert prose-sm max-w-none text-text-muted">
-                  <ReactMarkdown>{campaignContext.summary.recent_events}</ReactMarkdown>
+                  <ReactMarkdown>
+                    {campaignContext.summary.recent_events}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}
@@ -483,15 +528,22 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
                   Next Steps
                 </h4>
                 <div className="prose prose-invert prose-sm max-w-none text-text-muted">
-                  <ReactMarkdown>{campaignContext.summary.next_steps}</ReactMarkdown>
+                  <ReactMarkdown>
+                    {campaignContext.summary.next_steps}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}
           </div>
         ) : (
           <div className="text-center py-8 border border-dashed border-border rounded-lg">
-            <Icon name="Sparkles" className="w-12 h-12 text-text-muted mx-auto mb-3 opacity-50" />
-            <p className="text-text-muted mb-2">No campaign summary generated yet</p>
+            <Icon
+              name="Sparkles"
+              className="w-12 h-12 text-text-muted mx-auto mb-3 opacity-50"
+            />
+            <p className="text-text-muted mb-2">
+              No campaign summary generated yet
+            </p>
             <p className="text-sm text-text-muted">
               Click "Generate" to create an AI-powered summary of your campaign
             </p>
@@ -507,5 +559,5 @@ export default function CampaignOverviewContent({ campaignId }: CampaignOverview
         onSave={() => {}}
       />
     </div>
-  )
+  );
 }

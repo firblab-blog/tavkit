@@ -13,4 +13,4 @@ export const ResultsSkeleton = () => (
       <div className="h-4 bg-background/50 rounded w-3/4" />
     </div>
   </div>
-)
+);

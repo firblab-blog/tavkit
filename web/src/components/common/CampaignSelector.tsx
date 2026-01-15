@@ -1,25 +1,27 @@
-import { useCampaignStore } from '../../store/campaignStore'
-import Icon from './Icon'
+import { useCampaignStore } from "../../store/campaignStore";
+import Icon from "./Icon";
 
 interface CampaignSelectorProps {
-  selectedCampaignId: string | null
-  onSelect: (campaignId: string | null) => void
-  label?: string
-  helperText?: string
+  selectedCampaignId: string | null;
+  onSelect: (campaignId: string | null) => void;
+  label?: string;
+  helperText?: string;
 }
 
 export default function CampaignSelector({
   selectedCampaignId,
   onSelect,
-  label = 'Campaign Context',
-  helperText = 'Use campaign details to make generation more specific to your world',
+  label = "Campaign Context",
+  helperText = "Use campaign details to make generation more specific to your world",
 }: CampaignSelectorProps) {
-  const { campaigns } = useCampaignStore()
+  const { campaigns } = useCampaignStore();
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="block text-sm font-medium text-tavern-cream">{label}</label>
+        <label className="block text-sm font-medium text-tavern-cream">
+          {label}
+        </label>
         {selectedCampaignId && (
           <button
             onClick={() => onSelect(null)}
@@ -32,7 +34,7 @@ export default function CampaignSelector({
       </div>
 
       <select
-        value={selectedCampaignId || ''}
+        value={selectedCampaignId || ""}
         onChange={(e) => onSelect(e.target.value || null)}
         className="w-full px-3 py-2 bg-background border border-border rounded-lg text-tavern-cream focus:outline-none focus:ring-2 focus:ring-primary"
       >
@@ -45,7 +47,7 @@ export default function CampaignSelector({
         {campaigns.map((campaign) => (
           <option key={campaign.id} value={campaign.id}>
             {campaign.name}
-            {campaign.is_active ? ' (Active)' : ''}
+            {campaign.is_active ? " (Active)" : ""}
           </option>
         ))}
       </select>
@@ -55,15 +57,19 @@ export default function CampaignSelector({
       {campaigns.length === 0 && (
         <div className="mt-2 p-3 bg-tavern-dark/30 border border-tavern-purple/30 rounded-lg">
           <div className="flex items-start gap-2">
-            <Icon name="BookMarked" className="w-4 h-4 text-tavern-gold mt-0.5" />
+            <Icon
+              name="BookMarked"
+              className="w-4 h-4 text-tavern-gold mt-0.5"
+            />
             <div className="text-xs text-tavern-mauve">
-              <span className="font-medium text-tavern-cream">Tip:</span> Create campaigns in the{' '}
-              <span className="text-primary">Tavern Toolkit</span> to generate content tailored to
-              your world!
+              <span className="font-medium text-tavern-cream">Tip:</span> Create
+              campaigns in the{" "}
+              <span className="text-primary">Tavern Toolkit</span> to generate
+              content tailored to your world!
             </div>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

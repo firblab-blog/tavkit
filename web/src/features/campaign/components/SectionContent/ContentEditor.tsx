@@ -1,18 +1,18 @@
 // Content editor modal for creating/editing entries
 
-import { useRef } from 'react'
-import Icon from '@/components/common/Icon'
-import MarkdownToolbar from '@/components/common/MarkdownToolbar'
+import { useRef } from "react";
+import Icon from "@/components/common/Icon";
+import MarkdownToolbar from "@/components/common/MarkdownToolbar";
 
 interface ContentEditorProps {
-  isOpen: boolean
-  isEditing: boolean
-  title: string
-  content: string
-  onTitleChange: (title: string) => void
-  onContentChange: (content: string) => void
-  onSave: () => void
-  onClose: () => void
+  isOpen: boolean;
+  isEditing: boolean;
+  title: string;
+  content: string;
+  onTitleChange: (title: string) => void;
+  onContentChange: (content: string) => void;
+  onSave: () => void;
+  onClose: () => void;
 }
 
 export function ContentEditor({
@@ -25,9 +25,9 @@ export function ContentEditor({
   onSave,
   onClose,
 }: ContentEditorProps) {
-  const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -35,7 +35,7 @@ export function ContentEditor({
         {/* Header */}
         <div className="sticky top-0 bg-surface border-b border-border p-6 flex items-center justify-between">
           <h3 className="text-xl font-bold text-text">
-            {isEditing ? 'Edit Entry' : 'New Entry'}
+            {isEditing ? "Edit Entry" : "New Entry"}
           </h3>
           <button
             onClick={onClose}
@@ -48,7 +48,9 @@ export function ContentEditor({
         {/* Form */}
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text mb-2">Title *</label>
+            <label className="block text-sm font-medium text-text mb-2">
+              Title *
+            </label>
             <input
               type="text"
               value={title}
@@ -59,7 +61,9 @@ export function ContentEditor({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text mb-2">Content</label>
+            <label className="block text-sm font-medium text-text mb-2">
+              Content
+            </label>
             <MarkdownToolbar
               textareaRef={contentTextareaRef}
               value={content}
@@ -88,10 +92,10 @@ export function ContentEditor({
             disabled={!title.trim()}
             className="px-6 py-2 bg-primary hover:bg-primary-dark text-background font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isEditing ? 'Update' : 'Create'}
+            {isEditing ? "Update" : "Create"}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

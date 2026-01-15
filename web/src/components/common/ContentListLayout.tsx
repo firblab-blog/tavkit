@@ -1,54 +1,54 @@
-import Icon, { IconName } from './Icon'
+import Icon, { IconName } from "./Icon";
 
 interface ContentListLayoutProps {
   /** Search input value */
-  searchQuery: string
+  searchQuery: string;
   /** Search input change handler */
-  onSearchChange: (value: string) => void
+  onSearchChange: (value: string) => void;
   /** Placeholder for search input */
-  searchPlaceholder?: string
+  searchPlaceholder?: string;
   /** Add button label */
-  addButtonLabel?: string
+  addButtonLabel?: string;
   /** Add button click handler */
-  onAddClick?: () => void
+  onAddClick?: () => void;
   /** Color theme for add button (tailwind color name) */
-  addButtonColor?: string
+  addButtonColor?: string;
   /** Whether content is loading */
-  loading?: boolean
+  loading?: boolean;
   /** Error message to display */
-  error?: string | null
+  error?: string | null;
   /** Empty state icon */
-  emptyIcon?: IconName
+  emptyIcon?: IconName;
   /** Empty state title */
-  emptyTitle?: string
+  emptyTitle?: string;
   /** Empty state description */
-  emptyDescription?: string
+  emptyDescription?: string;
   /** Empty state CTA label (shown when no search query) */
-  emptyCTALabel?: string
+  emptyCTALabel?: string;
   /** Empty state CTA handler */
-  onEmptyCTAClick?: () => void
+  onEmptyCTAClick?: () => void;
   /** Whether there are items to display */
-  hasItems: boolean
+  hasItems: boolean;
   /** Children to render when there are items */
-  children: React.ReactNode
+  children: React.ReactNode;
   /** Additional className for the container */
-  className?: string
+  className?: string;
 }
 
 const colorClasses: Record<string, { button: string; hover: string }> = {
-  blue: { button: 'bg-blue-500', hover: 'hover:bg-blue-600' },
-  emerald: { button: 'bg-emerald-500', hover: 'hover:bg-emerald-600' },
-  purple: { button: 'bg-purple-500', hover: 'hover:bg-purple-600' },
-  amber: { button: 'bg-amber-500', hover: 'hover:bg-amber-600' },
-  cyan: { button: 'bg-cyan-500', hover: 'hover:bg-cyan-600' },
-  orange: { button: 'bg-orange-500', hover: 'hover:bg-orange-600' },
-  indigo: { button: 'bg-indigo-500', hover: 'hover:bg-indigo-600' },
-  rose: { button: 'bg-rose-500', hover: 'hover:bg-rose-600' },
-  red: { button: 'bg-red-500', hover: 'hover:bg-red-600' },
-  green: { button: 'bg-green-500', hover: 'hover:bg-green-600' },
-  teal: { button: 'bg-teal-500', hover: 'hover:bg-teal-600' },
-  yellow: { button: 'bg-yellow-500', hover: 'hover:bg-yellow-600' },
-}
+  blue: { button: "bg-blue-500", hover: "hover:bg-blue-600" },
+  emerald: { button: "bg-emerald-500", hover: "hover:bg-emerald-600" },
+  purple: { button: "bg-purple-500", hover: "hover:bg-purple-600" },
+  amber: { button: "bg-amber-500", hover: "hover:bg-amber-600" },
+  cyan: { button: "bg-cyan-500", hover: "hover:bg-cyan-600" },
+  orange: { button: "bg-orange-500", hover: "hover:bg-orange-600" },
+  indigo: { button: "bg-indigo-500", hover: "hover:bg-indigo-600" },
+  rose: { button: "bg-rose-500", hover: "hover:bg-rose-600" },
+  red: { button: "bg-red-500", hover: "hover:bg-red-600" },
+  green: { button: "bg-green-500", hover: "hover:bg-green-600" },
+  teal: { button: "bg-teal-500", hover: "hover:bg-teal-600" },
+  yellow: { button: "bg-yellow-500", hover: "hover:bg-yellow-600" },
+};
 
 /**
  * ContentListLayout - A reusable layout for content list pages.
@@ -64,22 +64,22 @@ const colorClasses: Record<string, { button: string; hover: string }> = {
 export default function ContentListLayout({
   searchQuery,
   onSearchChange,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = "Search...",
   addButtonLabel,
   onAddClick,
-  addButtonColor = 'blue',
+  addButtonColor = "blue",
   loading = false,
   error,
-  emptyIcon = 'Package',
-  emptyTitle = 'No items yet',
-  emptyDescription = 'Create your first item to get started.',
+  emptyIcon = "Package",
+  emptyTitle = "No items yet",
+  emptyDescription = "Create your first item to get started.",
   emptyCTALabel,
   onEmptyCTAClick,
   hasItems,
   children,
-  className = '',
+  className = "",
 }: ContentListLayoutProps) {
-  const colors = colorClasses[addButtonColor] || colorClasses.blue
+  const colors = colorClasses[addButtonColor] || colorClasses.blue;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -126,12 +126,15 @@ export default function ContentListLayout({
       {/* Empty State */}
       {!loading && !hasItems && (
         <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon name={emptyIcon} className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <Icon
+            name={emptyIcon}
+            className="w-10 h-10 text-text-muted mx-auto mb-3"
+          />
           <h3 className="text-text font-medium mb-1">
-            {searchQuery ? 'No matching results' : emptyTitle}
+            {searchQuery ? "No matching results" : emptyTitle}
           </h3>
           <p className="text-text-muted text-sm mb-4">
-            {searchQuery ? 'Try adjusting your search.' : emptyDescription}
+            {searchQuery ? "Try adjusting your search." : emptyDescription}
           </p>
           {!searchQuery && emptyCTALabel && onEmptyCTAClick && (
             <button
@@ -148,5 +151,5 @@ export default function ContentListLayout({
       {/* Content */}
       {!loading && hasItems && children}
     </div>
-  )
+  );
 }

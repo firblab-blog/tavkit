@@ -1,64 +1,76 @@
-import { useState, useEffect, useRef } from 'react'
-import { GeneratorLayout } from './GeneratorLayout'
-import { FormField } from '@/components/ui/FormField'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { useCampaignStore } from '../../store/campaignStore'
-import Icon from '../common/Icon'
-import CampaignSelector from '../common/CampaignSelector'
-import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
-import { emitContentSaved } from '@/lib/contentEvents'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
-import { ArrayFieldEditor } from './shared/fields'
-import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
-import { ManualTrapData, defaultTrapData, trapTypeOptions } from './shared/schemas/trapSchema'
+import { useState, useEffect, useRef } from "react";
+import { GeneratorLayout } from "./GeneratorLayout";
+import { FormField } from "@/components/ui/FormField";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { useCampaignStore } from "../../store/campaignStore";
+import Icon from "../common/Icon";
+import CampaignSelector from "../common/CampaignSelector";
+import AISettings, {
+  AIGenerationSettings,
+  getMaxTokensFromSettings,
+} from "./AISettings";
+import { emitContentSaved } from "@/lib/contentEvents";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { EntryModeToggle, EntryMode } from "./shared/EntryModeToggle";
+import { ArrayFieldEditor } from "./shared/fields";
+import {
+  SaveModal,
+  ParseWarning,
+  RawDataViewer,
+  ManualEntryPreview,
+} from "./shared";
+import {
+  ManualTrapData,
+  defaultTrapData,
+  trapTypeOptions,
+} from "./shared/schemas/trapSchema";
 import {
   generateTrap as generateTrapApi,
   saveTrap as saveTrapApi,
   getErrorMessage,
-} from '@/api/generators'
-import { normalizeStringArray } from '@/utils/aiResponseNormalizer'
-import { logger } from '@/utils/logger'
+} from "@/api/generators";
+import { normalizeStringArray } from "@/utils/aiResponseNormalizer";
+import { logger } from "@/utils/logger";
 
 // Expected trap structure
 interface TrapData {
-  name: string
-  trap_type: string
-  difficulty: string
-  description: string
-  environment: string
-  trigger: string
-  effect: string
-  damage: string
-  detection: Detection
-  solution_paths: SolutionPath[]
-  complications: string[]
-  rewards: string[]
-  scaling: Scaling
-  dm_notes: string
+  name: string;
+  trap_type: string;
+  difficulty: string;
+  description: string;
+  environment: string;
+  trigger: string;
+  effect: string;
+  damage: string;
+  detection: Detection;
+  solution_paths: SolutionPath[];
+  complications: string[];
+  rewards: string[];
+  scaling: Scaling;
+  dm_notes: string;
   // For any unexpected fields from AI
-  _raw?: Record<string, unknown>
-  _parseError?: string
+  _raw?: Record<string, unknown>;
+  _parseError?: string;
 }
 
 interface Detection {
-  passive_perception_dc: number | null
-  investigation_dc: number | null
-  clues: string[]
+  passive_perception_dc: number | null;
+  investigation_dc: number | null;
+  clues: string[];
 }
 
 interface SolutionPath {
-  approach: string
-  skill: string
-  dc: number | null
-  description: string
-  time: string
-  failure: string
+  approach: string;
+  skill: string;
+  dc: number | null;
+  description: string;
+  time: string;
+  failure: string;
 }
 
 interface Scaling {
-  easier: string
-  harder: string
+  easier: string;
+  harder: string;
 }
 
 /**
@@ -69,71 +81,76 @@ function normalizeDetection(value: unknown): Detection {
     passive_perception_dc: null,
     investigation_dc: null,
     clues: [],
-  }
+  };
 
-  if (!value || typeof value !== 'object') return result
+  if (!value || typeof value !== "object") return result;
 
-  const det = value as Record<string, unknown>
+  const det = value as Record<string, unknown>;
 
   // Handle passive perception DC from various field names
-  const passiveDC = det.passive_perception_dc || det.passive_dc || det.perception_dc || det.dc
+  const passiveDC =
+    det.passive_perception_dc || det.passive_dc || det.perception_dc || det.dc;
   if (passiveDC !== undefined && passiveDC !== null) {
-    result.passive_perception_dc = Number(passiveDC) || null
+    result.passive_perception_dc = Number(passiveDC) || null;
   }
 
   // Handle investigation DC
-  const invDC = det.investigation_dc || det.search_dc
+  const invDC = det.investigation_dc || det.search_dc;
   if (invDC !== undefined && invDC !== null) {
-    result.investigation_dc = Number(invDC) || null
+    result.investigation_dc = Number(invDC) || null;
   }
 
   // Handle clues
-  result.clues = normalizeStringArray(det.clues || det.hints)
+  result.clues = normalizeStringArray(det.clues || det.hints);
 
-  return result
+  return result;
 }
 
 /**
  * Normalize a single solution path
  */
 function normalizeSolutionPath(value: unknown): SolutionPath | null {
-  if (!value) return null
+  if (!value) return null;
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return {
       approach: value,
-      skill: '',
+      skill: "",
       dc: null,
-      description: '',
-      time: '',
-      failure: '',
-    }
+      description: "",
+      time: "",
+      failure: "",
+    };
   }
 
-  if (typeof value === 'object' && value !== null) {
-    const path = value as Record<string, unknown>
+  if (typeof value === "object" && value !== null) {
+    const path = value as Record<string, unknown>;
     return {
-      approach: String(path.approach || path.method || path.name || 'Unknown Approach'),
-      skill: String(path.skill || path.ability || path.check || ''),
+      approach: String(
+        path.approach || path.method || path.name || "Unknown Approach",
+      ),
+      skill: String(path.skill || path.ability || path.check || ""),
       dc: path.dc !== undefined && path.dc !== null ? Number(path.dc) : null,
-      description: String(path.description || ''),
-      time: String(path.time || ''),
-      failure: String(path.failure || path.on_failure || path.failure_effect || ''),
-    }
+      description: String(path.description || ""),
+      time: String(path.time || ""),
+      failure: String(
+        path.failure || path.on_failure || path.failure_effect || "",
+      ),
+    };
   }
 
-  return null
+  return null;
 }
 
 /**
  * Normalize solution paths array
  */
 function normalizeSolutionPaths(value: unknown): SolutionPath[] {
-  if (!value || !Array.isArray(value)) return []
+  if (!value || !Array.isArray(value)) return [];
 
   return value
     .map((path) => normalizeSolutionPath(path))
-    .filter((path): path is SolutionPath => path !== null)
+    .filter((path): path is SolutionPath => path !== null);
 }
 
 /**
@@ -141,135 +158,151 @@ function normalizeSolutionPaths(value: unknown): SolutionPath[] {
  */
 function normalizeScaling(value: unknown): Scaling {
   const result: Scaling = {
-    easier: '',
-    harder: '',
-  }
+    easier: "",
+    harder: "",
+  };
 
-  if (!value || typeof value !== 'object') return result
+  if (!value || typeof value !== "object") return result;
 
-  const scaling = value as Record<string, unknown>
+  const scaling = value as Record<string, unknown>;
 
-  result.easier = String(scaling.easier || scaling.lower_level || scaling.easy || '')
-  result.harder = String(scaling.harder || scaling.higher_level || scaling.hard || '')
+  result.easier = String(
+    scaling.easier || scaling.lower_level || scaling.easy || "",
+  );
+  result.harder = String(
+    scaling.harder || scaling.higher_level || scaling.hard || "",
+  );
 
-  return result
+  return result;
 }
 
 /**
  * Main normalization function - converts raw AI response to typed TrapData
  */
 function normalizeTrapResponse(raw: Record<string, unknown>): TrapData {
-  logger.debug('[TrapGenerator] normalizeTrapResponse input:', raw)
+  logger.debug("[TrapGenerator] normalizeTrapResponse input:", raw);
 
   // Handle case where description contains the entire JSON response
-  let processedRaw = raw
-  if (raw.description && typeof raw.description === 'string') {
-    const descStr = (raw.description as string).trim()
-    if (descStr.startsWith('{') && descStr.endsWith('}')) {
+  let processedRaw = raw;
+  if (raw.description && typeof raw.description === "string") {
+    const descStr = (raw.description as string).trim();
+    if (descStr.startsWith("{") && descStr.endsWith("}")) {
       try {
-        const parsedTrap = JSON.parse(descStr)
-        logger.debug('[TrapGenerator] Parsed trap from JSON description:', parsedTrap)
-        processedRaw = parsedTrap
+        const parsedTrap = JSON.parse(descStr);
+        logger.debug(
+          "[TrapGenerator] Parsed trap from JSON description:",
+          parsedTrap,
+        );
+        processedRaw = parsedTrap;
       } catch (e) {
-        logger.warn('[TrapGenerator] Failed to parse description as JSON:', e)
+        logger.warn("[TrapGenerator] Failed to parse description as JSON:", e);
       }
     }
   }
 
   // Expected fields for tracking unexpected ones
   const expectedFields = [
-    'name',
-    'title',
-    'trap_type',
-    'type',
-    'difficulty',
-    'description',
-    'environment',
-    'trigger',
-    'effect',
-    'damage',
-    'detection',
-    'save',
-    'solution_paths',
-    'solutions',
-    'disarm',
-    'complications',
-    'rewards',
-    'loot',
-    'treasure',
-    'scaling',
-    'dm_notes',
-    'notes',
-    'gm_notes',
-    'provider',
-    '_parse_warning',
-  ]
+    "name",
+    "title",
+    "trap_type",
+    "type",
+    "difficulty",
+    "description",
+    "environment",
+    "trigger",
+    "effect",
+    "damage",
+    "detection",
+    "save",
+    "solution_paths",
+    "solutions",
+    "disarm",
+    "complications",
+    "rewards",
+    "loot",
+    "treasure",
+    "scaling",
+    "dm_notes",
+    "notes",
+    "gm_notes",
+    "provider",
+    "_parse_warning",
+  ];
 
   // Collect unexpected fields
-  const unexpectedFields: Record<string, unknown> = {}
+  const unexpectedFields: Record<string, unknown> = {};
   for (const key of Object.keys(processedRaw)) {
     if (!expectedFields.includes(key)) {
-      unexpectedFields[key] = processedRaw[key]
+      unexpectedFields[key] = processedRaw[key];
     }
   }
 
   // Build description
-  let description = ''
-  if (processedRaw.description && typeof processedRaw.description === 'string') {
-    const descText = processedRaw.description as string
-    if (!descText.trim().startsWith('{')) {
-      description = descText
+  let description = "";
+  if (
+    processedRaw.description &&
+    typeof processedRaw.description === "string"
+  ) {
+    const descText = processedRaw.description as string;
+    if (!descText.trim().startsWith("{")) {
+      description = descText;
     }
   }
 
   // Get solution paths from various possible field names
-  let solutionPaths = normalizeSolutionPaths(processedRaw.solution_paths)
+  let solutionPaths = normalizeSolutionPaths(processedRaw.solution_paths);
   if (solutionPaths.length === 0) {
-    solutionPaths = normalizeSolutionPaths(processedRaw.solutions)
+    solutionPaths = normalizeSolutionPaths(processedRaw.solutions);
   }
   // Convert disarm to solution path if present and no paths found
   if (solutionPaths.length === 0 && processedRaw.disarm) {
-    const disarm = processedRaw.disarm as Record<string, unknown>
-    if (typeof disarm === 'object') {
+    const disarm = processedRaw.disarm as Record<string, unknown>;
+    if (typeof disarm === "object") {
       solutionPaths = [
         {
-          approach: 'Disarm',
-          skill: String(disarm.method || disarm.skill || ''),
+          approach: "Disarm",
+          skill: String(disarm.method || disarm.skill || ""),
           dc: disarm.dc !== undefined ? Number(disarm.dc) : null,
-          description: String(disarm.description || ''),
-          time: '1 action',
-          failure: 'Triggers the trap',
+          description: String(disarm.description || ""),
+          time: "1 action",
+          failure: "Triggers the trap",
         },
-      ]
+      ];
     }
   }
 
   // Get rewards from various possible field names
-  let rewards = normalizeStringArray(processedRaw.rewards)
+  let rewards = normalizeStringArray(processedRaw.rewards);
   if (rewards.length === 0) {
-    rewards = normalizeStringArray(processedRaw.loot || processedRaw.treasure)
+    rewards = normalizeStringArray(processedRaw.loot || processedRaw.treasure);
   }
 
   const result: TrapData = {
-    name: String(processedRaw.name || processedRaw.title || 'Unknown Trap'),
-    trap_type: String(processedRaw.trap_type || processedRaw.type || ''),
-    difficulty: String(processedRaw.difficulty || ''),
+    name: String(processedRaw.name || processedRaw.title || "Unknown Trap"),
+    trap_type: String(processedRaw.trap_type || processedRaw.type || ""),
+    difficulty: String(processedRaw.difficulty || ""),
     description: description,
-    environment: String(processedRaw.environment || ''),
-    trigger: String(processedRaw.trigger || ''),
-    effect: String(processedRaw.effect || ''),
-    damage: String(processedRaw.damage || ''),
+    environment: String(processedRaw.environment || ""),
+    trigger: String(processedRaw.trigger || ""),
+    effect: String(processedRaw.effect || ""),
+    damage: String(processedRaw.damage || ""),
     detection: normalizeDetection(processedRaw.detection),
     solution_paths: solutionPaths,
     complications: normalizeStringArray(processedRaw.complications),
     rewards: rewards,
     scaling: normalizeScaling(processedRaw.scaling),
-    dm_notes: String(processedRaw.dm_notes || processedRaw.notes || processedRaw.gm_notes || ''),
-    _raw: Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
-  }
+    dm_notes: String(
+      processedRaw.dm_notes ||
+        processedRaw.notes ||
+        processedRaw.gm_notes ||
+        "",
+    ),
+    _raw:
+      Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
+  };
 
-  logger.debug('[TrapGenerator] Normalized result:', result)
-  return result
+  logger.debug("[TrapGenerator] Normalized result:", result);
+  return result;
 }
 
 /**
@@ -278,9 +311,9 @@ function normalizeTrapResponse(raw: Record<string, unknown>): TrapData {
 function hasValidTrapContent(trap: TrapData): boolean {
   return !!(
     trap.name &&
-    trap.name !== 'Unknown Trap' &&
+    trap.name !== "Unknown Trap" &&
     (trap.description || trap.trigger || trap.effect)
-  )
+  );
 }
 
 // ============================================================================
@@ -288,50 +321,50 @@ function hasValidTrapContent(trap: TrapData): boolean {
 // ============================================================================
 
 export default function TrapGenerator() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [trap, setTrap] = useState<TrapData | null>(null)
-  const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
-  const [campaignId, setCampaignId] = useState<string | null>(null)
-  const { activeCampaignId } = useCampaignStore()
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [trap, setTrap] = useState<TrapData | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showRawResponse, setShowRawResponse] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const { activeCampaignId } = useCampaignStore();
 
   // Manual entry mode state
-  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
-  const [manualData, setManualData] = useState<ManualTrapData>(defaultTrapData)
-  const [manualSaving, setManualSaving] = useState(false)
-  const [manualSaved, setManualSaved] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode>("ai");
+  const [manualData, setManualData] = useState<ManualTrapData>(defaultTrapData);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualSaved, setManualSaved] = useState(false);
 
   // Track if user has made an explicit campaign selection
-  const hasUserSelectedCampaign = useRef(false)
+  const hasUserSelectedCampaign = useRef(false);
 
   // Auto-select active campaign ONLY on initial mount
   useEffect(() => {
     if (activeCampaignId && !hasUserSelectedCampaign.current) {
-      setCampaignId(activeCampaignId)
+      setCampaignId(activeCampaignId);
     }
-  }, [activeCampaignId])
+  }, [activeCampaignId]);
 
   // Form inputs
-  const [trapType, setTrapType] = useState('mechanical')
-  const [difficulty, setDifficulty] = useState('medium')
-  const [partyLevel, setPartyLevel] = useState(5)
-  const [environment, setEnvironment] = useState('dungeon')
-  const [specialRequests, setSpecialRequests] = useState('')
+  const [trapType, setTrapType] = useState("mechanical");
+  const [difficulty, setDifficulty] = useState("medium");
+  const [partyLevel, setPartyLevel] = useState(5);
+  const [environment, setEnvironment] = useState("dungeon");
+  const [specialRequests, setSpecialRequests] = useState("");
 
   // AI settings
   const [aiSettings, setAiSettings] = useState<AIGenerationSettings>({
-    detailLevel: 'high',
+    detailLevel: "high",
     timeout: 120,
-  })
+  });
 
   const generateTrap = async () => {
-    setLoading(true)
-    setError(null)
-    setTrap(null)
-    setShowRawResponse(false)
-    setIsSaved(false)
+    setLoading(true);
+    setError(null);
+    setTrap(null);
+    setShowRawResponse(false);
+    setIsSaved(false);
 
     try {
       const data = await generateTrapApi(
@@ -345,147 +378,150 @@ export default function TrapGenerator() {
           max_tokens: getMaxTokensFromSettings(aiSettings),
           timeout: aiSettings.timeout,
         },
-        aiSettings.timeout
-      )
-      logger.debug('[TrapGenerator] Raw API response:', data)
+        aiSettings.timeout,
+      );
+      logger.debug("[TrapGenerator] Raw API response:", data);
 
       // Normalize the response
       if (data.trap) {
-        const normalized = normalizeTrapResponse(data.trap)
+        const normalized = normalizeTrapResponse(data.trap);
 
         if (!hasValidTrapContent(normalized)) {
           normalized._parseError =
-            'AI response missing essential trap content. Showing raw response.'
-          setShowRawResponse(true)
+            "AI response missing essential trap content. Showing raw response.";
+          setShowRawResponse(true);
         }
 
-        setTrap(normalized)
+        setTrap(normalized);
       } else {
         // No trap wrapper - try to normalize the raw response
-        const normalized = normalizeTrapResponse(data as unknown as Record<string, unknown>)
-        normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
-        setTrap(normalized)
+        const normalized = normalizeTrapResponse(
+          data as unknown as Record<string, unknown>,
+        );
+        normalized._parseError =
+          "Unexpected response format. Attempting to display.";
+        setShowRawResponse(true);
+        setTrap(normalized);
       }
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const saveTrap = async () => {
-    if (!trap) return
+    if (!trap) return;
 
     try {
       await saveTrapApi({
         campaign_id: campaignId || undefined,
-        name: trap.name || 'Unnamed Trap',
+        name: trap.name || "Unnamed Trap",
         trap_type: trap.trap_type || trapType,
         difficulty: trap.difficulty || difficulty,
-        description: trap.description || '',
+        description: trap.description || "",
         environment: trap.environment || environment,
-        trigger: trap.trigger || '',
-        effect: trap.effect || '',
-        damage: trap.damage || '',
+        trigger: trap.trigger || "",
+        effect: trap.effect || "",
+        damage: trap.damage || "",
         detection: trap.detection || {},
         solution_paths: trap.solution_paths || [],
         complications: trap.complications || [],
         rewards: trap.rewards || [],
         scaling: trap.scaling || {},
-        dm_notes: trap.dm_notes || '',
+        dm_notes: trap.dm_notes || "",
         ai_generated: true,
-      })
+      });
 
-      setShowSaveModal(false)
-      setIsSaved(true)
-      emitContentSaved()
+      setShowSaveModal(false);
+      setIsSaved(true);
+      emitContentSaved();
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     }
-  }
+  };
 
   const handleCopy = () => {
-    if (!trap) return
-    let text = `${trap.name}\n${trap.trap_type} • ${trap.difficulty}${trap.environment ? ` • ${trap.environment}` : ''}\n\n${trap.description}`
+    if (!trap) return;
+    let text = `${trap.name}\n${trap.trap_type} • ${trap.difficulty}${trap.environment ? ` • ${trap.environment}` : ""}\n\n${trap.description}`;
 
     if (trap.trigger) {
-      text += `\n\nTrigger: ${trap.trigger}`
+      text += `\n\nTrigger: ${trap.trigger}`;
     }
 
     if (trap.effect) {
-      text += `\n\nEffect: ${trap.effect}`
+      text += `\n\nEffect: ${trap.effect}`;
     }
 
     if (trap.damage) {
-      text += `\nDamage: ${trap.damage}`
+      text += `\nDamage: ${trap.damage}`;
     }
 
     if (trap.detection) {
-      text += '\n\nDetection:\n'
+      text += "\n\nDetection:\n";
       if (trap.detection.passive_perception_dc) {
-        text += `Passive Perception DC: ${trap.detection.passive_perception_dc}\n`
+        text += `Passive Perception DC: ${trap.detection.passive_perception_dc}\n`;
       }
       if (trap.detection.investigation_dc) {
-        text += `Investigation DC: ${trap.detection.investigation_dc}\n`
+        text += `Investigation DC: ${trap.detection.investigation_dc}\n`;
       }
       if (trap.detection.clues && trap.detection.clues.length > 0) {
-        text += 'Clues:\n'
+        text += "Clues:\n";
         trap.detection.clues.forEach((clue) => {
-          text += `- ${clue}\n`
-        })
+          text += `- ${clue}\n`;
+        });
       }
     }
 
     if (trap.solution_paths && trap.solution_paths.length > 0) {
-      text += '\nSolution Paths:\n'
+      text += "\nSolution Paths:\n";
       trap.solution_paths.forEach((path) => {
-        text += `\n${path.approach} (${path.skill}${path.dc ? `, DC ${path.dc}` : ''})\n${path.description}\nTime: ${path.time}\nOn Failure: ${path.failure}\n`
-      })
+        text += `\n${path.approach} (${path.skill}${path.dc ? `, DC ${path.dc}` : ""})\n${path.description}\nTime: ${path.time}\nOn Failure: ${path.failure}\n`;
+      });
     }
 
     if (trap.complications && trap.complications.length > 0) {
-      text += '\nComplications:\n'
+      text += "\nComplications:\n";
       trap.complications.forEach((comp) => {
-        text += `- ${comp}\n`
-      })
+        text += `- ${comp}\n`;
+      });
     }
 
     if (trap.rewards && trap.rewards.length > 0) {
-      text += '\nRewards:\n'
+      text += "\nRewards:\n";
       trap.rewards.forEach((reward) => {
-        text += `- ${reward}\n`
-      })
+        text += `- ${reward}\n`;
+      });
     }
 
     if (trap.dm_notes) {
-      text += `\nDM Notes: ${trap.dm_notes}`
+      text += `\nDM Notes: ${trap.dm_notes}`;
     }
 
-    navigator.clipboard.writeText(text)
-  }
+    navigator.clipboard.writeText(text);
+  };
 
   // Handle manual entry save
   const handleManualSave = async () => {
     if (!manualData.name.trim()) {
-      setError('Trap name is required')
-      return
+      setError("Trap name is required");
+      return;
     }
 
-    setManualSaving(true)
-    setError(null)
+    setManualSaving(true);
+    setError(null);
 
     try {
       await saveTrapApi({
         campaign_id: campaignId || undefined,
         name: manualData.name.trim(),
         trap_type: manualData.trap_type,
-        difficulty: '',
-        description: manualData.lore.trim() || '',
-        environment: '',
-        trigger: manualData.trigger.trim() || '',
-        effect: manualData.effect.trim() || '',
-        damage: manualData.damage.trim() || '',
+        difficulty: "",
+        description: manualData.lore.trim() || "",
+        environment: "",
+        trigger: manualData.trigger.trim() || "",
+        effect: manualData.effect.trim() || "",
+        damage: manualData.damage.trim() || "",
         detection: {
           passive_perception_dc: manualData.detection_dc,
           investigation_dc: null,
@@ -494,32 +530,32 @@ export default function TrapGenerator() {
         solution_paths: manualData.disarm_dc
           ? [
               {
-                approach: 'Disarm',
+                approach: "Disarm",
                 skill: "Thieves' Tools",
                 dc: manualData.disarm_dc,
-                description: manualData.bypass.trim() || 'Standard disarm',
-                time: '1 action',
-                failure: 'Triggers the trap',
+                description: manualData.bypass.trim() || "Standard disarm",
+                time: "1 action",
+                failure: "Triggers the trap",
               },
             ]
           : [],
         complications: manualData.countermeasures.filter((c) => c.trim()),
         rewards: [],
-        scaling: { easier: '', harder: '' },
-        dm_notes: manualData.reset.trim() || '',
+        scaling: { easier: "", harder: "" },
+        dm_notes: manualData.reset.trim() || "",
         ai_generated: false,
-      })
+      });
 
-      setManualSaved(true)
-      emitContentSaved()
+      setManualSaved(true);
+      emitContentSaved();
       // Reset form after successful save
-      setManualData(defaultTrapData)
+      setManualData(defaultTrapData);
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setManualSaving(false)
+      setManualSaving(false);
     }
-  }
+  };
 
   // AI generation form content
   const aiFormContent = (
@@ -528,8 +564,8 @@ export default function TrapGenerator() {
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -562,7 +598,10 @@ export default function TrapGenerator() {
         </select>
       </FormField>
 
-      <FormField label="Party Level" description="Determines appropriate damage and DCs">
+      <FormField
+        label="Party Level"
+        description="Determines appropriate damage and DCs"
+      >
         <input
           type="number"
           min="1"
@@ -600,7 +639,7 @@ export default function TrapGenerator() {
         />
       </FormField>
     </>
-  )
+  );
 
   // Manual entry form content
   const manualFormContent = (
@@ -608,8 +647,8 @@ export default function TrapGenerator() {
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -618,7 +657,9 @@ export default function TrapGenerator() {
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., Pendulum Blade, Poison Dart Trap"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -627,7 +668,9 @@ export default function TrapGenerator() {
       <FormField label="Trap Type">
         <select
           value={manualData.trap_type}
-          onChange={(e) => setManualData({ ...manualData, trap_type: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, trap_type: e.target.value })
+          }
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
           {trapTypeOptions.map((opt) => (
@@ -645,7 +688,9 @@ export default function TrapGenerator() {
             <input
               type="text"
               value={manualData.trigger}
-              onChange={(e) => setManualData({ ...manualData, trigger: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, trigger: e.target.value })
+              }
               placeholder="e.g., Pressure plate, Tripwire, Opening a door"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -654,7 +699,9 @@ export default function TrapGenerator() {
           <FormField label="Effect">
             <textarea
               value={manualData.effect}
-              onChange={(e) => setManualData({ ...manualData, effect: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, effect: e.target.value })
+              }
               placeholder="What happens when the trap is triggered?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -666,7 +713,9 @@ export default function TrapGenerator() {
               <input
                 type="text"
                 value={manualData.damage}
-                onChange={(e) => setManualData({ ...manualData, damage: e.target.value })}
+                onChange={(e) =>
+                  setManualData({ ...manualData, damage: e.target.value })
+                }
                 placeholder="e.g., 2d10 piercing"
                 className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -677,7 +726,7 @@ export default function TrapGenerator() {
                 type="number"
                 min={1}
                 max={30}
-                value={manualData.save_dc || ''}
+                value={manualData.save_dc || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -701,11 +750,13 @@ export default function TrapGenerator() {
                 type="number"
                 min={1}
                 max={30}
-                value={manualData.detection_dc || ''}
+                value={manualData.detection_dc || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
-                    detection_dc: e.target.value ? parseInt(e.target.value) : null,
+                    detection_dc: e.target.value
+                      ? parseInt(e.target.value)
+                      : null,
                   })
                 }
                 placeholder="Perception DC"
@@ -718,7 +769,7 @@ export default function TrapGenerator() {
                 type="number"
                 min={1}
                 max={30}
-                value={manualData.disarm_dc || ''}
+                value={manualData.disarm_dc || ""}
                 onChange={(e) =>
                   setManualData({
                     ...manualData,
@@ -734,7 +785,9 @@ export default function TrapGenerator() {
           <FormField label="Bypass Method">
             <textarea
               value={manualData.bypass}
-              onChange={(e) => setManualData({ ...manualData, bypass: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, bypass: e.target.value })
+              }
               placeholder="How can the trap be avoided or bypassed?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -744,13 +797,18 @@ export default function TrapGenerator() {
       </CollapsibleSection>
 
       {/* Reset & Countermeasures */}
-      <CollapsibleSection title="Reset & Countermeasures" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Reset & Countermeasures"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <FormField label="Reset Mechanism">
             <input
               type="text"
               value={manualData.reset}
-              onChange={(e) => setManualData({ ...manualData, reset: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, reset: e.target.value })
+              }
               placeholder="e.g., Automatic (1 minute), Manual, None"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -759,7 +817,9 @@ export default function TrapGenerator() {
           <ArrayFieldEditor
             label="Countermeasures"
             values={manualData.countermeasures}
-            onChange={(countermeasures) => setManualData({ ...manualData, countermeasures })}
+            onChange={(countermeasures) =>
+              setManualData({ ...manualData, countermeasures })
+            }
             placeholder="Add a countermeasure..."
           />
         </div>
@@ -770,7 +830,9 @@ export default function TrapGenerator() {
         <FormField label="Lore/Description">
           <textarea
             value={manualData.lore}
-            onChange={(e) => setManualData({ ...manualData, lore: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, lore: e.target.value })
+            }
             placeholder="Background, purpose, or description of the trap..."
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             rows={3}
@@ -804,7 +866,7 @@ export default function TrapGenerator() {
         </div>
       )}
     </>
-  )
+  );
 
   // Combined form content with mode toggle
   const formContent = (
@@ -812,18 +874,18 @@ export default function TrapGenerator() {
       <EntryModeToggle
         mode={entryMode}
         onChange={(mode) => {
-          setEntryMode(mode)
-          setManualSaved(false)
-          setError(null)
+          setEntryMode(mode);
+          setManualSaved(false);
+          setError(null);
         }}
         disabled={loading}
       />
-      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+      {entryMode === "ai" ? aiFormContent : manualFormContent}
     </>
-  )
+  );
 
   // Manual mode preview content (simple message)
-  const manualPreviewContent = <ManualEntryPreview entityType="trap" />
+  const manualPreviewContent = <ManualEntryPreview entityType="trap" />;
 
   const generatedContent = trap ? (
     <div className="space-y-6">
@@ -876,7 +938,9 @@ export default function TrapGenerator() {
               <Icon name="Skull" className="w-5 h-5 text-red-400" />
               Damage
             </h3>
-            <p className="text-red-400 font-mono font-bold text-xl">{trap.damage}</p>
+            <p className="text-red-400 font-mono font-bold text-xl">
+              {trap.damage}
+            </p>
           </div>
         )}
       </div>
@@ -894,13 +958,13 @@ export default function TrapGenerator() {
             <div className="bg-background p-4 rounded border border-border space-y-2">
               {trap.detection.passive_perception_dc && (
                 <p className="text-text">
-                  <span className="font-medium">Passive Perception DC:</span>{' '}
+                  <span className="font-medium">Passive Perception DC:</span>{" "}
                   {trap.detection.passive_perception_dc}
                 </p>
               )}
               {trap.detection.investigation_dc && (
                 <p className="text-text">
-                  <span className="font-medium">Investigation DC:</span>{' '}
+                  <span className="font-medium">Investigation DC:</span>{" "}
                   {trap.detection.investigation_dc}
                 </p>
               )}
@@ -909,7 +973,10 @@ export default function TrapGenerator() {
                   <p className="font-medium text-text mb-1">Clues:</p>
                   <ul className="space-y-1">
                     {trap.detection.clues.map((clue, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-text-muted">
+                      <li
+                        key={idx}
+                        className="flex items-start gap-2 text-text-muted"
+                      >
                         <span className="text-primary">•</span>
                         <span>{clue}</span>
                       </li>
@@ -930,9 +997,14 @@ export default function TrapGenerator() {
           </h3>
           <div className="space-y-3">
             {trap.solution_paths.map((path, idx) => (
-              <div key={idx} className="bg-background p-4 rounded border-2 border-primary/30">
+              <div
+                key={idx}
+                className="bg-background p-4 rounded border-2 border-primary/30"
+              >
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-text capitalize">{path.approach}</span>
+                  <span className="font-medium text-text capitalize">
+                    {path.approach}
+                  </span>
                   {path.dc && (
                     <span className="px-2 py-1 bg-primary/20 text-primary rounded text-sm font-mono font-bold">
                       DC {path.dc}
@@ -944,7 +1016,9 @@ export default function TrapGenerator() {
                     <span className="font-medium">Skill:</span> {path.skill}
                   </p>
                 )}
-                {path.description && <p className="text-text mb-2">{path.description}</p>}
+                {path.description && (
+                  <p className="text-text mb-2">{path.description}</p>
+                )}
                 {path.time && (
                   <div className="flex gap-4 text-xs text-text-muted">
                     <span>Time: {path.time}</span>
@@ -952,7 +1026,8 @@ export default function TrapGenerator() {
                 )}
                 {path.failure && (
                   <p className="text-sm text-red-400 mt-2">
-                    <span className="font-medium">On Failure:</span> {path.failure}
+                    <span className="font-medium">On Failure:</span>{" "}
+                    {path.failure}
                   </p>
                 )}
               </div>
@@ -1010,7 +1085,9 @@ export default function TrapGenerator() {
           <div className="grid md:grid-cols-2 gap-4">
             {trap.scaling.easier && (
               <div className="bg-green-500/10 p-4 rounded border border-green-500/20">
-                <p className="font-medium text-green-400 mb-2">Make It Easier:</p>
+                <p className="font-medium text-green-400 mb-2">
+                  Make It Easier:
+                </p>
                 <p className="text-text">{trap.scaling.easier}</p>
               </div>
             )}
@@ -1038,7 +1115,9 @@ export default function TrapGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {trap._raw && <RawDataViewer data={trap._raw} defaultExpanded={showRawResponse} />}
+      {trap._raw && (
+        <RawDataViewer data={trap._raw} defaultExpanded={showRawResponse} />
+      )}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -1047,7 +1126,7 @@ export default function TrapGenerator() {
         isSaved={isSaved}
       />
     </div>
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -1057,14 +1136,18 @@ export default function TrapGenerator() {
         icon="Skull"
         formTitle="Trap Details"
         formIcon="Settings"
-        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Trap'}
+        resultsTitle={
+          entryMode === "manual" ? "Manual Entry" : "Generated Trap"
+        }
         formContent={formContent}
-        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
+        generatedContent={
+          entryMode === "manual" ? manualPreviewContent : generatedContent
+        }
         isGenerating={loading}
         onGenerate={generateTrap}
         generateButtonText="Generate Trap"
         error={error || undefined}
-        hideGenerateButton={entryMode === 'manual'}
+        hideGenerateButton={entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -1072,9 +1155,9 @@ export default function TrapGenerator() {
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={saveTrap}
-        entityName={trap?.name || 'Trap'}
+        entityName={trap?.name || "Trap"}
         campaignId={campaignId}
       />
     </>
-  )
+  );
 }

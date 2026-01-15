@@ -1,252 +1,274 @@
-import { useState, useEffect, useRef } from 'react'
-import { GeneratorLayout } from './GeneratorLayout'
-import { FormField } from '@/components/ui/FormField'
-import { ActionsBar } from '@/components/ui/ActionsBar'
-import { useCampaignStore } from '../../store/campaignStore'
-import Icon from '../common/Icon'
-import CampaignSelector from '../common/CampaignSelector'
-import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
-import { emitContentSaved } from '@/lib/contentEvents'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
-import { ArrayFieldEditor } from './shared/fields'
-import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import { useState, useEffect, useRef } from "react";
+import { GeneratorLayout } from "./GeneratorLayout";
+import { FormField } from "@/components/ui/FormField";
+import { ActionsBar } from "@/components/ui/ActionsBar";
+import { useCampaignStore } from "../../store/campaignStore";
+import Icon from "../common/Icon";
+import CampaignSelector from "../common/CampaignSelector";
+import AISettings, {
+  AIGenerationSettings,
+  getMaxTokensFromSettings,
+} from "./AISettings";
+import { emitContentSaved } from "@/lib/contentEvents";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { EntryModeToggle, EntryMode } from "./shared/EntryModeToggle";
+import { ArrayFieldEditor } from "./shared/fields";
+import {
+  SaveModal,
+  ParseWarning,
+  RawDataViewer,
+  ManualEntryPreview,
+} from "./shared";
 import {
   ManualChaseData,
   defaultChaseData,
   chaseTypeOptions,
   terrainOptions,
-} from './shared/schemas/chaseSchema'
+} from "./shared/schemas/chaseSchema";
 import {
   generateChaseScenario as generateChaseApi,
   saveChase as saveChaseApi,
   getErrorMessage,
-} from '@/api/generators'
-import { normalizeStringArray } from '@/utils/aiResponseNormalizer'
-import { logger } from '@/utils/logger'
+} from "@/api/generators";
+import { normalizeStringArray } from "@/utils/aiResponseNormalizer";
+import { logger } from "@/utils/logger";
 
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
 
 interface Obstacle {
-  name: string
-  description: string
-  check: string
-  failure: string
+  name: string;
+  description: string;
+  check: string;
+  failure: string;
 }
 
 interface Shortcut {
-  name: string
-  description: string
-  benefit: string
+  name: string;
+  description: string;
+  benefit: string;
 }
 
 interface ChasePhase {
-  round: string | number
-  description: string
-  difficulty: string
+  round: string | number;
+  description: string;
+  difficulty: string;
 }
 
 interface Participants {
-  quarry: string
-  pursuers: string
+  quarry: string;
+  pursuers: string;
 }
 
 interface EndingConditions {
-  success: string
-  failure: string
-  alternative: string
+  success: string;
+  failure: string;
+  alternative: string;
 }
 
 interface Rewards {
-  success: string
-  partial: string
-  failure: string
+  success: string;
+  partial: string;
+  failure: string;
 }
 
 interface ChaseData {
-  name: string
-  chase_type: string
-  terrain: string
-  difficulty: string
-  description: string
-  setting: string
-  participants: Participants
-  starting_conditions: string
-  obstacles: Obstacle[]
-  complications: string[]
-  shortcuts: Shortcut[]
-  chase_phases: ChasePhase[]
-  ending_conditions: EndingConditions
-  rewards: Rewards
-  special_rules: string
-  environmental_factors: string[]
+  name: string;
+  chase_type: string;
+  terrain: string;
+  difficulty: string;
+  description: string;
+  setting: string;
+  participants: Participants;
+  starting_conditions: string;
+  obstacles: Obstacle[];
+  complications: string[];
+  shortcuts: Shortcut[];
+  chase_phases: ChasePhase[];
+  ending_conditions: EndingConditions;
+  rewards: Rewards;
+  special_rules: string;
+  environmental_factors: string[];
   // For any unexpected fields from AI
-  _raw?: Record<string, unknown>
-  _parseError?: string
+  _raw?: Record<string, unknown>;
+  _parseError?: string;
 }
 
 /**
  * Normalize a single obstacle
  */
 function normalizeObstacle(value: unknown): Obstacle | null {
-  if (!value) return null
+  if (!value) return null;
 
-  if (typeof value === 'string') {
-    return { name: value, description: '', check: '', failure: '' }
+  if (typeof value === "string") {
+    return { name: value, description: "", check: "", failure: "" };
   }
 
-  if (typeof value === 'object' && value !== null) {
-    const obs = value as Record<string, unknown>
+  if (typeof value === "object" && value !== null) {
+    const obs = value as Record<string, unknown>;
     return {
-      name: String(obs.name || obs.title || obs.obstacle || 'Unknown Obstacle'),
-      description: String(obs.description || obs.desc || ''),
-      check: String(obs.check || obs.skill_check || obs.dc || ''),
-      failure: String(obs.failure || obs.on_failure || obs.consequence || ''),
-    }
+      name: String(obs.name || obs.title || obs.obstacle || "Unknown Obstacle"),
+      description: String(obs.description || obs.desc || ""),
+      check: String(obs.check || obs.skill_check || obs.dc || ""),
+      failure: String(obs.failure || obs.on_failure || obs.consequence || ""),
+    };
   }
 
-  return null
+  return null;
 }
 
 /**
  * Normalize obstacles array
  */
 function normalizeObstacles(value: unknown): Obstacle[] {
-  if (!value || !Array.isArray(value)) return []
+  if (!value || !Array.isArray(value)) return [];
 
-  return value.map((obs) => normalizeObstacle(obs)).filter((obs): obs is Obstacle => obs !== null)
+  return value
+    .map((obs) => normalizeObstacle(obs))
+    .filter((obs): obs is Obstacle => obs !== null);
 }
 
 /**
  * Normalize a single shortcut
  */
 function normalizeShortcut(value: unknown): Shortcut | null {
-  if (!value) return null
+  if (!value) return null;
 
-  if (typeof value === 'string') {
-    return { name: value, description: '', benefit: '' }
+  if (typeof value === "string") {
+    return { name: value, description: "", benefit: "" };
   }
 
-  if (typeof value === 'object' && value !== null) {
-    const sc = value as Record<string, unknown>
+  if (typeof value === "object" && value !== null) {
+    const sc = value as Record<string, unknown>;
     return {
-      name: String(sc.name || sc.title || sc.route || 'Unknown Shortcut'),
-      description: String(sc.description || sc.desc || ''),
-      benefit: String(sc.benefit || sc.advantage || sc.effect || ''),
-    }
+      name: String(sc.name || sc.title || sc.route || "Unknown Shortcut"),
+      description: String(sc.description || sc.desc || ""),
+      benefit: String(sc.benefit || sc.advantage || sc.effect || ""),
+    };
   }
 
-  return null
+  return null;
 }
 
 /**
  * Normalize shortcuts array
  */
 function normalizeShortcuts(value: unknown): Shortcut[] {
-  if (!value || !Array.isArray(value)) return []
+  if (!value || !Array.isArray(value)) return [];
 
-  return value.map((sc) => normalizeShortcut(sc)).filter((sc): sc is Shortcut => sc !== null)
+  return value
+    .map((sc) => normalizeShortcut(sc))
+    .filter((sc): sc is Shortcut => sc !== null);
 }
 
 /**
  * Normalize a single chase phase
  */
 function normalizeChasePhase(value: unknown, index: number): ChasePhase | null {
-  if (!value) return null
+  if (!value) return null;
 
-  if (typeof value === 'string') {
-    return { round: String(index + 1), description: value, difficulty: 'Medium' }
+  if (typeof value === "string") {
+    return {
+      round: String(index + 1),
+      description: value,
+      difficulty: "Medium",
+    };
   }
 
-  if (typeof value === 'object' && value !== null) {
-    const phase = value as Record<string, unknown>
+  if (typeof value === "object" && value !== null) {
+    const phase = value as Record<string, unknown>;
     return {
       round: String(phase.round || phase.number || phase.turn || index + 1),
-      description: String(phase.description || phase.desc || phase.event || ''),
-      difficulty: String(phase.difficulty || phase.dc || phase.level || 'Medium'),
-    }
+      description: String(phase.description || phase.desc || phase.event || ""),
+      difficulty: String(
+        phase.difficulty || phase.dc || phase.level || "Medium",
+      ),
+    };
   }
 
-  return null
+  return null;
 }
 
 /**
  * Normalize chase phases array
  */
 function normalizeChasePhases(value: unknown): ChasePhase[] {
-  if (!value || !Array.isArray(value)) return []
+  if (!value || !Array.isArray(value)) return [];
 
   return value
     .map((phase, idx) => normalizeChasePhase(phase, idx))
-    .filter((phase): phase is ChasePhase => phase !== null)
+    .filter((phase): phase is ChasePhase => phase !== null);
 }
 
 /**
  * Normalize participants object
  */
 function normalizeParticipants(value: unknown): Participants {
-  const result: Participants = { quarry: '', pursuers: '' }
+  const result: Participants = { quarry: "", pursuers: "" };
 
-  if (!value || typeof value !== 'object') return result
+  if (!value || typeof value !== "object") return result;
 
-  const p = value as Record<string, unknown>
-  result.quarry = String(p.quarry || p.target || p.prey || '')
-  result.pursuers = String(p.pursuers || p.chasers || p.hunters || '')
+  const p = value as Record<string, unknown>;
+  result.quarry = String(p.quarry || p.target || p.prey || "");
+  result.pursuers = String(p.pursuers || p.chasers || p.hunters || "");
 
-  return result
+  return result;
 }
 
 /**
  * Normalize ending conditions object
  */
 function normalizeEndingConditions(value: unknown): EndingConditions {
-  const result: EndingConditions = { success: '', failure: '', alternative: '' }
+  const result: EndingConditions = {
+    success: "",
+    failure: "",
+    alternative: "",
+  };
 
-  if (!value || typeof value !== 'object') return result
+  if (!value || typeof value !== "object") return result;
 
-  const ec = value as Record<string, unknown>
-  result.success = String(ec.success || ec.win || ec.escape || '')
-  result.failure = String(ec.failure || ec.lose || ec.caught || '')
-  result.alternative = String(ec.alternative || ec.other || ec.partial || '')
+  const ec = value as Record<string, unknown>;
+  result.success = String(ec.success || ec.win || ec.escape || "");
+  result.failure = String(ec.failure || ec.lose || ec.caught || "");
+  result.alternative = String(ec.alternative || ec.other || ec.partial || "");
 
-  return result
+  return result;
 }
 
 /**
  * Normalize rewards object
  */
 function normalizeRewards(value: unknown): Rewards {
-  const result: Rewards = { success: '', partial: '', failure: '' }
+  const result: Rewards = { success: "", partial: "", failure: "" };
 
-  if (!value || typeof value !== 'object') return result
+  if (!value || typeof value !== "object") return result;
 
-  const r = value as Record<string, unknown>
-  result.success = String(r.success || r.win || '')
-  result.partial = String(r.partial || r.some || '')
-  result.failure = String(r.failure || r.lose || '')
+  const r = value as Record<string, unknown>;
+  result.success = String(r.success || r.win || "");
+  result.partial = String(r.partial || r.some || "");
+  result.failure = String(r.failure || r.lose || "");
 
-  return result
+  return result;
 }
 
 /**
  * Normalize special_rules which can be string or object
  */
 function normalizeSpecialRules(value: unknown): string {
-  if (!value) return ''
+  if (!value) return "";
 
-  if (typeof value === 'string') return value
+  if (typeof value === "string") return value;
 
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     try {
-      return JSON.stringify(value)
+      return JSON.stringify(value);
     } catch {
-      return ''
+      return "";
     }
   }
 
-  return String(value)
+  return String(value);
 }
 
 /**
@@ -254,130 +276,154 @@ function normalizeSpecialRules(value: unknown): string {
  */
 function normalizeChaseResponse(
   raw: Record<string, unknown>,
-  formData: { chaseType: string; terrain: string; difficulty: string }
+  formData: { chaseType: string; terrain: string; difficulty: string },
 ): ChaseData {
-  logger.debug('[ChaseGenerator] normalizeChaseResponse input:', raw)
+  logger.debug("[ChaseGenerator] normalizeChaseResponse input:", raw);
 
   // Handle case where description contains the entire JSON response
-  let processedRaw = raw
-  if (raw.description && typeof raw.description === 'string') {
-    const descStr = (raw.description as string).trim()
-    if (descStr.startsWith('{') && descStr.endsWith('}')) {
+  let processedRaw = raw;
+  if (raw.description && typeof raw.description === "string") {
+    const descStr = (raw.description as string).trim();
+    if (descStr.startsWith("{") && descStr.endsWith("}")) {
       try {
-        const parsedChase = JSON.parse(descStr)
-        logger.debug('[ChaseGenerator] Parsed chase from JSON description:', parsedChase)
-        processedRaw = parsedChase
+        const parsedChase = JSON.parse(descStr);
+        logger.debug(
+          "[ChaseGenerator] Parsed chase from JSON description:",
+          parsedChase,
+        );
+        processedRaw = parsedChase;
       } catch (e) {
-        logger.warn('[ChaseGenerator] Failed to parse description as JSON:', e)
+        logger.warn("[ChaseGenerator] Failed to parse description as JSON:", e);
       }
     }
   }
 
   // Expected fields for tracking unexpected ones
   const expectedFields = [
-    'name',
-    'title',
-    'scene_name',
-    'chase_type',
-    'type',
-    'terrain',
-    'environment',
-    'difficulty',
-    'description',
-    'setting',
-    'participants',
-    'target',
-    'prey',
-    'chasers',
-    'hunters',
-    'starting_conditions',
-    'obstacles',
-    'challenges',
-    'hazards',
-    'complications',
-    'shortcuts',
-    'chase_phases',
-    'phases',
-    'rounds',
-    'ending_conditions',
-    'victory',
-    'defeat',
-    'escape',
-    'caught',
-    'rewards',
-    'special_rules',
-    'rules',
-    'mechanics',
-    'environmental_factors',
-    'environment_effects',
-    'weather',
-    'provider',
-    '_parse_warning',
-  ]
+    "name",
+    "title",
+    "scene_name",
+    "chase_type",
+    "type",
+    "terrain",
+    "environment",
+    "difficulty",
+    "description",
+    "setting",
+    "participants",
+    "target",
+    "prey",
+    "chasers",
+    "hunters",
+    "starting_conditions",
+    "obstacles",
+    "challenges",
+    "hazards",
+    "complications",
+    "shortcuts",
+    "chase_phases",
+    "phases",
+    "rounds",
+    "ending_conditions",
+    "victory",
+    "defeat",
+    "escape",
+    "caught",
+    "rewards",
+    "special_rules",
+    "rules",
+    "mechanics",
+    "environmental_factors",
+    "environment_effects",
+    "weather",
+    "provider",
+    "_parse_warning",
+  ];
 
   // Collect unexpected fields
-  const unexpectedFields: Record<string, unknown> = {}
+  const unexpectedFields: Record<string, unknown> = {};
   for (const key of Object.keys(processedRaw)) {
     if (!expectedFields.includes(key)) {
-      unexpectedFields[key] = processedRaw[key]
+      unexpectedFields[key] = processedRaw[key];
     }
   }
 
   // Build description
-  let description = ''
-  if (processedRaw.description && typeof processedRaw.description === 'string') {
-    const descText = processedRaw.description as string
-    if (!descText.trim().startsWith('{')) {
-      description = descText
+  let description = "";
+  if (
+    processedRaw.description &&
+    typeof processedRaw.description === "string"
+  ) {
+    const descText = processedRaw.description as string;
+    if (!descText.trim().startsWith("{")) {
+      description = descText;
     }
   }
 
   // Get obstacles from various possible field names
-  let obstacles = normalizeObstacles(processedRaw.obstacles)
+  let obstacles = normalizeObstacles(processedRaw.obstacles);
   if (obstacles.length === 0) {
-    obstacles = normalizeObstacles(processedRaw.challenges || processedRaw.hazards)
+    obstacles = normalizeObstacles(
+      processedRaw.challenges || processedRaw.hazards,
+    );
   }
 
   // Get chase_phases from various possible field names
-  let chasePhases = normalizeChasePhases(processedRaw.chase_phases)
+  let chasePhases = normalizeChasePhases(processedRaw.chase_phases);
   if (chasePhases.length === 0) {
-    chasePhases = normalizeChasePhases(processedRaw.phases || processedRaw.rounds)
+    chasePhases = normalizeChasePhases(
+      processedRaw.phases || processedRaw.rounds,
+    );
   }
 
   // Get environmental_factors from various possible field names
-  let environmentalFactors = normalizeStringArray(processedRaw.environmental_factors)
+  let environmentalFactors = normalizeStringArray(
+    processedRaw.environmental_factors,
+  );
   if (environmentalFactors.length === 0) {
     environmentalFactors = normalizeStringArray(
-      processedRaw.environment_effects || processedRaw.weather
-    )
+      processedRaw.environment_effects || processedRaw.weather,
+    );
   }
 
   const result: ChaseData = {
     name: String(
-      processedRaw.name || processedRaw.title || processedRaw.scene_name || 'Unknown Chase'
+      processedRaw.name ||
+        processedRaw.title ||
+        processedRaw.scene_name ||
+        "Unknown Chase",
     ),
-    chase_type: String(processedRaw.chase_type || processedRaw.type || formData.chaseType),
-    terrain: String(processedRaw.terrain || processedRaw.environment || formData.terrain),
+    chase_type: String(
+      processedRaw.chase_type || processedRaw.type || formData.chaseType,
+    ),
+    terrain: String(
+      processedRaw.terrain || processedRaw.environment || formData.terrain,
+    ),
     difficulty: String(processedRaw.difficulty || formData.difficulty),
     description: description,
-    setting: String(processedRaw.setting || ''),
+    setting: String(processedRaw.setting || ""),
     participants: normalizeParticipants(processedRaw.participants),
-    starting_conditions: String(processedRaw.starting_conditions || ''),
+    starting_conditions: String(processedRaw.starting_conditions || ""),
     obstacles: obstacles,
     complications: normalizeStringArray(processedRaw.complications),
     shortcuts: normalizeShortcuts(processedRaw.shortcuts),
     chase_phases: chasePhases,
-    ending_conditions: normalizeEndingConditions(processedRaw.ending_conditions),
+    ending_conditions: normalizeEndingConditions(
+      processedRaw.ending_conditions,
+    ),
     rewards: normalizeRewards(processedRaw.rewards),
     special_rules: normalizeSpecialRules(
-      processedRaw.special_rules || processedRaw.rules || processedRaw.mechanics
+      processedRaw.special_rules ||
+        processedRaw.rules ||
+        processedRaw.mechanics,
     ),
     environmental_factors: environmentalFactors,
-    _raw: Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
-  }
+    _raw:
+      Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
+  };
 
-  logger.debug('[ChaseGenerator] Normalized result:', result)
-  return result
+  logger.debug("[ChaseGenerator] Normalized result:", result);
+  return result;
 }
 
 /**
@@ -386,9 +432,11 @@ function normalizeChaseResponse(
 function hasValidChaseContent(chase: ChaseData): boolean {
   return !!(
     chase.name &&
-    chase.name !== 'Unknown Chase' &&
-    (chase.description || chase.obstacles.length > 0 || chase.chase_phases.length > 0)
-  )
+    chase.name !== "Unknown Chase" &&
+    (chase.description ||
+      chase.obstacles.length > 0 ||
+      chase.chase_phases.length > 0)
+  );
 }
 
 // ============================================================================
@@ -396,48 +444,49 @@ function hasValidChaseContent(chase: ChaseData): boolean {
 // ============================================================================
 
 export default function ChaseGenerator() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [chase, setChase] = useState<ChaseData | null>(null)
-  const [showSaveModal, setShowSaveModal] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
-  const [campaignId, setCampaignId] = useState<string | null>(null)
-  const { activeCampaignId } = useCampaignStore()
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [chase, setChase] = useState<ChaseData | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const { activeCampaignId } = useCampaignStore();
 
   // Manual entry mode state
-  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
-  const [manualData, setManualData] = useState<ManualChaseData>(defaultChaseData)
-  const [manualSaving, setManualSaving] = useState(false)
-  const [manualSaved, setManualSaved] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode>("ai");
+  const [manualData, setManualData] =
+    useState<ManualChaseData>(defaultChaseData);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualSaved, setManualSaved] = useState(false);
 
   // Track if user has made an explicit campaign selection
-  const hasUserSelectedCampaign = useRef(false)
+  const hasUserSelectedCampaign = useRef(false);
 
   // Auto-select active campaign ONLY on initial mount
   useEffect(() => {
     if (activeCampaignId && !hasUserSelectedCampaign.current) {
-      setCampaignId(activeCampaignId)
+      setCampaignId(activeCampaignId);
     }
-  }, [activeCampaignId])
+  }, [activeCampaignId]);
 
   // Form inputs
-  const [chaseType, setChaseType] = useState('foot_chase')
-  const [terrain, setTerrain] = useState('urban')
-  const [difficulty, setDifficulty] = useState('medium')
-  const [partyLevel, setPartyLevel] = useState(5)
-  const [specialRequests, setSpecialRequests] = useState('')
+  const [chaseType, setChaseType] = useState("foot_chase");
+  const [terrain, setTerrain] = useState("urban");
+  const [difficulty, setDifficulty] = useState("medium");
+  const [partyLevel, setPartyLevel] = useState(5);
+  const [specialRequests, setSpecialRequests] = useState("");
 
   // AI settings
   const [aiSettings, setAiSettings] = useState<AIGenerationSettings>({
-    detailLevel: 'high',
+    detailLevel: "high",
     timeout: 120,
-  })
+  });
 
   const generateChase = async () => {
-    setLoading(true)
-    setError(null)
-    setChase(null)
-    setIsSaved(false)
+    setLoading(true);
+    setError(null);
+    setChase(null);
+    setIsSaved(false);
 
     try {
       const data = await generateChaseApi(
@@ -451,82 +500,90 @@ export default function ChaseGenerator() {
           max_tokens: getMaxTokensFromSettings(aiSettings),
           timeout: aiSettings.timeout,
         },
-        aiSettings.timeout
-      )
-      logger.debug('[ChaseGenerator] Raw API response:', data)
+        aiSettings.timeout,
+      );
+      logger.debug("[ChaseGenerator] Raw API response:", data);
 
       // Normalize the response
       if (data.chase) {
-        const normalized = normalizeChaseResponse(data.chase, { chaseType, terrain, difficulty })
-
-        if (!hasValidChaseContent(normalized)) {
-          normalized._parseError =
-            'AI response missing essential chase content. Showing raw response.'
-        }
-
-        setChase(normalized)
-      } else {
-        // No chase wrapper - try to normalize the raw response
-        const normalized = normalizeChaseResponse(data as unknown as Record<string, unknown>, {
+        const normalized = normalizeChaseResponse(data.chase, {
           chaseType,
           terrain,
           difficulty,
-        })
-        normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setChase(normalized)
+        });
+
+        if (!hasValidChaseContent(normalized)) {
+          normalized._parseError =
+            "AI response missing essential chase content. Showing raw response.";
+        }
+
+        setChase(normalized);
+      } else {
+        // No chase wrapper - try to normalize the raw response
+        const normalized = normalizeChaseResponse(
+          data as unknown as Record<string, unknown>,
+          {
+            chaseType,
+            terrain,
+            difficulty,
+          },
+        );
+        normalized._parseError =
+          "Unexpected response format. Attempting to display.";
+        setChase(normalized);
       }
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const saveChase = async () => {
-    if (!chase) return
+    if (!chase) return;
 
     try {
       await saveChaseApi({
         campaign_id: campaignId || undefined,
-        name: chase.name || 'Unnamed Chase',
+        name: chase.name || "Unnamed Chase",
         chase_type: chase.chase_type || chaseType,
         terrain: chase.terrain || terrain,
         difficulty: chase.difficulty || difficulty,
-        description: chase.description || '',
-        setting: chase.setting || '',
+        description: chase.description || "",
+        setting: chase.setting || "",
         participants: chase.participants || {},
-        starting_conditions: chase.starting_conditions || '',
+        starting_conditions: chase.starting_conditions || "",
         obstacles: chase.obstacles || [],
         complications: chase.complications || [],
         shortcuts: chase.shortcuts || [],
         chase_phases: chase.chase_phases || [],
         ending_conditions: chase.ending_conditions || {},
         rewards: chase.rewards || {},
-        special_rules: chase.special_rules || '',
+        special_rules: chase.special_rules || "",
         environmental_factors: chase.environmental_factors || [],
         ai_generated: true,
         starting_distance: 3,
         catch_threshold: 0,
         escape_threshold: 7,
-      })
+      });
 
-      setShowSaveModal(false)
-      setIsSaved(true)
-      emitContentSaved()
+      setShowSaveModal(false);
+      setIsSaved(true);
+      emitContentSaved();
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     }
-  }
+  };
 
   // Handle manual entry save
   const handleManualSave = async () => {
     if (!manualData.name.trim()) {
-      setError('Chase name is required')
-      return
+      setError("Chase name is required");
+      return;
     }
 
-    setManualSaving(true)
-    setError(null)
+    setManualSaving(true);
+    setError(null);
 
     try {
       await saveChaseApi({
@@ -535,118 +592,132 @@ export default function ChaseGenerator() {
         chase_type: manualData.chase_type,
         terrain: manualData.terrain,
         difficulty: manualData.difficulty,
-        description: manualData.description.trim() || '',
-        setting: manualData.setting.trim() || '',
-        participants: { quarry: manualData.quarry, pursuers: manualData.pursuers },
-        starting_conditions: manualData.starting_conditions.trim() || '',
+        description: manualData.description.trim() || "",
+        setting: manualData.setting.trim() || "",
+        participants: {
+          quarry: manualData.quarry,
+          pursuers: manualData.pursuers,
+        },
+        starting_conditions: manualData.starting_conditions.trim() || "",
         obstacles: manualData.obstacles.filter((o) => o.name.trim()),
         complications: manualData.complications.filter((c) => c.trim()),
         shortcuts: manualData.shortcuts.filter((s) => s.name.trim()),
         ending_conditions: {
           success: manualData.success_condition,
           failure: manualData.failure_condition,
-          alternative: '',
+          alternative: "",
         },
         rewards: {
           success: manualData.success_reward,
-          partial: '',
+          partial: "",
           failure: manualData.failure_consequence,
         },
-        environmental_factors: manualData.environmental_factors.filter((e) => e.trim()),
+        environmental_factors: manualData.environmental_factors.filter((e) =>
+          e.trim(),
+        ),
         ai_generated: false,
         starting_distance: 3,
         catch_threshold: 0,
         escape_threshold: 7,
-      })
+      });
 
-      setManualSaved(true)
-      emitContentSaved()
+      setManualSaved(true);
+      emitContentSaved();
       // Reset form after successful save
-      setManualData(defaultChaseData)
+      setManualData(defaultChaseData);
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(getErrorMessage(err));
     } finally {
-      setManualSaving(false)
+      setManualSaving(false);
     }
-  }
+  };
 
   const handleCopy = () => {
-    if (!chase) return
-    const chaseTypeLabel = chase.chase_type ? chase.chase_type.replace(/_/g, ' ') : 'Chase'
-    const terrainLabel = chase.terrain ? chase.terrain.replace(/_/g, ' ') : 'Unknown'
-    let text = `${chase.name || 'Unnamed Chase'}\n${chaseTypeLabel} • ${terrainLabel} • ${chase.difficulty || 'Medium'}\n\n${chase.description || ''}`
+    if (!chase) return;
+    const chaseTypeLabel = chase.chase_type
+      ? chase.chase_type.replace(/_/g, " ")
+      : "Chase";
+    const terrainLabel = chase.terrain
+      ? chase.terrain.replace(/_/g, " ")
+      : "Unknown";
+    let text = `${chase.name || "Unnamed Chase"}\n${chaseTypeLabel} • ${terrainLabel} • ${chase.difficulty || "Medium"}\n\n${chase.description || ""}`;
 
     if (chase.setting) {
-      text += `\n\nSetting: ${chase.setting}`
+      text += `\n\nSetting: ${chase.setting}`;
     }
 
-    if (chase.participants && (chase.participants.quarry || chase.participants.pursuers)) {
-      text += `\n\nParticipants:\nQuarry: ${chase.participants.quarry}\nPursuers: ${chase.participants.pursuers}`
+    if (
+      chase.participants &&
+      (chase.participants.quarry || chase.participants.pursuers)
+    ) {
+      text += `\n\nParticipants:\nQuarry: ${chase.participants.quarry}\nPursuers: ${chase.participants.pursuers}`;
     }
 
     if (chase.starting_conditions) {
-      text += `\n\nStarting Conditions: ${chase.starting_conditions}`
+      text += `\n\nStarting Conditions: ${chase.starting_conditions}`;
     }
 
     if (chase.obstacles.length > 0) {
-      text += '\n\nObstacles:\n'
+      text += "\n\nObstacles:\n";
       chase.obstacles.forEach((obstacle) => {
-        text += `${obstacle.name}\n${obstacle.description}\nCheck: ${obstacle.check}\nFailure: ${obstacle.failure}\n\n`
-      })
+        text += `${obstacle.name}\n${obstacle.description}\nCheck: ${obstacle.check}\nFailure: ${obstacle.failure}\n\n`;
+      });
     }
 
     if (chase.complications.length > 0) {
-      text += '\nComplications:\n'
+      text += "\nComplications:\n";
       chase.complications.forEach((comp) => {
-        text += `- ${comp}\n`
-      })
+        text += `- ${comp}\n`;
+      });
     }
 
     if (chase.shortcuts.length > 0) {
-      text += '\nShortcuts:\n'
+      text += "\nShortcuts:\n";
       chase.shortcuts.forEach((sc) => {
-        text += `${sc.name}: ${sc.description} (${sc.benefit})\n`
-      })
+        text += `${sc.name}: ${sc.description} (${sc.benefit})\n`;
+      });
     }
 
     if (chase.chase_phases.length > 0) {
-      text += '\nChase Phases:\n'
+      text += "\nChase Phases:\n";
       chase.chase_phases.forEach((phase) => {
-        text += `Round ${phase.round} (${phase.difficulty}): ${phase.description}\n`
-      })
+        text += `Round ${phase.round} (${phase.difficulty}): ${phase.description}\n`;
+      });
     }
 
     if (chase.environmental_factors.length > 0) {
-      text += '\nEnvironmental Factors:\n'
+      text += "\nEnvironmental Factors:\n";
       chase.environmental_factors.forEach((factor) => {
-        text += `- ${factor}\n`
-      })
+        text += `- ${factor}\n`;
+      });
     }
 
     if (chase.special_rules) {
-      text += `\nSpecial Rules: ${chase.special_rules}`
+      text += `\nSpecial Rules: ${chase.special_rules}`;
     }
 
     if (
       chase.ending_conditions &&
       (chase.ending_conditions.success || chase.ending_conditions.failure)
     ) {
-      text += '\n\nEnding Conditions:'
-      if (chase.ending_conditions.success) text += `\nSuccess: ${chase.ending_conditions.success}`
-      if (chase.ending_conditions.failure) text += `\nFailure: ${chase.ending_conditions.failure}`
+      text += "\n\nEnding Conditions:";
+      if (chase.ending_conditions.success)
+        text += `\nSuccess: ${chase.ending_conditions.success}`;
+      if (chase.ending_conditions.failure)
+        text += `\nFailure: ${chase.ending_conditions.failure}`;
       if (chase.ending_conditions.alternative)
-        text += `\nAlternative: ${chase.ending_conditions.alternative}`
+        text += `\nAlternative: ${chase.ending_conditions.alternative}`;
     }
 
     if (chase.rewards && chase.rewards.success) {
-      text += '\n\nRewards:'
-      if (chase.rewards.success) text += `\nSuccess: ${chase.rewards.success}`
-      if (chase.rewards.partial) text += `\nPartial: ${chase.rewards.partial}`
-      if (chase.rewards.failure) text += `\nFailure: ${chase.rewards.failure}`
+      text += "\n\nRewards:";
+      if (chase.rewards.success) text += `\nSuccess: ${chase.rewards.success}`;
+      if (chase.rewards.partial) text += `\nPartial: ${chase.rewards.partial}`;
+      if (chase.rewards.failure) text += `\nFailure: ${chase.rewards.failure}`;
     }
 
-    navigator.clipboard.writeText(text)
-  }
+    navigator.clipboard.writeText(text);
+  };
 
   // AI generation form content
   const aiFormContent = (
@@ -655,8 +726,8 @@ export default function ChaseGenerator() {
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -726,7 +797,7 @@ export default function ChaseGenerator() {
         />
       </FormField>
     </>
-  )
+  );
 
   // Manual entry form content
   const manualFormContent = (
@@ -734,8 +805,8 @@ export default function ChaseGenerator() {
       <CampaignSelector
         selectedCampaignId={campaignId}
         onSelect={(id) => {
-          hasUserSelectedCampaign.current = true
-          setCampaignId(id)
+          hasUserSelectedCampaign.current = true;
+          setCampaignId(id);
         }}
       />
 
@@ -744,7 +815,9 @@ export default function ChaseGenerator() {
         <input
           type="text"
           value={manualData.name}
-          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, name: e.target.value })
+          }
           placeholder="e.g., Rooftop Pursuit, Market Chase"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -754,7 +827,9 @@ export default function ChaseGenerator() {
         <FormField label="Chase Type">
           <select
             value={manualData.chase_type}
-            onChange={(e) => setManualData({ ...manualData, chase_type: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, chase_type: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {chaseTypeOptions.map((opt) => (
@@ -768,7 +843,9 @@ export default function ChaseGenerator() {
         <FormField label="Terrain">
           <select
             value={manualData.terrain}
-            onChange={(e) => setManualData({ ...manualData, terrain: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, terrain: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {terrainOptions.map((opt) => (
@@ -782,7 +859,9 @@ export default function ChaseGenerator() {
         <FormField label="Difficulty">
           <select
             value={manualData.difficulty}
-            onChange={(e) => setManualData({ ...manualData, difficulty: e.target.value })}
+            onChange={(e) =>
+              setManualData({ ...manualData, difficulty: e.target.value })
+            }
             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="easy">Easy</option>
@@ -796,7 +875,9 @@ export default function ChaseGenerator() {
       <FormField label="Description">
         <textarea
           value={manualData.description}
-          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, description: e.target.value })
+          }
           placeholder="Describe the chase scenario..."
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={3}
@@ -807,7 +888,9 @@ export default function ChaseGenerator() {
         <input
           type="text"
           value={manualData.setting}
-          onChange={(e) => setManualData({ ...manualData, setting: e.target.value })}
+          onChange={(e) =>
+            setManualData({ ...manualData, setting: e.target.value })
+          }
           placeholder="e.g., Busy marketplace at noon, Dark alleyways at night"
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         />
@@ -820,7 +903,9 @@ export default function ChaseGenerator() {
             <input
               type="text"
               value={manualData.quarry}
-              onChange={(e) => setManualData({ ...manualData, quarry: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, quarry: e.target.value })
+              }
               placeholder="e.g., A hooded thief, The party wizard"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -830,7 +915,9 @@ export default function ChaseGenerator() {
             <input
               type="text"
               value={manualData.pursuers}
-              onChange={(e) => setManualData({ ...manualData, pursuers: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, pursuers: e.target.value })
+              }
               placeholder="e.g., City guards, The party fighters"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -840,7 +927,10 @@ export default function ChaseGenerator() {
             <textarea
               value={manualData.starting_conditions}
               onChange={(e) =>
-                setManualData({ ...manualData, starting_conditions: e.target.value })
+                setManualData({
+                  ...manualData,
+                  starting_conditions: e.target.value,
+                })
               }
               placeholder="Initial distance, terrain state, etc."
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
@@ -854,15 +944,20 @@ export default function ChaseGenerator() {
       <CollapsibleSection title="Obstacles" defaultExpanded={false}>
         <div className="space-y-3">
           {manualData.obstacles.map((obstacle, idx) => (
-            <div key={idx} className="bg-background p-3 rounded border border-border space-y-2">
+            <div
+              key={idx}
+              className="bg-background p-3 rounded border border-border space-y-2"
+            >
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-text">Obstacle {idx + 1}</span>
+                <span className="text-sm font-medium text-text">
+                  Obstacle {idx + 1}
+                </span>
                 <button
                   type="button"
                   onClick={() => {
-                    const newObstacles = [...manualData.obstacles]
-                    newObstacles.splice(idx, 1)
-                    setManualData({ ...manualData, obstacles: newObstacles })
+                    const newObstacles = [...manualData.obstacles];
+                    newObstacles.splice(idx, 1);
+                    setManualData({ ...manualData, obstacles: newObstacles });
                   }}
                   className="text-red-400 hover:text-red-300 text-sm"
                 >
@@ -873,9 +968,9 @@ export default function ChaseGenerator() {
                 type="text"
                 value={obstacle.name}
                 onChange={(e) => {
-                  const newObstacles = [...manualData.obstacles]
-                  newObstacles[idx] = { ...obstacle, name: e.target.value }
-                  setManualData({ ...manualData, obstacles: newObstacles })
+                  const newObstacles = [...manualData.obstacles];
+                  newObstacles[idx] = { ...obstacle, name: e.target.value };
+                  setManualData({ ...manualData, obstacles: newObstacles });
                 }}
                 placeholder="Obstacle name"
                 className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -883,9 +978,12 @@ export default function ChaseGenerator() {
               <textarea
                 value={obstacle.description}
                 onChange={(e) => {
-                  const newObstacles = [...manualData.obstacles]
-                  newObstacles[idx] = { ...obstacle, description: e.target.value }
-                  setManualData({ ...manualData, obstacles: newObstacles })
+                  const newObstacles = [...manualData.obstacles];
+                  newObstacles[idx] = {
+                    ...obstacle,
+                    description: e.target.value,
+                  };
+                  setManualData({ ...manualData, obstacles: newObstacles });
                 }}
                 placeholder="Description"
                 className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
@@ -896,9 +994,9 @@ export default function ChaseGenerator() {
                   type="text"
                   value={obstacle.check}
                   onChange={(e) => {
-                    const newObstacles = [...manualData.obstacles]
-                    newObstacles[idx] = { ...obstacle, check: e.target.value }
-                    setManualData({ ...manualData, obstacles: newObstacles })
+                    const newObstacles = [...manualData.obstacles];
+                    newObstacles[idx] = { ...obstacle, check: e.target.value };
+                    setManualData({ ...manualData, obstacles: newObstacles });
                   }}
                   placeholder="Check (e.g., DC 15 Athletics)"
                   className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -907,9 +1005,12 @@ export default function ChaseGenerator() {
                   type="text"
                   value={obstacle.failure}
                   onChange={(e) => {
-                    const newObstacles = [...manualData.obstacles]
-                    newObstacles[idx] = { ...obstacle, failure: e.target.value }
-                    setManualData({ ...manualData, obstacles: newObstacles })
+                    const newObstacles = [...manualData.obstacles];
+                    newObstacles[idx] = {
+                      ...obstacle,
+                      failure: e.target.value,
+                    };
+                    setManualData({ ...manualData, obstacles: newObstacles });
                   }}
                   placeholder="Failure consequence"
                   className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -924,7 +1025,7 @@ export default function ChaseGenerator() {
                 ...manualData,
                 obstacles: [
                   ...manualData.obstacles,
-                  { name: '', description: '', check: '', failure: '' },
+                  { name: "", description: "", check: "", failure: "" },
                 ],
               })
             }
@@ -940,7 +1041,9 @@ export default function ChaseGenerator() {
         <ArrayFieldEditor
           label="Complications"
           values={manualData.complications}
-          onChange={(complications) => setManualData({ ...manualData, complications })}
+          onChange={(complications) =>
+            setManualData({ ...manualData, complications })
+          }
           placeholder="Add a complication..."
         />
       </CollapsibleSection>
@@ -949,15 +1052,20 @@ export default function ChaseGenerator() {
       <CollapsibleSection title="Shortcuts" defaultExpanded={false}>
         <div className="space-y-3">
           {manualData.shortcuts.map((shortcut, idx) => (
-            <div key={idx} className="bg-background p-3 rounded border border-border space-y-2">
+            <div
+              key={idx}
+              className="bg-background p-3 rounded border border-border space-y-2"
+            >
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-text">Shortcut {idx + 1}</span>
+                <span className="text-sm font-medium text-text">
+                  Shortcut {idx + 1}
+                </span>
                 <button
                   type="button"
                   onClick={() => {
-                    const newShortcuts = [...manualData.shortcuts]
-                    newShortcuts.splice(idx, 1)
-                    setManualData({ ...manualData, shortcuts: newShortcuts })
+                    const newShortcuts = [...manualData.shortcuts];
+                    newShortcuts.splice(idx, 1);
+                    setManualData({ ...manualData, shortcuts: newShortcuts });
                   }}
                   className="text-red-400 hover:text-red-300 text-sm"
                 >
@@ -968,9 +1076,9 @@ export default function ChaseGenerator() {
                 type="text"
                 value={shortcut.name}
                 onChange={(e) => {
-                  const newShortcuts = [...manualData.shortcuts]
-                  newShortcuts[idx] = { ...shortcut, name: e.target.value }
-                  setManualData({ ...manualData, shortcuts: newShortcuts })
+                  const newShortcuts = [...manualData.shortcuts];
+                  newShortcuts[idx] = { ...shortcut, name: e.target.value };
+                  setManualData({ ...manualData, shortcuts: newShortcuts });
                 }}
                 placeholder="Shortcut name"
                 className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -978,9 +1086,12 @@ export default function ChaseGenerator() {
               <textarea
                 value={shortcut.description}
                 onChange={(e) => {
-                  const newShortcuts = [...manualData.shortcuts]
-                  newShortcuts[idx] = { ...shortcut, description: e.target.value }
-                  setManualData({ ...manualData, shortcuts: newShortcuts })
+                  const newShortcuts = [...manualData.shortcuts];
+                  newShortcuts[idx] = {
+                    ...shortcut,
+                    description: e.target.value,
+                  };
+                  setManualData({ ...manualData, shortcuts: newShortcuts });
                 }}
                 placeholder="Description"
                 className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
@@ -990,9 +1101,9 @@ export default function ChaseGenerator() {
                 type="text"
                 value={shortcut.benefit}
                 onChange={(e) => {
-                  const newShortcuts = [...manualData.shortcuts]
-                  newShortcuts[idx] = { ...shortcut, benefit: e.target.value }
-                  setManualData({ ...manualData, shortcuts: newShortcuts })
+                  const newShortcuts = [...manualData.shortcuts];
+                  newShortcuts[idx] = { ...shortcut, benefit: e.target.value };
+                  setManualData({ ...manualData, shortcuts: newShortcuts });
                 }}
                 placeholder="Benefit (e.g., Gain 1 position)"
                 className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -1004,7 +1115,10 @@ export default function ChaseGenerator() {
             onClick={() =>
               setManualData({
                 ...manualData,
-                shortcuts: [...manualData.shortcuts, { name: '', description: '', benefit: '' }],
+                shortcuts: [
+                  ...manualData.shortcuts,
+                  { name: "", description: "", benefit: "" },
+                ],
               })
             }
             className="w-full px-3 py-2 border border-dashed border-border text-text-muted hover:border-primary hover:text-primary rounded transition-colors text-sm"
@@ -1027,12 +1141,20 @@ export default function ChaseGenerator() {
       </CollapsibleSection>
 
       {/* Ending Conditions & Rewards */}
-      <CollapsibleSection title="Ending Conditions & Rewards" defaultExpanded={false}>
+      <CollapsibleSection
+        title="Ending Conditions & Rewards"
+        defaultExpanded={false}
+      >
         <div className="space-y-3">
           <FormField label="Success Condition">
             <textarea
               value={manualData.success_condition}
-              onChange={(e) => setManualData({ ...manualData, success_condition: e.target.value })}
+              onChange={(e) =>
+                setManualData({
+                  ...manualData,
+                  success_condition: e.target.value,
+                })
+              }
               placeholder="What happens when the pursuers catch the quarry (or quarry escapes)?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -1042,7 +1164,12 @@ export default function ChaseGenerator() {
           <FormField label="Failure Condition">
             <textarea
               value={manualData.failure_condition}
-              onChange={(e) => setManualData({ ...manualData, failure_condition: e.target.value })}
+              onChange={(e) =>
+                setManualData({
+                  ...manualData,
+                  failure_condition: e.target.value,
+                })
+              }
               placeholder="What happens if the chase fails?"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={2}
@@ -1053,7 +1180,9 @@ export default function ChaseGenerator() {
             <input
               type="text"
               value={manualData.success_reward}
-              onChange={(e) => setManualData({ ...manualData, success_reward: e.target.value })}
+              onChange={(e) =>
+                setManualData({ ...manualData, success_reward: e.target.value })
+              }
               placeholder="e.g., Stolen goods recovered, Information obtained"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -1064,7 +1193,10 @@ export default function ChaseGenerator() {
               type="text"
               value={manualData.failure_consequence}
               onChange={(e) =>
-                setManualData({ ...manualData, failure_consequence: e.target.value })
+                setManualData({
+                  ...manualData,
+                  failure_consequence: e.target.value,
+                })
               }
               placeholder="e.g., Thief escapes, Guards alerted"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
@@ -1099,7 +1231,7 @@ export default function ChaseGenerator() {
         </div>
       )}
     </>
-  )
+  );
 
   // Combined form content with mode toggle
   const formContent = (
@@ -1107,18 +1239,18 @@ export default function ChaseGenerator() {
       <EntryModeToggle
         mode={entryMode}
         onChange={(mode) => {
-          setEntryMode(mode)
-          setManualSaved(false)
-          setError(null)
+          setEntryMode(mode);
+          setManualSaved(false);
+          setError(null);
         }}
         disabled={loading}
       />
-      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+      {entryMode === "ai" ? aiFormContent : manualFormContent}
     </>
-  )
+  );
 
   // Manual mode preview content (simple message)
-  const manualPreviewContent = <ManualEntryPreview entityType="chase" />
+  const manualPreviewContent = <ManualEntryPreview entityType="chase" />;
 
   const generatedContent = chase ? (
     <div className="space-y-6">
@@ -1129,8 +1261,8 @@ export default function ChaseGenerator() {
       <div>
         <h2 className="text-2xl font-bold text-primary">{chase.name}</h2>
         <p className="text-sm text-text-muted capitalize">
-          {chase.chase_type.replace(/_/g, ' ')} • {chase.terrain.replace(/_/g, ' ')} •{' '}
-          {chase.difficulty}
+          {chase.chase_type.replace(/_/g, " ")} •{" "}
+          {chase.terrain.replace(/_/g, " ")} • {chase.difficulty}
         </p>
       </div>
 
@@ -1200,10 +1332,17 @@ export default function ChaseGenerator() {
           </h3>
           <div className="space-y-3">
             {chase.obstacles.map((obstacle, idx) => (
-              <div key={idx} className="bg-background p-4 rounded border border-border">
-                <h4 className="font-semibold text-primary mb-2">{obstacle.name}</h4>
+              <div
+                key={idx}
+                className="bg-background p-4 rounded border border-border"
+              >
+                <h4 className="font-semibold text-primary mb-2">
+                  {obstacle.name}
+                </h4>
                 {obstacle.description && (
-                  <p className="text-text-muted text-sm mb-3">{obstacle.description}</p>
+                  <p className="text-text-muted text-sm mb-3">
+                    {obstacle.description}
+                  </p>
                 )}
                 <div className="grid md:grid-cols-2 gap-2 text-sm">
                   {obstacle.check && (
@@ -1252,13 +1391,22 @@ export default function ChaseGenerator() {
           </h3>
           <div className="space-y-2">
             {chase.shortcuts.map((shortcut, idx) => (
-              <div key={idx} className="bg-background p-3 rounded border-2 border-primary/30">
-                <h4 className="font-semibold text-text mb-1">{shortcut.name}</h4>
+              <div
+                key={idx}
+                className="bg-background p-3 rounded border-2 border-primary/30"
+              >
+                <h4 className="font-semibold text-text mb-1">
+                  {shortcut.name}
+                </h4>
                 {shortcut.description && (
-                  <p className="text-text-muted text-sm mb-1">{shortcut.description}</p>
+                  <p className="text-text-muted text-sm mb-1">
+                    {shortcut.description}
+                  </p>
                 )}
                 {shortcut.benefit && (
-                  <p className="text-primary text-sm font-medium">✓ {shortcut.benefit}</p>
+                  <p className="text-primary text-sm font-medium">
+                    ✓ {shortcut.benefit}
+                  </p>
                 )}
               </div>
             ))}
@@ -1275,9 +1423,14 @@ export default function ChaseGenerator() {
           </h3>
           <div className="space-y-2">
             {chase.chase_phases.map((phase, idx) => (
-              <div key={idx} className="bg-background p-3 rounded border border-border">
+              <div
+                key={idx}
+                className="bg-background p-3 rounded border border-border"
+              >
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-medium text-primary">Round {phase.round}</span>
+                  <span className="font-medium text-primary">
+                    Round {phase.round}
+                  </span>
                   <span className="text-sm px-2 py-0.5 bg-primary/20 text-primary rounded">
                     {phase.difficulty}
                   </span>
@@ -1329,19 +1482,25 @@ export default function ChaseGenerator() {
             {chase.ending_conditions.success && (
               <div className="bg-green-500/10 p-3 rounded border border-green-500/30">
                 <span className="font-medium text-green-400">Success:</span>
-                <p className="text-text mt-1">{chase.ending_conditions.success}</p>
+                <p className="text-text mt-1">
+                  {chase.ending_conditions.success}
+                </p>
               </div>
             )}
             {chase.ending_conditions.failure && (
               <div className="bg-red-500/10 p-3 rounded border border-red-500/30">
                 <span className="font-medium text-red-400">Failure:</span>
-                <p className="text-text mt-1">{chase.ending_conditions.failure}</p>
+                <p className="text-text mt-1">
+                  {chase.ending_conditions.failure}
+                </p>
               </div>
             )}
             {chase.ending_conditions.alternative && (
               <div className="bg-primary/10 p-3 rounded border border-primary/30">
                 <span className="font-medium text-primary">Alternative:</span>
-                <p className="text-text mt-1">{chase.ending_conditions.alternative}</p>
+                <p className="text-text mt-1">
+                  {chase.ending_conditions.alternative}
+                </p>
               </div>
             )}
           </div>
@@ -1362,7 +1521,9 @@ export default function ChaseGenerator() {
             </div>
             {chase.rewards.partial && (
               <div className="bg-background p-3 rounded border border-border">
-                <span className="font-medium text-primary">Partial Success:</span>
+                <span className="font-medium text-primary">
+                  Partial Success:
+                </span>
                 <p className="text-text mt-1">{chase.rewards.partial}</p>
               </div>
             )}
@@ -1386,7 +1547,7 @@ export default function ChaseGenerator() {
         isSaved={isSaved}
       />
     </div>
-  ) : null
+  ) : null;
 
   return (
     <>
@@ -1396,14 +1557,18 @@ export default function ChaseGenerator() {
         icon="Zap"
         formTitle="Chase Details"
         formIcon="Settings"
-        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Chase'}
+        resultsTitle={
+          entryMode === "manual" ? "Manual Entry" : "Generated Chase"
+        }
         formContent={formContent}
-        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
+        generatedContent={
+          entryMode === "manual" ? manualPreviewContent : generatedContent
+        }
         isGenerating={loading}
         onGenerate={generateChase}
         generateButtonText="Generate Chase"
         error={error || undefined}
-        hideGenerateButton={entryMode === 'manual'}
+        hideGenerateButton={entryMode === "manual"}
       />
 
       {/* Save Modal */}
@@ -1411,9 +1576,9 @@ export default function ChaseGenerator() {
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={saveChase}
-        entityName={chase?.name || 'Chase'}
+        entityName={chase?.name || "Chase"}
         campaignId={campaignId}
       />
     </>
-  )
+  );
 }
