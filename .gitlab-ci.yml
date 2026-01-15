@@ -1,0 +1,270 @@
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  # Container registry settings
+  CI_REGISTRY: "192.168.4.62:5005"
+  CI_REGISTRY_IMAGE: "${CI_REGISTRY}/infrastructure/firb-lab/tavkit"
+
+# Templates
+.node_template: &node_template
+  image: node:24-alpine
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+      - .npm/
+
+.go_template: &go_template
+  image: golang:1.23-alpine
+  cache:
+    paths:
+      - .go/pkg/mod/
+
+.python_template: &python_template
+  image: python:3.12-slim
+  cache:
+    paths:
+      - .cache/pip/
+
+.docker_template: &docker_template
+  image: docker:27-dind
+  services:
+    - docker:27-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+# ============================================================================
+# LINT STAGE
+# ============================================================================
+
+lint:web:
+  <<: *node_template
+  stage: lint
+  script:
+    - cd web
+    - npm ci --cache .npm --prefer-offline
+    - npm run lint
+    - npm run format:check
+  only:
+    changes:
+      - web/**/*
+      - .gitlab-ci.yml
+
+lint:backend:
+  <<: *go_template
+  stage: lint
+  script:
+    - cd backend
+    - go install golang.org/x/tools/cmd/goimports@latest
+    - go install honnef.co/go/tools/cmd/staticcheck@latest
+    - go fmt ./...
+    - goimports -w .
+    - staticcheck ./...
+    - go vet ./...
+  only:
+    changes:
+      - backend/**/*
+      - .gitlab-ci.yml
+
+lint:ai-service:
+  <<: *python_template
+  stage: lint
+  script:
+    - cd ai-service
+    - pip install --cache-dir .cache/pip poetry
+    - poetry install --no-root
+    - poetry run ruff check app/
+    - poetry run black --check app/
+  only:
+    changes:
+      - ai-service/**/*
+      - .gitlab-ci.yml
+
+# ============================================================================
+# TEST STAGE
+# ============================================================================
+
+test:web:
+  <<: *node_template
+  stage: test
+  script:
+    - cd web
+    - npm ci --cache .npm --prefer-offline
+    - npm run type-check
+    - npm run test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: web/coverage/cobertura-coverage.xml
+    paths:
+      - web/coverage/
+    expire_in: 30 days
+  only:
+    changes:
+      - web/**/*
+      - .gitlab-ci.yml
+
+test:backend:
+  <<: *go_template
+  stage: test
+  script:
+    - cd backend
+    - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+    - go tool cover -func=coverage.txt
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage.xml
+    paths:
+      - backend/coverage.txt
+    expire_in: 30 days
+  only:
+    changes:
+      - backend/**/*
+      - .gitlab-ci.yml
+
+test:ai-service:
+  <<: *python_template
+  stage: test
+  script:
+    - cd ai-service
+    - pip install --cache-dir .cache/pip poetry
+    - poetry install --no-root
+    - poetry run pytest tests/ -v --cov=app --cov-report=term --cov-report=xml:coverage.xml
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: ai-service/coverage.xml
+    paths:
+      - ai-service/coverage.xml
+    expire_in: 30 days
+  only:
+    changes:
+      - ai-service/**/*
+      - .gitlab-ci.yml
+
+# ============================================================================
+# BUILD STAGE
+# ============================================================================
+
+build:web:
+  <<: *node_template
+  stage: build
+  script:
+    - cd web
+    - npm ci --cache .npm --prefer-offline
+    - npm run build
+  artifacts:
+    paths:
+      - web/dist/
+    expire_in: 1 week
+  only:
+    changes:
+      - web/**/*
+      - .gitlab-ci.yml
+
+build:backend:
+  <<: *go_template
+  stage: build
+  script:
+    - cd backend
+    - CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
+  artifacts:
+    paths:
+      - backend/server
+    expire_in: 1 week
+  only:
+    changes:
+      - backend/**/*
+      - .gitlab-ci.yml
+
+# ============================================================================
+# DOCKER BUILD & PUSH
+# ============================================================================
+
+docker:web:
+  <<: *docker_template
+  stage: build
+  script:
+    - cd web
+    - docker build -t ${CI_REGISTRY_IMAGE}/web:${CI_COMMIT_SHORT_SHA} -t ${CI_REGISTRY_IMAGE}/web:latest .
+    - docker push ${CI_REGISTRY_IMAGE}/web:${CI_COMMIT_SHORT_SHA}
+    - docker push ${CI_REGISTRY_IMAGE}/web:latest
+  only:
+    refs:
+      - main
+    changes:
+      - web/**/*
+      - .gitlab-ci.yml
+
+docker:backend:
+  <<: *docker_template
+  stage: build
+  script:
+    - cd backend
+    - docker build -t ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHORT_SHA} -t ${CI_REGISTRY_IMAGE}/backend:latest .
+    - docker push ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHORT_SHA}
+    - docker push ${CI_REGISTRY_IMAGE}/backend:latest
+  only:
+    refs:
+      - main
+    changes:
+      - backend/**/*
+      - .gitlab-ci.yml
+
+docker:ai-service:
+  <<: *docker_template
+  stage: build
+  script:
+    - cd ai-service
+    - docker build -t ${CI_REGISTRY_IMAGE}/ai-service:${CI_COMMIT_SHORT_SHA} -t ${CI_REGISTRY_IMAGE}/ai-service:latest .
+    - docker push ${CI_REGISTRY_IMAGE}/ai-service:${CI_COMMIT_SHORT_SHA}
+    - docker push ${CI_REGISTRY_IMAGE}/ai-service:latest
+  only:
+    refs:
+      - main
+    changes:
+      - ai-service/**/*
+      - .gitlab-ci.yml
+
+# ============================================================================
+# DEPLOY STAGE (Optional - configure as needed)
+# ============================================================================
+
+# deploy:staging:
+#   stage: deploy
+#   script:
+#     - echo "Deploy to staging environment"
+#     # Add your deployment commands here
+#   environment:
+#     name: staging
+#     url: https://staging.tavkit.example.com
+#   only:
+#     - main
+#   when: manual
+
+# deploy:production:
+#   stage: deploy
+#   script:
+#     - echo "Deploy to production environment"
+#     # Add your deployment commands here
+#   environment:
+#     name: production
+#     url: https://tavkit.example.com
+#   only:
+#     - main
+#   when: manual
