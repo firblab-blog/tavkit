@@ -4,6 +4,8 @@ import Icon from "../../../../common/Icon";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { type Character } from "../../../../../store/characterStore";
 import { logger } from "../../../../../utils/logger";
+import { authFetch } from "../../../../../utils/authFetch";
+import { getApiUrl } from "../../../../../config/api";
 
 interface PlayerCharactersContentProps {
   campaignId: string;
@@ -16,8 +18,11 @@ export default function PlayerCharactersContent({
   campaignId,
 }: PlayerCharactersContentProps) {
   const navigate = useNavigate(); // Still needed for character sheet navigation
-  const { fetchCampaignCharacters, unlinkCharacterFromCampaign } =
-    useCampaignStore();
+  const {
+    fetchCampaignCharacters,
+    unlinkCharacterFromCampaign,
+    createCampaignContent,
+  } = useCampaignStore();
 
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +31,7 @@ export default function PlayerCharactersContent({
   const [viewingCharacter, setViewingCharacter] = useState<Character | null>(
     null,
   );
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const loadCharacters = async () => {
@@ -71,6 +77,152 @@ export default function PlayerCharactersContent({
     }
   };
 
+  const refreshCharacters = async () => {
+    try {
+      const chars = (await fetchCampaignCharacters(
+        campaignId,
+      )) as unknown as Character[];
+      setCharacters(chars || []);
+    } catch (err) {
+      logger.error("Failed to refresh characters:", err);
+    }
+  };
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      let content = "";
+      const fileType = file.type;
+      const fileName = file.name.replace(/\.[^/.]+$/, "");
+
+      // Handle different file types
+      if (fileType.startsWith("image/")) {
+        // Convert image to base64
+        const reader = new FileReader();
+        content = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        // Store as campaign content (character portrait)
+        await createCampaignContent(campaignId, {
+          section: "pcs",
+          subsection: null,
+          title: fileName,
+          content: content,
+          type: "imported",
+          file_name: file.name,
+        });
+      } else {
+        // Read text files
+        content = await file.text();
+        // eslint-disable-next-line no-control-regex
+        content = content.replace(/\x00/g, "");
+
+        // Try to parse as JSON (D&D Beyond export or character data)
+        if (fileType === "application/json" || file.name.endsWith(".json")) {
+          try {
+            const jsonData = JSON.parse(content);
+            // Check if it looks like a character export
+            if (
+              jsonData.name &&
+              (jsonData.race || jsonData.classes || jsonData.stats)
+            ) {
+              // Create a character via the characters endpoint
+              const characterBody: any = {
+                name: jsonData.name,
+                race: jsonData.race || "",
+                class_info:
+                  jsonData.classes?.[0]?.definition?.name ||
+                  jsonData.class ||
+                  "",
+                level: jsonData.classes?.[0]?.level || jsonData.level || 1,
+                background:
+                  jsonData.background?.definition?.name ||
+                  jsonData.background ||
+                  "",
+                backstory:
+                  jsonData.notes?.backstory || jsonData.backstory || "",
+              };
+
+              // Try to extract stats if present
+              if (jsonData.stats) {
+                characterBody.stats = jsonData.stats;
+              }
+
+              const response = await authFetch(getApiUrl("/characters"), {
+                method: "POST",
+                body: JSON.stringify(characterBody),
+              });
+
+              if (response.ok) {
+                const newChar = await response.json();
+                // Link the character to this campaign
+                await authFetch(
+                  getApiUrl(
+                    `/campaigns/${campaignId}/characters/${newChar.id}`,
+                  ),
+                  {
+                    method: "POST",
+                  },
+                );
+              } else {
+                throw new Error("Failed to create character from JSON");
+              }
+            } else {
+              // Not a recognized character format, store as content
+              await createCampaignContent(campaignId, {
+                section: "pcs",
+                subsection: null,
+                title: fileName,
+                content: content,
+                type: "imported",
+                file_name: file.name,
+              });
+            }
+          } catch (parseError) {
+            // JSON parsing failed, store as plain content
+            logger.warn(
+              "Failed to parse JSON as character data, storing as content:",
+              parseError,
+            );
+            await createCampaignContent(campaignId, {
+              section: "pcs",
+              subsection: null,
+              title: fileName,
+              content: content,
+              type: "imported",
+              file_name: file.name,
+            });
+          }
+        } else {
+          // Text, markdown files - store as campaign content (backstory, notes)
+          await createCampaignContent(campaignId, {
+            section: "pcs",
+            subsection: null,
+            title: fileName,
+            content: content,
+            type: "imported",
+            file_name: file.name,
+          });
+        }
+      }
+
+      await refreshCharacters();
+    } catch (error) {
+      logger.error("File upload failed:", error);
+      alert("Failed to import file");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with search */}
@@ -88,7 +240,23 @@ export default function PlayerCharactersContent({
             className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary text-sm"
           />
         </div>
-        {/* Add button removed - will be re-added with proper functionality */}
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            id="pcs-file-upload"
+            className="hidden"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            accept=".txt,.md,.markdown,.json,image/*,.jpg,.jpeg,.png,.gif,.webp"
+          />
+          <label
+            htmlFor="pcs-file-upload"
+            className="flex items-center gap-2 px-4 py-2 bg-background-panel hover:bg-background border border-border text-text font-medium rounded-lg transition-colors text-sm cursor-pointer"
+          >
+            <Icon name="Upload" className="w-4 h-4" />
+            {uploading ? "Importing..." : "Import Character"}
+          </label>
+        </div>
       </div>
 
       {/* Error */}

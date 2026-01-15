@@ -16,7 +16,8 @@ interface SessionsContentProps {
  * SessionsContent - Display session notes from the campaign.
  */
 export default function SessionsContent({ campaignId }: SessionsContentProps) {
-  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore();
+  const { fetchCampaignContent, deleteCampaignContent, createCampaignContent } =
+    useCampaignStore();
 
   const [sessions, setSessions] = useState<CampaignContent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,7 @@ export default function SessionsContent({ campaignId }: SessionsContentProps) {
     null,
   );
   const [showEditorModal, setShowEditorModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const loadSessions = async () => {
@@ -77,6 +79,55 @@ export default function SessionsContent({ campaignId }: SessionsContentProps) {
     }
   };
 
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      let content = "";
+      const fileType = file.type;
+
+      // Handle different file types
+      if (fileType.startsWith("image/")) {
+        // Convert image to base64
+        const reader = new FileReader();
+        content = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else {
+        // Read text files as text
+        content = await file.text();
+        // Remove null bytes which PostgreSQL rejects
+        // eslint-disable-next-line no-control-regex
+        content = content.replace(/\x00/g, "");
+      }
+
+      // Create campaign content entry
+      await createCampaignContent(campaignId, {
+        section: "sessions",
+        subsection: null,
+        title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+        content: content,
+        type: "imported",
+        file_name: file.name,
+      });
+
+      await refreshSessions(); // Refresh list
+    } catch (error) {
+      logger.error("File upload failed:", error);
+      alert("Failed to import file");
+    } finally {
+      setUploading(false);
+      // Reset file input
+      event.target.value = "";
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with search */}
@@ -94,13 +145,30 @@ export default function SessionsContent({ campaignId }: SessionsContentProps) {
             className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary text-sm"
           />
         </div>
-        <button
-          onClick={() => setShowEditorModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm"
-        >
-          <Icon name="Plus" className="w-4 h-4" />
-          Add Session
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            id="sessions-file-upload"
+            className="hidden"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            accept=".txt,.md,.markdown,.pdf"
+          />
+          <label
+            htmlFor="sessions-file-upload"
+            className="flex items-center gap-2 px-4 py-2 bg-background-panel hover:bg-background border border-border text-text font-medium rounded-lg transition-colors text-sm cursor-pointer"
+          >
+            <Icon name="Upload" className="w-4 h-4" />
+            {uploading ? "Importing..." : "Import File"}
+          </label>
+          <button
+            onClick={() => setShowEditorModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm"
+          >
+            <Icon name="Plus" className="w-4 h-4" />
+            Add Session
+          </button>
+        </div>
       </div>
 
       {/* Error */}

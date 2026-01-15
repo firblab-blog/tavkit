@@ -16,7 +16,8 @@ interface FactionsContentProps {
  * FactionsContent - Display factions from the campaign.
  */
 export default function FactionsContent({ campaignId }: FactionsContentProps) {
-  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore();
+  const { fetchCampaignContent, deleteCampaignContent, createCampaignContent } =
+    useCampaignStore();
 
   const [factions, setFactions] = useState<CampaignContent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,7 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
     null,
   );
   const [showEditorModal, setShowEditorModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const loadFactions = async () => {
@@ -77,6 +79,49 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
     }
   };
 
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      let content = "";
+      const fileType = file.type;
+
+      if (fileType.startsWith("image/")) {
+        const reader = new FileReader();
+        content = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else {
+        content = await file.text();
+        // eslint-disable-next-line no-control-regex
+        content = content.replace(/\x00/g, "");
+      }
+
+      await createCampaignContent(campaignId, {
+        section: "factions",
+        subsection: null,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        content: content,
+        type: "imported",
+        file_name: file.name,
+      });
+
+      await refreshContent();
+    } catch (error) {
+      logger.error("File upload failed:", error);
+      alert("Failed to import file");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with search */}
@@ -94,13 +139,30 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
             className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary text-sm"
           />
         </div>
-        <button
-          onClick={() => setShowEditorModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors text-sm"
-        >
-          <Icon name="Plus" className="w-4 h-4" />
-          Add Faction
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            id="factions-file-upload"
+            className="hidden"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            accept=".txt,.md,.markdown,.pdf"
+          />
+          <label
+            htmlFor="factions-file-upload"
+            className="flex items-center gap-2 px-4 py-2 bg-background-panel hover:bg-background border border-border text-text font-medium rounded-lg transition-colors text-sm cursor-pointer"
+          >
+            <Icon name="Upload" className="w-4 h-4" />
+            {uploading ? "Importing..." : "Import File"}
+          </label>
+          <button
+            onClick={() => setShowEditorModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors text-sm"
+          >
+            <Icon name="Plus" className="w-4 h-4" />
+            Add Faction
+          </button>
+        </div>
       </div>
 
       {/* Error */}

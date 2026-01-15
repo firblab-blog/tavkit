@@ -16,7 +16,8 @@ type MediaType = "all" | "maps" | "art";
  * MapsArtContent - Display maps and art from the campaign.
  */
 export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
-  const { fetchCampaignContent, deleteCampaignContent } = useCampaignStore();
+  const { fetchCampaignContent, deleteCampaignContent, createCampaignContent } =
+    useCampaignStore();
 
   const [maps, setMaps] = useState<CampaignContent[]>([]);
   const [art, setArt] = useState<CampaignContent[]>([]);
@@ -27,6 +28,7 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
   const [viewingMedia, setViewingMedia] = useState<CampaignContent | null>(
     null,
   );
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const loadMedia = async () => {
@@ -94,6 +96,63 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
     }
   };
 
+  const refreshMedia = async () => {
+    try {
+      const [mapsContent, artContent] = await Promise.all([
+        fetchCampaignContent(campaignId, "maps"),
+        fetchCampaignContent(campaignId, "art"),
+      ]);
+      setMaps(mapsContent);
+      setArt(artContent);
+    } catch (err) {
+      logger.error("Failed to refresh media:", err);
+    }
+  };
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    section: "maps" | "art",
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      let content = "";
+      const fileType = file.type;
+
+      if (fileType.startsWith("image/")) {
+        const reader = new FileReader();
+        content = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else {
+        content = await file.text();
+        // eslint-disable-next-line no-control-regex
+        content = content.replace(/\x00/g, "");
+      }
+
+      await createCampaignContent(campaignId, {
+        section: section,
+        subsection: null,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        content: content,
+        type: "imported",
+        file_name: file.name,
+      });
+
+      await refreshMedia();
+    } catch (error) {
+      logger.error("File upload failed:", error);
+      alert("Failed to import file");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
   const isImageFile = (filename?: string) => {
     if (!filename) return false;
     const ext = filename.toLowerCase().split(".").pop();
@@ -128,7 +187,38 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
             <option value="art">Art</option>
           </select>
         </div>
-        {/* Add button removed - will be re-added with proper functionality */}
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            id="maps-file-upload"
+            className="hidden"
+            onChange={(e) => handleFileUpload(e, "maps")}
+            disabled={uploading}
+            accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.svg"
+          />
+          <label
+            htmlFor="maps-file-upload"
+            className="flex items-center gap-2 px-4 py-2 bg-background-panel hover:bg-background border border-border text-text font-medium rounded-lg transition-colors text-sm cursor-pointer"
+          >
+            <Icon name="Map" className="w-4 h-4" />
+            {uploading ? "Importing..." : "Import Map"}
+          </label>
+          <input
+            type="file"
+            id="art-file-upload"
+            className="hidden"
+            onChange={(e) => handleFileUpload(e, "art")}
+            disabled={uploading}
+            accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.svg"
+          />
+          <label
+            htmlFor="art-file-upload"
+            className="flex items-center gap-2 px-4 py-2 bg-background-panel hover:bg-background border border-border text-text font-medium rounded-lg transition-colors text-sm cursor-pointer"
+          >
+            <Icon name="Palette" className="w-4 h-4" />
+            {uploading ? "Importing..." : "Import Art"}
+          </label>
+        </div>
       </div>
 
       {/* Error */}

@@ -36,6 +36,7 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingMonster, setViewingMonster] = useState<Monster | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const loadMonsters = async () => {
@@ -86,6 +87,62 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
     }
   };
 
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      let content = "";
+      const fileType = file.type;
+
+      if (fileType.startsWith("image/")) {
+        const reader = new FileReader();
+        content = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else {
+        content = await file.text();
+        // eslint-disable-next-line no-control-regex
+        content = content.replace(/\x00/g, "");
+      }
+
+      // Create monster via API
+      const response = await authFetch(getApiUrl("/monsters"), {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name.replace(/\.[^/.]+$/, ""),
+          campaign_id: campaignId,
+          cr: 1,
+          stats: {},
+          lore: content,
+          ai_generated: false,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to import monster");
+
+      // Refresh monsters list
+      const refreshResponse = await authFetch(
+        getApiUrl(`/monsters?campaign_id=${campaignId}`),
+      );
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json();
+        setMonsters(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      logger.error("File upload failed:", error);
+      alert("Failed to import file");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
   const getCRDisplay = (cr: number | string) => {
     if (typeof cr === "number") {
       if (cr < 1) return `CR ${cr}`;
@@ -111,13 +168,30 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
             className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary text-sm"
           />
         </div>
-        <button
-          onClick={() => openGenerator("monster")}
-          className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm"
-        >
-          <Icon name="Plus" className="w-4 h-4" />
-          Add Monster
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            id="monsters-file-upload"
+            className="hidden"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            accept=".txt,.md,.markdown,.pdf"
+          />
+          <label
+            htmlFor="monsters-file-upload"
+            className="flex items-center gap-2 px-4 py-2 bg-background-panel hover:bg-background border border-border text-text font-medium rounded-lg transition-colors text-sm cursor-pointer"
+          >
+            <Icon name="Upload" className="w-4 h-4" />
+            {uploading ? "Importing..." : "Import File"}
+          </label>
+          <button
+            onClick={() => openGenerator("monster")}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm"
+          >
+            <Icon name="Plus" className="w-4 h-4" />
+            Add Monster
+          </button>
+        </div>
       </div>
 
       {/* Error */}

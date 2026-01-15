@@ -32,6 +32,7 @@ export default function LocationsContent({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const loadLocations = async () => {
@@ -85,6 +86,61 @@ export default function LocationsContent({
     }
   };
 
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      let content = "";
+      const fileType = file.type;
+
+      if (fileType.startsWith("image/")) {
+        const reader = new FileReader();
+        content = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else {
+        content = await file.text();
+        // eslint-disable-next-line no-control-regex
+        content = content.replace(/\x00/g, "");
+      }
+
+      // Create location via API
+      const response = await authFetch(getApiUrl("/locations"), {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name.replace(/\.[^/.]+$/, ""),
+          campaign_id: campaignId,
+          type: "settlement",
+          description: content,
+          ai_generated: false,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to import location");
+
+      // Refresh locations list
+      const refreshResponse = await authFetch(
+        getApiUrl(`/locations?campaign_id=${campaignId}`),
+      );
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json();
+        setLocations(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      logger.error("File upload failed:", error);
+      alert("Failed to import file");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with search */}
@@ -102,13 +158,30 @@ export default function LocationsContent({
             className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary text-sm"
           />
         </div>
-        <button
-          onClick={() => openGenerator("location")}
-          className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-lg transition-colors text-sm"
-        >
-          <Icon name="Plus" className="w-4 h-4" />
-          Add Location
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            id="locations-file-upload"
+            className="hidden"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            accept=".txt,.md,.markdown,.pdf"
+          />
+          <label
+            htmlFor="locations-file-upload"
+            className="flex items-center gap-2 px-4 py-2 bg-background-panel hover:bg-background border border-border text-text font-medium rounded-lg transition-colors text-sm cursor-pointer"
+          >
+            <Icon name="Upload" className="w-4 h-4" />
+            {uploading ? "Importing..." : "Import File"}
+          </label>
+          <button
+            onClick={() => openGenerator("location")}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-lg transition-colors text-sm"
+          >
+            <Icon name="Plus" className="w-4 h-4" />
+            Add Location
+          </button>
+        </div>
       </div>
 
       {/* Error */}
