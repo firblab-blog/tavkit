@@ -10,6 +10,29 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React libraries
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          
+          // State management and utilities
+          'zustand-vendor': ['zustand'],
+          
+          // UI libraries
+          'ui-vendor': ['lucide-react', 'dompurify'],
+          
+          // Markdown rendering (large dependency)
+          'markdown-vendor': ['react-markdown', 'remark-gfm'],
+          
+          // API and networking
+          'api-vendor': ['axios'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
   server: {
     port: 3000,
     proxy: {

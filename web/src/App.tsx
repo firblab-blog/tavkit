@@ -1,15 +1,26 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { type ReactNode } from 'react'
+import { type ReactNode, lazy, Suspense } from 'react'
 import { useAuthStore } from './store/authStore'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AIProvider } from './contexts/AIContext'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { ToastContainer } from './components/common/Toast'
 import GlobalModals from './components/common/GlobalModals'
-import Login from './components/auth/Login'
-import Register from './components/auth/Register'
-import Dashboard from './components/dashboard/Dashboard'
 import './App.css'
+
+// Lazy load route components
+const Login = lazy(() => import('./components/auth/Login'))
+const Register = lazy(() => import('./components/auth/Register'))
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard'))
+
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-background">
+      <div className="text-text">Loading...</div>
+    </div>
+  )
+}
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -22,19 +33,21 @@ function App() {
       <ThemeProvider>
         <AIProvider>
           <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route
-                path="/dashboard/*"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route
+                  path="/dashboard/*"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </Suspense>
             <ToastContainer />
             <GlobalModals />
           </BrowserRouter>

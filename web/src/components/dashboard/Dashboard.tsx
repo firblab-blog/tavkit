@@ -1,19 +1,61 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { useUISettingsStore } from '../../store/uiSettingsStore'
 import { useQuickPanelStore } from '../../store/quickPanelStore'
 import MinimalHeader from '../common/MinimalHeader'
 import QuickPanel from '../common/QuickPanel'
 
-// Landing
+// Landing (eager load - first page)
 import WelcomeLanding from '../landing/WelcomeLanding'
 
-// Home
+// Home (eager load - common entry points)
 import GMCharacterView from '../home/GMCharacterView'
-
-// Player & Sandbox
 import PlayerHome from '../player/PlayerHome'
 import SandboxHome from '../sandbox/SandboxHome'
+
+// Lazy load all other components
+const CampaignToolkit = lazy(() => import('../campaign/CampaignToolkit'))
+const AdventurersRoster = lazy(() => import('../character/AdventurersRoster'))
+const ItemManager = lazy(() => import('../items/ItemManager'))
+const ChaseManager = lazy(() => import('../chase/ChaseManager'))
+const SessionChat = lazy(() => import('../chat/SessionChat'))
+
+// Generators
+const NPCGenerator = lazy(() => import('../generators/NPCGenerator'))
+const MonsterGenerator = lazy(() => import('../generators/MonsterGenerator'))
+const EncounterBuilder = lazy(() => import('../generators/EncounterBuilder'))
+const DialogueBuilder = lazy(() => import('../generators/DialogueBuilder'))
+const LocationGenerator = lazy(() => import('../generators/LocationGenerator'))
+const QuestGenerator = lazy(() => import('../generators/QuestGenerator'))
+const ItemGenerator = lazy(() => import('../generators/ItemGenerator'))
+const RumorGenerator = lazy(() => import('../generators/RumorGenerator'))
+const TavernGenerator = lazy(() => import('../generators/TavernGenerator'))
+const MerchantGenerator = lazy(() => import('../generators/MerchantGenerator'))
+const TrapGenerator = lazy(() => import('../generators/TrapGenerator'))
+const CritterGenerator = lazy(() => import('../generators/CritterGenerator'))
+const ChaseGenerator = lazy(() => import('../generators/ChaseGenerator'))
+
+// Play Tools
+const CombatTracker = lazy(() => import('../combat/CombatTracker'))
+const SocialEncounters = lazy(() => import('../social/SocialEncounters'))
+const TavernSession = lazy(() => import('../tavern-session/TavernSession'))
+const ShoppingSession = lazy(() => import('../shopping/ShoppingSession'))
+
+// Settings & Admin
+const Settings = lazy(() => import('../settings/Settings'))
+const AdminUserManagement = lazy(() => import('../admin/AdminUserManagement'))
+
+// Tools
+const ToolsPage = lazy(() => import('../tools/ToolsPage'))
+
+// Loading fallback for lazy routes
+function RouteLoadingFallback() {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <div className="text-text-muted">Loading...</div>
+    </div>
+  )
+}
 
 /**
  * HomeWrapper - Renders the appropriate home component based on context mode.
@@ -24,44 +66,6 @@ import SandboxHome from '../sandbox/SandboxHome'
 function HomeWrapper({ contextMode }: { contextMode: 'gm' | 'player' }) {
   return contextMode === 'gm' ? <GMCharacterView /> : <PlayerHome />
 }
-
-// Campaign Tools
-import CampaignToolkit from '../campaign/CampaignToolkit'
-import AdventurersRoster from '../character/AdventurersRoster'
-import ItemManager from '../items/ItemManager'
-import ChaseManager from '../chase/ChaseManager'
-import SessionChat from '../chat/SessionChat'
-
-// Note: SavedContent route now redirects to Library tab
-// import SavedContent from '../SavedContent' // DEPRECATED - use Library tab
-
-// Generators
-import NPCGenerator from '../generators/NPCGenerator'
-import MonsterGenerator from '../generators/MonsterGenerator'
-import EncounterBuilder from '../generators/EncounterBuilder'
-import DialogueBuilder from '../generators/DialogueBuilder'
-import LocationGenerator from '../generators/LocationGenerator'
-import QuestGenerator from '../generators/QuestGenerator'
-import ItemGenerator from '../generators/ItemGenerator'
-import RumorGenerator from '../generators/RumorGenerator'
-import TavernGenerator from '../generators/TavernGenerator'
-import MerchantGenerator from '../generators/MerchantGenerator'
-import TrapGenerator from '../generators/TrapGenerator'
-import CritterGenerator from '../generators/CritterGenerator'
-import ChaseGenerator from '../generators/ChaseGenerator'
-
-// Play Tools
-import CombatTracker from '../combat/CombatTracker'
-import SocialEncounters from '../social/SocialEncounters'
-import TavernSession from '../tavern-session/TavernSession'
-import ShoppingSession from '../shopping/ShoppingSession'
-
-// Settings & Admin
-import Settings from '../settings/Settings'
-import AdminUserManagement from '../admin/AdminUserManagement'
-
-// Tools
-import ToolsPage from '../tools/ToolsPage'
 
 /**
  * Dashboard - Route-based shell for TavKit.
@@ -118,11 +122,13 @@ export default function Dashboard() {
   if (isToolsPage) {
     return (
       <>
-        <Routes>
-          <Route path="gm/tools" element={<ToolsPage />} />
-          <Route path="player/tools" element={<ToolsPage />} />
-          <Route path="sandbox/tools" element={<ToolsPage />} />
-        </Routes>
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Routes>
+            <Route path="gm/tools" element={<ToolsPage />} />
+            <Route path="player/tools" element={<ToolsPage />} />
+            <Route path="sandbox/tools" element={<ToolsPage />} />
+          </Routes>
+        </Suspense>
         <QuickPanel />
       </>
     )
@@ -134,7 +140,8 @@ export default function Dashboard() {
       <div className="h-screen bg-background">
         <MinimalHeader />
         <main className="h-full overflow-auto pt-14">
-          <Routes>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <Routes>
             {/* Landing - Role Selection */}
             <Route index element={<WelcomeLanding />} />
 
@@ -209,6 +216,7 @@ export default function Dashboard() {
             {/* Fallback - go to landing */}
             <Route path="*" element={<WelcomeLanding />} />
           </Routes>
+          </Suspense>
         </main>
       </div>
       {/* Quick Panel - Command Palette accessible via Cmd+K */}
