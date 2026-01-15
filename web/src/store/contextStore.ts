@@ -141,11 +141,17 @@ export const useContextStore = create<ContextState>()(
       // Sync version - immediate state update without API call
       // Use this BEFORE navigation to ensure destination component has correct state
       updateContextSync: (updates) => {
-        set((state) => ({
-          userContext: state.userContext
-            ? { ...state.userContext, ...updates }
-            : null,
-        }));
+        set((state) => {
+          if (!state.userContext) {
+            // If context doesn't exist yet, we can't update it
+            // This shouldn't happen in normal flow, but log it for debugging
+            logger.warn("[contextStore] updateContextSync called with no existing context");
+            return state;
+          }
+          return {
+            userContext: { ...state.userContext, ...updates },
+          };
+        });
       },
 
       // Background API persist - call AFTER navigation

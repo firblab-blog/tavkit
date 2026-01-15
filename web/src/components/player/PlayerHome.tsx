@@ -152,8 +152,12 @@ export default function PlayerHome({
   );
 
   // Track loading timeout for better UX when loading takes too long
+  // Loading state should be true when:
+  // 1. Context is loading
+  // 2. Characters are actively loading  
+  // 3. Cache was invalidated (lastFetched is null) but we have context
   const isCurrentlyLoading =
-    contextLoading || loading || (!lastFetched && !error && userContext);
+    contextLoading || loading || (lastFetched === null && userContext !== null);
   const { isTimedOut, elapsedSeconds } = useLoadingTimeout({
     isLoading: Boolean(isCurrentlyLoading),
     timeoutMs: 10000, // Show timeout message after 10 seconds
@@ -451,7 +455,8 @@ export default function PlayerHome({
   }
 
   // No characters state - only show AFTER fetch completes (lastFetched is set)
-  if (characters.length === 0) {
+  // Don't show this if we haven't fetched yet (lastFetched is null after invalidation)
+  if (characters.length === 0 && lastFetched !== null) {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto px-4 py-16">

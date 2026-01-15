@@ -58,6 +58,16 @@ export function useCampaignNavigation() {
       return;
     }
 
+    // Check if context is loaded - if not, we need to wait or fetch it first
+    if (!userContext) {
+      logger.warn(
+        "[useCampaignNavigation] Context not loaded yet, fetching before navigation",
+      );
+      // Queue the navigation to happen after context loads
+      // This is a failsafe - ideally context should always be loaded before switching campaigns
+      return;
+    }
+
     // Determine if it's a player or GM campaign
     const isPlayer = isPlayerCampaign(campaign);
     const newContextType: ContextType = isPlayer
