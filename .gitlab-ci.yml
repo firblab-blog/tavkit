@@ -654,8 +654,8 @@ build:
       else
         echo "⚠️ Warning: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set. May hit rate limits."
       fi
-    # Login to GitLab registry
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    # Login to GitLab registry (use http:// for insecure registry)
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin http://$CI_REGISTRY
     # Configure buildx to allow insecure registry
     - |
       cat > /tmp/buildkitd.toml <<EOF
@@ -779,6 +779,8 @@ build:ollama-mirror:
       else
         echo "⚠️ Warning: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set."
       fi
+    # Login to GitLab registry (use http:// for insecure registry)
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin http://$CI_REGISTRY
     # Configure buildx to allow insecure registry
     - |
       cat > /tmp/buildkitd.toml <<EOF
