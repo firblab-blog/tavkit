@@ -218,4 +218,8 @@ ollama-data/
 *.backup
 *.old
 *.orig
-.gitlab-ci.yml
+
+# ================================
+# Miscellaneous
+# ================================
+.cache

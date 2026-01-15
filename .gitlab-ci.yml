@@ -7,6 +7,10 @@ variables:
   DOCKER_BUILDKIT: 1
   # Set to 'linux/arm64' to build only ARM64 (faster), or 'linux/amd64,linux/arm64' for both
   BUILD_PLATFORMS: 'linux/amd64,linux/arm64'
+  # GitLab configuration - set these in CI/CD variables:
+  # GITLAB_REGISTRY_PORT: Registry port (e.g., "5005")
+  CI_REGISTRY: "${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}"
+  CI_REGISTRY_IMAGE: "${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}/infrastructure/firb-lab/tavkit"
 
 stages:
   - wiki-sync
@@ -611,7 +615,7 @@ build:
   image: docker:24
   services:
     - name: docker:24-dind
-      command: ['--insecure-registry=192.168.4.62:5050']
+      command: ['--insecure-registry=${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}']
   before_script:
     - docker info
     # Enable Docker buildx for multi-architecture builds
@@ -630,7 +634,7 @@ build:
     # Configure buildx to allow insecure registry
     - |
       cat > /tmp/buildkitd.toml <<EOF
-      [registry."192.168.4.62:5050"]
+      [registry."${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}"]
         http = true
         insecure = true
       EOF
@@ -732,7 +736,7 @@ build:ollama-mirror:
   image: docker:24
   services:
     - name: docker:24-dind
-      command: ['--insecure-registry=192.168.4.62:5050']
+      command: ['--insecure-registry=${GITLAB_HOST}:${GITLAB_REGISTRY_PORT}']
   before_script:
     - docker info
     # Login to Docker Hub
@@ -800,7 +804,7 @@ sync-wiki:
         fi
         exit 1
       fi
-    - ssh-keyscan -t ed25519 192.168.4.62 >> ~/.ssh/known_hosts
+    - ssh-keyscan -t ed25519 ${GITLAB_HOST} >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
     - echo "✅ SSH key validated successfully"
   script:
@@ -809,7 +813,7 @@ sync-wiki:
     # Clone the wiki repository using SSH
     - |
       # Convert HTTP URL to SSH format for proper authentication
-      # Example: http://192.168.4.62/infrastructure/firb-lab/firblab-tavkit → git@192.168.4.62:infrastructure/firb-lab/firblab-tavkit.wiki.git
+      # Example: http://${GITLAB_HOST}/infrastructure/firb-lab/tavkit → git@${GITLAB_HOST}:infrastructure/firb-lab/tavkit.wiki.git
       WIKI_URL=$(echo "${CI_PROJECT_URL}.wiki.git" | sed 's|https\?://\([^/]*\)/|git@\1:|')
       echo "Cloning wiki from $WIKI_URL"
       git clone "$WIKI_URL" wiki-repo || (echo "Creating initial wiki..." && mkdir -p wiki-repo && cd wiki-repo && git init && git remote add origin "$WIKI_URL")
