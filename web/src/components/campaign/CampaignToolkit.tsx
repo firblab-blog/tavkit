@@ -321,7 +321,7 @@ export default function CampaignToolkit() {
           return;
         }
       }
-    } catch {
+    } catch (e) {
       logger.warn(
         "Failed to parse campaign setting for sections_order/subsections_order",
         e,
@@ -1487,7 +1487,7 @@ export default function CampaignToolkit() {
                         ...active,
                         setting: updatedSetting,
                       });
-                    } catch {
+                    } catch (e) {
                       logger.error("Failed to persist section order", e);
                     }
                   }
@@ -1523,7 +1523,7 @@ export default function CampaignToolkit() {
                         ...active,
                         setting: updatedSetting,
                       });
-                    } catch {
+                    } catch (e) {
                       logger.error("Failed to persist entry order", e);
                     }
                   }
@@ -1572,7 +1572,7 @@ export default function CampaignToolkit() {
                           setting: updatedSetting,
                         });
                         await fetchCampaigns(); // Refetch to reload section order from database
-                      } catch {
+                      } catch (e) {
                         logger.error("Failed to persist subsection order", e);
                       }
                     }
@@ -1650,7 +1650,7 @@ export default function CampaignToolkit() {
                         ...active,
                         setting: updatedSetting,
                       });
-                    } catch {
+                    } catch (e) {
                       logger.error("Failed to persist section order", e);
                     }
                   }
@@ -1686,7 +1686,7 @@ export default function CampaignToolkit() {
                         ...active,
                         setting: updatedSetting,
                       });
-                    } catch {
+                    } catch (e) {
                       logger.error("Failed to persist entry order", e);
                     }
                   }
@@ -1733,7 +1733,7 @@ export default function CampaignToolkit() {
                           setting: updatedSetting,
                         });
                         await fetchCampaigns(); // Refetch to reload section order from database
-                      } catch {
+                      } catch (e) {
                         logger.error("Failed to persist subsection order", e);
                       }
                     }

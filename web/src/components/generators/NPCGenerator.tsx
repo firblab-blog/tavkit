@@ -279,7 +279,7 @@ function normalizeNPCResponse(raw: Record<string, unknown>): NPCData {
           parsedNPC,
         );
         processedRaw = parsedNPC;
-      } catch {
+      } catch (e) {
         logger.warn("[NPCGenerator] Failed to parse background as JSON:", e);
       }
     }

@@ -169,7 +169,7 @@ export function normalizeTrapResponse(
           parsedTrap,
         );
         processedRaw = parsedTrap;
-      } catch {
+      } catch (e) {
         logger.warn("[TrapNormalizer] Failed to parse description as JSON:", e);
       }
     }

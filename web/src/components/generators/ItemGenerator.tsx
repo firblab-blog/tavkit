@@ -106,7 +106,7 @@ function normalizeItemResponse(raw: Record<string, unknown>): ItemData {
           parsedItem,
         );
         processedRaw = parsedItem;
-      } catch {
+      } catch (e) {
         logger.warn("[ItemGenerator] Failed to parse description as JSON:", e);
       }
     }

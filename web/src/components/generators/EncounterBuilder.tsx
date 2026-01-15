@@ -188,7 +188,7 @@ function normalizeEncounterResponse(
           parsedEncounter,
         );
         processedRaw = parsedEncounter;
-      } catch {
+      } catch (e) {
         logger.warn(
           "[EncounterBuilder] Failed to parse description as JSON:",
           e,

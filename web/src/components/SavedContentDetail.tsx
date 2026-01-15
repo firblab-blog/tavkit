@@ -2293,7 +2293,7 @@ export default function SavedContentDetail({
           ? JSON.parse(critter.interesting_facts)
           : critter.interesting_facts
         : [];
-    } catch {
+    } catch (e) {
       logger.error("Error parsing critter data:", e);
     }
 
@@ -2610,7 +2610,7 @@ export default function SavedContentDetail({
           ? JSON.parse(chase.environmental_factors)
           : chase.environmental_factors
         : [];
-    } catch {
+    } catch (e) {
       logger.error("Error parsing chase data:", e);
     }
 
