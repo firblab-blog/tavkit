@@ -218,16 +218,25 @@ func (h *TrapHandler) ListTraps(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	traps, err := h.db.ListTrapsByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list traps", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list traps"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Trap, 0)
+		for _, t := range traps {
+			if t.CampaignID == nil {
+				filtered = append(filtered, t)
+			}
+		}
+		traps = filtered
 	}
 
 	c.JSON(http.StatusOK, traps)
@@ -348,6 +357,19 @@ func (h *TrapHandler) DeleteTrap(c *gin.Context) {
 		h.db.GetTrapByID,
 		func(t *db.Trap) string { return t.UserID },
 		h.db.DeleteTrap,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns a trap to a campaign or Personal Library
+func (h *TrapHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"trap",
+		h.db.GetTrapByID,
+		func(t *db.Trap) string { return t.UserID },
+		func(t *db.Trap, campaignID *string) { t.CampaignID = campaignID },
+		h.db.UpdateTrap,
 		h.logger,
 	)
 }

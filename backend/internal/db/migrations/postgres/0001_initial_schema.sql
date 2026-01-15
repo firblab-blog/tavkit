@@ -608,14 +608,14 @@ CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    session_type VARCHAR(50),
     name VARCHAR(200) NOT NULL,
-    session_number INTEGER DEFAULT 1 CHECK (session_number >= 1),
     status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed')),
-    current_round INTEGER DEFAULT 0 CHECK (current_round >= 0),
-    notes TEXT,
-    summary TEXT,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP,
+    ended_at TIMESTAMP,
+    duration_minutes INTEGER,
+    summary TEXT,
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -627,11 +627,14 @@ CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status) WHERE status 
 CREATE TABLE IF NOT EXISTS session_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    round INTEGER DEFAULT 0,
     event_type VARCHAR(50) NOT NULL,
-    description TEXT,
-    details TEXT,
-    is_important BOOLEAN DEFAULT false,
+    round INTEGER,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    actor VARCHAR(200),
+    action TEXT NOT NULL,
+    details JSONB,
+    outcome TEXT,
+    important BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -639,36 +642,61 @@ CREATE TABLE IF NOT EXISTS session_events (
 CREATE TABLE IF NOT EXISTS combat_encounters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
+    encounter_id UUID,
     name VARCHAR(200),
     current_round INTEGER DEFAULT 1 CHECK (current_round >= 0),
     current_turn INTEGER DEFAULT 0 CHECK (current_turn >= 0),
     status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed')),
+    difficulty VARCHAR(50),
     environment TEXT,
     notes TEXT,
+    visibility_mode TEXT DEFAULT 'full',
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_combat_encounters_session ON combat_encounters(session_id);
+CREATE INDEX IF NOT EXISTS idx_combat_encounters_campaign ON combat_encounters(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_combat_encounters_campaign_active ON combat_encounters(campaign_id, is_active);
 
 -- Combat participants table
 CREATE TABLE IF NOT EXISTS combat_participants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     combat_id UUID NOT NULL REFERENCES combat_encounters(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
     participant_type VARCHAR(50) NOT NULL CHECK (participant_type IN ('pc', 'npc', 'monster', 'ally', 'other')),
-    initiative INTEGER DEFAULT 0,
-    initiative_modifier INTEGER DEFAULT 0,
-    armor_class INTEGER DEFAULT 10 CHECK (armor_class >= 0),
+    character_id UUID,
+    npc_id UUID,
+    monster_id UUID,
+    owner_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    name VARCHAR(100) NOT NULL,
     max_hp INTEGER DEFAULT 1 CHECK (max_hp >= 1),
+    ac INTEGER DEFAULT 10 CHECK (ac >= 0),
+    stats_snapshot JSONB,
+    abilities_snapshot JSONB,
+    initiative INTEGER DEFAULT 0,
+    initiative_bonus INTEGER DEFAULT 0,
+    initiative_roll INTEGER,
     current_hp INTEGER DEFAULT 1,
     temp_hp INTEGER DEFAULT 0 CHECK (temp_hp >= 0),
-    is_active BOOLEAN DEFAULT true,
+    passive_perception INTEGER,
+    conditions JSONB,
+    concentration_spell TEXT,
+    death_saves JSONB,
+    is_surprised BOOLEAN DEFAULT false,
+    has_reaction BOOLEAN DEFAULT true,
+    legendary_actions_used INTEGER DEFAULT 0,
+    legendary_actions_max INTEGER DEFAULT 0,
+    position INTEGER DEFAULT 0,
+    is_visible_to_players BOOLEAN DEFAULT true,
+    show_hp_to_players BOOLEAN DEFAULT true,
+    show_conditions_to_players BOOLEAN DEFAULT true,
     notes TEXT,
-    source_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_combat_participants_combat ON combat_participants(combat_id);
+CREATE INDEX IF NOT EXISTS idx_combat_participants_owner ON combat_participants(owner_user_id);
 
 -- Combat conditions table
 CREATE TABLE IF NOT EXISTS combat_conditions (

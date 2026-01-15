@@ -12,6 +12,43 @@ import (
 	"go.uber.org/zap"
 )
 
+// CampaignFilter represents the type of campaign filtering to apply
+type CampaignFilter int
+
+const (
+	// FilterNone means no campaign filtering (return all)
+	FilterNone CampaignFilter = iota
+	// FilterByCampaign means filter by a specific campaign ID
+	FilterByCampaign
+	// FilterNullCampaign means filter for Personal Library (campaign_id IS NULL)
+	FilterNullCampaign
+)
+
+// ParseCampaignFilter extracts campaign filter from query parameters
+// Returns the filter type and campaign ID (if filtering by campaign)
+func ParseCampaignFilter(c *gin.Context) (CampaignFilter, *string) {
+	cid := c.Query("campaign_id")
+	if cid == "" {
+		return FilterNone, nil
+	}
+	if cid == "null" {
+		return FilterNullCampaign, nil
+	}
+	return FilterByCampaign, &cid
+}
+
+// FilterByNullCampaign filters a slice to only include items with nil campaign_id
+// T must have a method GetCampaignID() *string
+func FilterByNullCampaign[T interface{ GetCampaignID() *string }](items []*T) []*T {
+	result := make([]*T, 0)
+	for _, item := range items {
+		if (*item).GetCampaignID() == nil {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
 // HandleEntityDelete is a generic handler for deleting entities with ownership verification
 // It takes functions to get and delete the entity, and verifies ownership before deletion
 func HandleEntityDelete[T any](
@@ -198,6 +235,62 @@ func HandleChaseSubEntityDelete[T any](
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": entityName + " deleted successfully"})
+}
+
+// AssignCampaignRequest represents the request to assign content to a campaign
+type AssignCampaignRequest struct {
+	// CampaignID is the target campaign, or null to move to Personal Library
+	CampaignID *string `json:"campaign_id"`
+}
+
+// HandleAssignCampaign is a generic handler for assigning content to a campaign
+// It verifies ownership and updates the campaign_id field
+func HandleAssignCampaign[T any](
+	c *gin.Context,
+	entityName string,
+	getByID func(ctx context.Context, id string) (*T, error),
+	getUserID func(*T) string,
+	setCampaignID func(*T, *string),
+	updateFunc func(ctx context.Context, entity *T) error,
+	logger *zap.Logger,
+) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	id := c.Param("id")
+
+	// Get existing entity
+	entity, err := getByID(c.Request.Context(), id)
+	if err != nil {
+		logger.Error("Failed to get "+entityName, zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get " + entityName})
+		return
+	}
+
+	if entity == nil || getUserID(entity) != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": entityName + " not found"})
+		return
+	}
+
+	var req AssignCampaignRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update the campaign_id
+	setCampaignID(entity, req.CampaignID)
+
+	if err := updateFunc(c.Request.Context(), entity); err != nil {
+		logger.Error("Failed to update "+entityName, zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update " + entityName})
+		return
+	}
+
+	c.JSON(http.StatusOK, entity)
 }
 
 // HandleCombatSubEntityDelete is a generic handler for deleting combat sub-entities

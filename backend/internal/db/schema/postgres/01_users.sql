@@ -8,8 +8,6 @@
 -- Drop existing tables (for clean recreation)
 DROP TABLE IF EXISTS schema_version CASCADE;
 DROP TABLE IF EXISTS settings CASCADE;
-DROP TABLE IF EXISTS kits CASCADE;
-DROP TABLE IF EXISTS containers CASCADE;
 DROP TABLE IF EXISTS tools CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
@@ -47,34 +45,6 @@ CREATE TABLE tools (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_tools_user_id ON tools(user_id);
-
--- Containers table (workspace tabs)
-CREATE TABLE containers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL,
-    tool VARCHAR(100) NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    url TEXT,
-    position INTEGER NOT NULL DEFAULT 0,
-    is_active BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_containers_user_id ON containers(user_id);
-
--- Kits table (saved workspace configurations)
-CREATE TABLE kits (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    containers TEXT NOT NULL,
-    is_default BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_kits_user_id ON kits(user_id);
 
 -- Settings table (application-wide key-value settings)
 CREATE TABLE settings (

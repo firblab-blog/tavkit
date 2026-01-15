@@ -26,14 +26,14 @@ CREATE TABLE sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    session_type VARCHAR(50), -- 'chase', 'combat', 'social', 'tavern', 'shopping'
     name VARCHAR(200) NOT NULL,
-    session_number INTEGER DEFAULT 1 CHECK (session_number >= 1),
     status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed')),
-    current_round INTEGER DEFAULT 0 CHECK (current_round >= 0),
-    notes TEXT,
-    summary TEXT,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP,
+    ended_at TIMESTAMP,
+    duration_minutes INTEGER,
+    summary TEXT,
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -45,11 +45,14 @@ CREATE INDEX idx_sessions_status ON sessions(status) WHERE status = 'active';
 CREATE TABLE session_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    round INTEGER DEFAULT 0,
     event_type VARCHAR(50) NOT NULL,
-    description TEXT,
-    details TEXT,
-    is_important BOOLEAN DEFAULT false,
+    round INTEGER,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    actor VARCHAR(200),
+    action TEXT NOT NULL,
+    details JSONB,
+    outcome TEXT,
+    important BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

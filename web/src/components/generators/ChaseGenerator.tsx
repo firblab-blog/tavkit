@@ -7,6 +7,16 @@ import Icon from '../common/Icon'
 import CampaignSelector from '../common/CampaignSelector'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualChaseData,
+  defaultChaseData,
+  chaseTypeOptions,
+  terrainOptions,
+} from './shared/schemas/chaseSchema'
 import {
   generateChaseScenario as generateChaseApi,
   saveChase as saveChaseApi,
@@ -390,10 +400,15 @@ export default function ChaseGenerator() {
   const [error, setError] = useState<string | null>(null)
   const [chase, setChase] = useState<ChaseData | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const { activeCampaignId } = useCampaignStore()
+
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualChaseData>(defaultChaseData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
 
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
@@ -422,7 +437,6 @@ export default function ChaseGenerator() {
     setLoading(true)
     setError(null)
     setChase(null)
-    setShowRawResponse(false)
     setIsSaved(false)
 
     try {
@@ -448,7 +462,6 @@ export default function ChaseGenerator() {
         if (!hasValidChaseContent(normalized)) {
           normalized._parseError =
             'AI response missing essential chase content. Showing raw response.'
-          setShowRawResponse(true)
         }
 
         setChase(normalized)
@@ -460,7 +473,6 @@ export default function ChaseGenerator() {
           difficulty,
         })
         normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
         setChase(normalized)
       }
     } catch (err) {
@@ -503,6 +515,58 @@ export default function ChaseGenerator() {
       emitContentSaved()
     } catch (err) {
       setError(getErrorMessage(err))
+    }
+  }
+
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('Chase name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError(null)
+
+    try {
+      await saveChaseApi({
+        campaign_id: campaignId || undefined,
+        name: manualData.name.trim(),
+        chase_type: manualData.chase_type,
+        terrain: manualData.terrain,
+        difficulty: manualData.difficulty,
+        description: manualData.description.trim() || '',
+        setting: manualData.setting.trim() || '',
+        participants: { quarry: manualData.quarry, pursuers: manualData.pursuers },
+        starting_conditions: manualData.starting_conditions.trim() || '',
+        obstacles: manualData.obstacles.filter((o) => o.name.trim()),
+        complications: manualData.complications.filter((c) => c.trim()),
+        shortcuts: manualData.shortcuts.filter((s) => s.name.trim()),
+        ending_conditions: {
+          success: manualData.success_condition,
+          failure: manualData.failure_condition,
+          alternative: '',
+        },
+        rewards: {
+          success: manualData.success_reward,
+          partial: '',
+          failure: manualData.failure_consequence,
+        },
+        environmental_factors: manualData.environmental_factors.filter((e) => e.trim()),
+        ai_generated: false,
+        starting_distance: 3,
+        catch_threshold: 0,
+        escape_threshold: 7,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultChaseData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
     }
   }
 
@@ -584,7 +648,8 @@ export default function ChaseGenerator() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // AI generation form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="chase" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -663,18 +728,402 @@ export default function ChaseGenerator() {
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Chase Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., Rooftop Pursuit, Market Chase"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-3 gap-3">
+        <FormField label="Chase Type">
+          <select
+            value={manualData.chase_type}
+            onChange={(e) => setManualData({ ...manualData, chase_type: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {chaseTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Terrain">
+          <select
+            value={manualData.terrain}
+            onChange={(e) => setManualData({ ...manualData, terrain: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {terrainOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Difficulty">
+          <select
+            value={manualData.difficulty}
+            onChange={(e) => setManualData({ ...manualData, difficulty: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+            <option value="deadly">Deadly</option>
+          </select>
+        </FormField>
+      </div>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Describe the chase scenario..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={3}
+        />
+      </FormField>
+
+      <FormField label="Setting">
+        <input
+          type="text"
+          value={manualData.setting}
+          onChange={(e) => setManualData({ ...manualData, setting: e.target.value })}
+          placeholder="e.g., Busy marketplace at noon, Dark alleyways at night"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      {/* Participants */}
+      <CollapsibleSection title="Participants" defaultExpanded>
+        <div className="space-y-3">
+          <FormField label="Quarry (Being Chased)">
+            <input
+              type="text"
+              value={manualData.quarry}
+              onChange={(e) => setManualData({ ...manualData, quarry: e.target.value })}
+              placeholder="e.g., A hooded thief, The party wizard"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Pursuers">
+            <input
+              type="text"
+              value={manualData.pursuers}
+              onChange={(e) => setManualData({ ...manualData, pursuers: e.target.value })}
+              placeholder="e.g., City guards, The party fighters"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Starting Conditions">
+            <textarea
+              value={manualData.starting_conditions}
+              onChange={(e) =>
+                setManualData({ ...manualData, starting_conditions: e.target.value })
+              }
+              placeholder="Initial distance, terrain state, etc."
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Obstacles - Custom editor for 4-field objects */}
+      <CollapsibleSection title="Obstacles" defaultExpanded={false}>
+        <div className="space-y-3">
+          {manualData.obstacles.map((obstacle, idx) => (
+            <div key={idx} className="bg-background p-3 rounded border border-border space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-text">Obstacle {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newObstacles = [...manualData.obstacles]
+                    newObstacles.splice(idx, 1)
+                    setManualData({ ...manualData, obstacles: newObstacles })
+                  }}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+              <input
+                type="text"
+                value={obstacle.name}
+                onChange={(e) => {
+                  const newObstacles = [...manualData.obstacles]
+                  newObstacles[idx] = { ...obstacle, name: e.target.value }
+                  setManualData({ ...manualData, obstacles: newObstacles })
+                }}
+                placeholder="Obstacle name"
+                className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <textarea
+                value={obstacle.description}
+                onChange={(e) => {
+                  const newObstacles = [...manualData.obstacles]
+                  newObstacles[idx] = { ...obstacle, description: e.target.value }
+                  setManualData({ ...manualData, obstacles: newObstacles })
+                }}
+                placeholder="Description"
+                className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                rows={2}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={obstacle.check}
+                  onChange={(e) => {
+                    const newObstacles = [...manualData.obstacles]
+                    newObstacles[idx] = { ...obstacle, check: e.target.value }
+                    setManualData({ ...manualData, obstacles: newObstacles })
+                  }}
+                  placeholder="Check (e.g., DC 15 Athletics)"
+                  className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <input
+                  type="text"
+                  value={obstacle.failure}
+                  onChange={(e) => {
+                    const newObstacles = [...manualData.obstacles]
+                    newObstacles[idx] = { ...obstacle, failure: e.target.value }
+                    setManualData({ ...manualData, obstacles: newObstacles })
+                  }}
+                  placeholder="Failure consequence"
+                  className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setManualData({
+                ...manualData,
+                obstacles: [
+                  ...manualData.obstacles,
+                  { name: '', description: '', check: '', failure: '' },
+                ],
+              })
+            }
+            className="w-full px-3 py-2 border border-dashed border-border text-text-muted hover:border-primary hover:text-primary rounded transition-colors text-sm"
+          >
+            + Add Obstacle
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      {/* Complications */}
+      <CollapsibleSection title="Complications" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Complications"
+          values={manualData.complications}
+          onChange={(complications) => setManualData({ ...manualData, complications })}
+          placeholder="Add a complication..."
+        />
+      </CollapsibleSection>
+
+      {/* Shortcuts - Custom editor for 3-field objects */}
+      <CollapsibleSection title="Shortcuts" defaultExpanded={false}>
+        <div className="space-y-3">
+          {manualData.shortcuts.map((shortcut, idx) => (
+            <div key={idx} className="bg-background p-3 rounded border border-border space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-text">Shortcut {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newShortcuts = [...manualData.shortcuts]
+                    newShortcuts.splice(idx, 1)
+                    setManualData({ ...manualData, shortcuts: newShortcuts })
+                  }}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+              <input
+                type="text"
+                value={shortcut.name}
+                onChange={(e) => {
+                  const newShortcuts = [...manualData.shortcuts]
+                  newShortcuts[idx] = { ...shortcut, name: e.target.value }
+                  setManualData({ ...manualData, shortcuts: newShortcuts })
+                }}
+                placeholder="Shortcut name"
+                className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <textarea
+                value={shortcut.description}
+                onChange={(e) => {
+                  const newShortcuts = [...manualData.shortcuts]
+                  newShortcuts[idx] = { ...shortcut, description: e.target.value }
+                  setManualData({ ...manualData, shortcuts: newShortcuts })
+                }}
+                placeholder="Description"
+                className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                rows={2}
+              />
+              <input
+                type="text"
+                value={shortcut.benefit}
+                onChange={(e) => {
+                  const newShortcuts = [...manualData.shortcuts]
+                  newShortcuts[idx] = { ...shortcut, benefit: e.target.value }
+                  setManualData({ ...manualData, shortcuts: newShortcuts })
+                }}
+                placeholder="Benefit (e.g., Gain 1 position)"
+                className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setManualData({
+                ...manualData,
+                shortcuts: [...manualData.shortcuts, { name: '', description: '', benefit: '' }],
+              })
+            }
+            className="w-full px-3 py-2 border border-dashed border-border text-text-muted hover:border-primary hover:text-primary rounded transition-colors text-sm"
+          >
+            + Add Shortcut
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      {/* Environmental Factors */}
+      <CollapsibleSection title="Environmental Factors" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Environmental Factors"
+          values={manualData.environmental_factors}
+          onChange={(environmental_factors) =>
+            setManualData({ ...manualData, environmental_factors })
+          }
+          placeholder="Add an environmental factor..."
+        />
+      </CollapsibleSection>
+
+      {/* Ending Conditions & Rewards */}
+      <CollapsibleSection title="Ending Conditions & Rewards" defaultExpanded={false}>
+        <div className="space-y-3">
+          <FormField label="Success Condition">
+            <textarea
+              value={manualData.success_condition}
+              onChange={(e) => setManualData({ ...manualData, success_condition: e.target.value })}
+              placeholder="What happens when the pursuers catch the quarry (or quarry escapes)?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+
+          <FormField label="Failure Condition">
+            <textarea
+              value={manualData.failure_condition}
+              onChange={(e) => setManualData({ ...manualData, failure_condition: e.target.value })}
+              placeholder="What happens if the chase fails?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+
+          <FormField label="Success Reward">
+            <input
+              type="text"
+              value={manualData.success_reward}
+              onChange={(e) => setManualData({ ...manualData, success_reward: e.target.value })}
+              placeholder="e.g., Stolen goods recovered, Information obtained"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Failure Consequence">
+            <input
+              type="text"
+              value={manualData.failure_consequence}
+              onChange={(e) =>
+                setManualData({ ...manualData, failure_consequence: e.target.value })
+              }
+              placeholder="e.g., Thief escapes, Guards alerted"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full px-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Chase
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <div className="text-center text-green-400 text-sm">
+          Chase saved! You can find it in the Saved Content section.
+        </div>
+      )}
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError(null)
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content (simple message)
+  const manualPreviewContent = <ManualEntryPreview entityType="chase" />
+
   const generatedContent = chase ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {chase._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{chase._parseError}</p>
-        </div>
-      )}
+      {chase._parseError && <ParseWarning message={chase._parseError} />}
 
       {/* Header */}
       <div>
@@ -928,30 +1377,7 @@ export default function ChaseGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {chase._raw && Object.keys(chase._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(chase._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(chase._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {chase._raw && <RawDataViewer data={chase._raw} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -970,43 +1396,24 @@ export default function ChaseGenerator() {
         icon="Zap"
         formTitle="Chase Details"
         formIcon="Settings"
-        resultsTitle="Generated Chase"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Chase'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={generateChase}
         generateButtonText="Generate Chase"
         error={error || undefined}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Chase</h3>
-            <p className="text-text-muted mb-6">
-              Save "{chase?.name}" {campaignId ? 'to your campaign' : 'to your saved chases'}? You
-              can run it later in the Chase Manager.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveChase}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={saveChase}
+        entityName={chase?.name || 'Chase'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

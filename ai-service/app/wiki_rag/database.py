@@ -129,6 +129,39 @@ class RAGDatabase:
                 updated_at=row["updated_at"],
             )
 
+    async def get_setting_pack_by_id(self, pack_id: UUID) -> Optional[SettingKnowledgePack]:
+        """Get a setting pack by ID."""
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, name, slug, game_system, description, wiki_base_url, wiki_index_url,
+                       scrape_config, scrape_status, total_pages, total_chunks, is_active,
+                       created_at, updated_at
+                FROM setting_knowledge_packs
+                WHERE id = $1
+                """,
+                pack_id,
+            )
+            if not row:
+                return None
+
+            return SettingKnowledgePack(
+                id=row["id"],
+                name=row["name"],
+                slug=row["slug"],
+                game_system=row["game_system"],
+                description=row["description"],
+                wiki_base_url=row["wiki_base_url"],
+                wiki_index_url=row["wiki_index_url"],
+                scrape_config=json.loads(row["scrape_config"] or "{}"),
+                scrape_status=row["scrape_status"],
+                total_pages=row["total_pages"],
+                total_chunks=row["total_chunks"],
+                is_active=row["is_active"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+
     async def list_setting_packs(self, active_only: bool = True) -> list[SettingKnowledgePack]:
         """List all setting packs."""
         async with self._pool.acquire() as conn:
@@ -305,6 +338,14 @@ class RAGDatabase:
     # Wiki Chunks
     # =========================================================================
 
+    async def delete_chunks_for_page(self, page_id: UUID):
+        """Delete all chunks for a page (used before re-chunking)."""
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM setting_wiki_chunks WHERE page_id = $1",
+                page_id,
+            )
+
     async def insert_chunk(
         self,
         page_id: UUID,
@@ -330,6 +371,14 @@ class RAGDatabase:
                     (id, page_id, setting_pack_id, chunk_text, chunk_index, page_title,
                      section_title, token_count, char_count, embedding, embedding_model)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::vector, $11)
+                    ON CONFLICT (page_id, chunk_index) DO UPDATE SET
+                        chunk_text = EXCLUDED.chunk_text,
+                        page_title = EXCLUDED.page_title,
+                        section_title = EXCLUDED.section_title,
+                        token_count = EXCLUDED.token_count,
+                        char_count = EXCLUDED.char_count,
+                        embedding = EXCLUDED.embedding,
+                        embedding_model = EXCLUDED.embedding_model
                     """,
                     chunk_id,
                     page_id,
@@ -350,6 +399,14 @@ class RAGDatabase:
                     (id, page_id, setting_pack_id, chunk_text, chunk_index, page_title,
                      section_title, token_count, char_count)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    ON CONFLICT (page_id, chunk_index) DO UPDATE SET
+                        chunk_text = EXCLUDED.chunk_text,
+                        page_title = EXCLUDED.page_title,
+                        section_title = EXCLUDED.section_title,
+                        token_count = EXCLUDED.token_count,
+                        char_count = EXCLUDED.char_count,
+                        embedding = NULL,
+                        embedding_model = NULL
                     """,
                     chunk_id,
                     page_id,
@@ -371,16 +428,34 @@ class RAGDatabase:
         embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
 
         async with self._pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE setting_wiki_chunks
-                SET embedding = $2::vector, embedding_model = $3
-                WHERE id = $1
-                """,
-                chunk_id,
-                embedding_str,
-                model,
-            )
+            # Try with embedding_dimension column first, fall back if it doesn't exist
+            try:
+                await conn.execute(
+                    """
+                    UPDATE setting_wiki_chunks
+                    SET embedding = $2::vector, embedding_model = $3, embedding_dimension = $4
+                    WHERE id = $1
+                    """,
+                    chunk_id,
+                    embedding_str,
+                    model,
+                    len(embedding),
+                )
+            except Exception as e:
+                if "embedding_dimension" in str(e):
+                    # Column doesn't exist yet (migration not applied), use fallback
+                    await conn.execute(
+                        """
+                        UPDATE setting_wiki_chunks
+                        SET embedding = $2::vector, embedding_model = $3
+                        WHERE id = $1
+                        """,
+                        chunk_id,
+                        embedding_str,
+                        model,
+                    )
+                else:
+                    raise
 
     async def search_chunks(
         self,
@@ -577,6 +652,58 @@ class RAGDatabase:
                 started_at=row["started_at"],
                 completed_at=row["completed_at"],
             )
+
+    async def get_active_scrape_jobs(self) -> list[dict]:
+        """Get all in-progress scrape jobs with their setting pack info."""
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT j.id, j.setting_pack_id, j.status, j.current_phase, j.pages_found,
+                       j.pages_scraped, j.pages_failed, j.chunks_created, j.chunks_embedded,
+                       j.progress_percent, j.error_message, j.started_at, j.completed_at,
+                       sp.slug as setting_slug, sp.name as setting_name
+                FROM wiki_scrape_jobs j
+                JOIN setting_knowledge_packs sp ON j.setting_pack_id = sp.id
+                WHERE j.status IN ('pending', 'scraping', 'embedding')
+                ORDER BY j.created_at DESC
+                """
+            )
+
+            return [
+                {
+                    "job_id": str(row["id"]),
+                    "setting_pack_id": str(row["setting_pack_id"]),
+                    "setting_slug": row["setting_slug"],
+                    "setting_name": row["setting_name"],
+                    "status": row["status"],
+                    "current_phase": row["current_phase"],
+                    "pages_found": row["pages_found"] or 0,
+                    "pages_scraped": row["pages_scraped"] or 0,
+                    "pages_failed": row["pages_failed"] or 0,
+                    "chunks_created": row["chunks_created"] or 0,
+                    "chunks_embedded": row["chunks_embedded"] or 0,
+                    "progress_percent": row["progress_percent"] or 0,
+                    "error_message": row["error_message"],
+                    "started_at": row["started_at"].isoformat() if row["started_at"] else None,
+                    "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
+                }
+                for row in rows
+            ]
+
+    async def cancel_scrape_job(self, job_id: UUID) -> bool:
+        """Cancel a scrape job by marking it as failed."""
+        async with self._pool.acquire() as conn:
+            result = await conn.execute(
+                """
+                UPDATE wiki_scrape_jobs
+                SET status = 'failed',
+                    error_message = 'Cancelled by user',
+                    completed_at = NOW()
+                WHERE id = $1 AND status IN ('pending', 'scraping', 'embedding')
+                """,
+                job_id,
+            )
+            return result == "UPDATE 1"
 
     # =========================================================================
     # Campaign Setting Config

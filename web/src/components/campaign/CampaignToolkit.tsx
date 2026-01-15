@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Icon from '../common/Icon'
 import { useCampaignStore, type CampaignContent } from '../../store/campaignStore'
 import { useUISettingsStore } from '../../store/uiSettingsStore'
 import { useAuthStore } from '../../store/authStore'
+import { useContextStore, ContextType } from '../../store/contextStore'
+import { useCampaignNavigation } from '../../hooks/useCampaignNavigation'
 import type { Campaign } from '../../store/campaignStore'
 import type { IconName } from '../common/Icon'
 import CampaignModal from './CampaignModal'
@@ -132,6 +135,9 @@ const getCampaignSections = (): CampaignSection[] => {
 }
 
 export default function CampaignToolkit() {
+  const navigate = useNavigate()
+  const { updateContext } = useContextStore()
+  const { activateCampaignWithNavigation, isPlayerCampaign } = useCampaignNavigation()
   const defaultCampaignSections = getCampaignSections()
   const { hiddenSections, enabledGenerators } = useUISettingsStore()
 
@@ -465,7 +471,7 @@ export default function CampaignToolkit() {
   }
 
   const handleActivateCampaign = async (campaignId: string) => {
-    await setActiveCampaign(campaignId)
+    await activateCampaignWithNavigation(campaignId)
   }
 
   return (
@@ -1121,6 +1127,16 @@ export default function CampaignToolkit() {
                       <div className="flex items-start justify-between mb-3">
                         <h3 className="text-lg font-bold text-tavern-light flex items-center gap-2">
                           {campaign.name || 'Untitled Campaign'}
+                          {/* Role Badge */}
+                          {isPlayerCampaign(campaign) ? (
+                            <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-blue-500/20 text-blue-400">
+                              {campaign.membership_type === 'player_joined' ? 'Joined' : 'Player'}
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-amber-500/20 text-amber-400">
+                              GM
+                            </span>
+                          )}
                           {campaign.id === activeCampaignId && (
                             <span className="px-2 py-0.5 text-xs bg-primary text-tavern-darkest rounded-full font-semibold">
                               Active
@@ -1202,7 +1218,8 @@ export default function CampaignToolkit() {
                 return
               }
 
-              await addCampaign({
+              const role = campaignData.role || 'owner'
+              const newCampaign = await addCampaign({
                 name: campaignData.name,
                 game_system: campaignData.game_system || '',
                 description: campaignData.description,
@@ -1212,8 +1229,21 @@ export default function CampaignToolkit() {
                 tech_level: campaignData.tech_level,
                 history: campaignData.history,
                 notes: campaignData.notes,
+                role: role,
                 is_active: false,
               })
+
+              // If player campaign, update context and navigate to player dashboard
+              if (role === 'player' && newCampaign) {
+                await setActiveCampaign(newCampaign.id)
+                await updateContext({
+                  last_context_type: 'player_campaign' as ContextType,
+                  last_campaign_id: newCampaign.id,
+                })
+                setShowCampaignModal(false)
+                navigate('/dashboard/player')
+                return
+              }
             }
             setShowCampaignModal(false)
           }}

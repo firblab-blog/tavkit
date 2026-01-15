@@ -2,11 +2,23 @@ import { useState, useEffect, useRef } from 'react'
 import { GeneratorLayout } from './GeneratorLayout'
 import { FormField } from '@/components/ui/FormField'
 import { ActionsBar } from '@/components/ui/ActionsBar'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
 import { useCampaignStore } from '../../store/campaignStore'
 import Icon from '../common/Icon'
 import CampaignSelector from '../common/CampaignSelector'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { EntryModeToggle, type EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor, ObjectArrayEditor, AbilityScoresEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  defaultCritterData,
+  critterTypeOptions,
+  sizeOptions,
+  temperamentOptions,
+  habitatOptions,
+  type ManualCritterData,
+} from './shared/schemas/critterSchema'
 import {
   generateCritter as generateCritterApi,
   saveCritter as saveCritterApi,
@@ -33,7 +45,6 @@ interface CritterData {
   lifespan: string
   interesting_facts: string[]
   encounter_notes: string
-  // For any unexpected fields from AI
   _raw?: Record<string, unknown>
   _parseError?: string
 }
@@ -55,9 +66,6 @@ interface SpecialAbility {
   description: string
 }
 
-/**
- * Normalize stats object
- */
 function normalizeStats(value: unknown): Stats {
   const result: Stats = {
     ac: null,
@@ -75,7 +83,6 @@ function normalizeStats(value: unknown): Stats {
 
   const stats = value as Record<string, unknown>
 
-  // Helper to extract number
   const toNumber = (v: unknown): number | null => {
     if (v === null || v === undefined) return null
     if (typeof v === 'number') return v
@@ -99,16 +106,9 @@ function normalizeStats(value: unknown): Stats {
   return result
 }
 
-/**
- * Normalize a single special ability
- */
 function normalizeSpecialAbility(value: unknown): SpecialAbility | null {
   if (!value) return null
-
-  if (typeof value === 'string') {
-    return { name: value, description: '' }
-  }
-
+  if (typeof value === 'string') return { name: value, description: '' }
   if (typeof value === 'object' && value !== null) {
     const ability = value as Record<string, unknown>
     return {
@@ -116,35 +116,25 @@ function normalizeSpecialAbility(value: unknown): SpecialAbility | null {
       description: String(ability.description || ability.desc || ability.effect || ''),
     }
   }
-
   return null
 }
 
-/**
- * Normalize special abilities array
- */
 function normalizeSpecialAbilities(value: unknown): SpecialAbility[] {
   if (!value || !Array.isArray(value)) return []
-
   return value
     .map((ability) => normalizeSpecialAbility(ability))
     .filter((ability): ability is SpecialAbility => ability !== null)
 }
 
-/**
- * Main normalization function - converts raw AI response to typed CritterData
- */
 function normalizeCritterResponse(raw: Record<string, unknown>): CritterData {
   logger.debug('[CritterGenerator] normalizeCritterResponse input:', raw)
 
-  // Handle case where description contains the entire JSON response
   let processedRaw = raw
   if (raw.description && typeof raw.description === 'string') {
     const descStr = (raw.description as string).trim()
     if (descStr.startsWith('{') && descStr.endsWith('}')) {
       try {
         const parsedCritter = JSON.parse(descStr)
-        logger.debug('[CritterGenerator] Parsed critter from JSON description:', parsedCritter)
         processedRaw = parsedCritter
       } catch (e) {
         logger.warn('[CritterGenerator] Failed to parse description as JSON:', e)
@@ -152,7 +142,6 @@ function normalizeCritterResponse(raw: Record<string, unknown>): CritterData {
     }
   }
 
-  // Expected fields for tracking unexpected ones
   const expectedFields = [
     'name',
     'title',
@@ -186,7 +175,6 @@ function normalizeCritterResponse(raw: Record<string, unknown>): CritterData {
     '_parse_warning',
   ]
 
-  // Collect unexpected fields
   const unexpectedFields: Record<string, unknown> = {}
   for (const key of Object.keys(processedRaw)) {
     if (!expectedFields.includes(key)) {
@@ -194,7 +182,6 @@ function normalizeCritterResponse(raw: Record<string, unknown>): CritterData {
     }
   }
 
-  // Build description
   let description = ''
   if (processedRaw.description && typeof processedRaw.description === 'string') {
     const descText = processedRaw.description as string
@@ -203,25 +190,22 @@ function normalizeCritterResponse(raw: Record<string, unknown>): CritterData {
     }
   }
 
-  // Get special abilities from various possible field names
   let specialAbilities = normalizeSpecialAbilities(processedRaw.special_abilities)
   if (specialAbilities.length === 0) {
     specialAbilities = normalizeSpecialAbilities(processedRaw.abilities || processedRaw.traits)
   }
 
-  // Get uses from various possible field names
   let uses = normalizeStringArray(processedRaw.uses)
   if (uses.length === 0) {
     uses = normalizeStringArray(processedRaw.purposes || processedRaw.utility)
   }
 
-  // Get interesting_facts from various possible field names
   let interestingFacts = normalizeStringArray(processedRaw.interesting_facts)
   if (interestingFacts.length === 0) {
     interestingFacts = normalizeStringArray(processedRaw.facts || processedRaw.trivia)
   }
 
-  const result: CritterData = {
+  return {
     name: String(
       processedRaw.name || processedRaw.title || processedRaw.creature_name || 'Unknown Critter'
     ),
@@ -246,14 +230,8 @@ function normalizeCritterResponse(raw: Record<string, unknown>): CritterData {
     ),
     _raw: Object.keys(unexpectedFields).length > 0 ? unexpectedFields : undefined,
   }
-
-  logger.debug('[CritterGenerator] Normalized result:', result)
-  return result
 }
 
-/**
- * Check if critter has valid essential content
- */
 function hasValidCritterContent(critter: CritterData): boolean {
   return !!(
     critter.name &&
@@ -267,6 +245,15 @@ function hasValidCritterContent(critter: CritterData): boolean {
 // ============================================================================
 
 export default function CritterGenerator() {
+  // Entry mode
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+
+  // Manual entry state
+  const [manualData, setManualData] = useState<ManualCritterData>(defaultCritterData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
+
+  // AI generation state
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [critter, setCritter] = useState<CritterData | null>(null)
@@ -276,24 +263,24 @@ export default function CritterGenerator() {
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const { activeCampaignId } = useCampaignStore()
 
-  // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
 
-  // Auto-select active campaign ONLY on initial mount
   useEffect(() => {
     if (activeCampaignId && !hasUserSelectedCampaign.current) {
       setCampaignId(activeCampaignId)
     }
   }, [activeCampaignId])
 
-  // Form inputs
+  useEffect(() => {
+    setManualSaved(false)
+  }, [entryMode, manualData])
+
+  // AI form inputs
   const [critterType, setCritterType] = useState('mammal')
   const [size, setSize] = useState('medium')
   const [temperament, setTemperament] = useState('neutral')
   const [habitat, setHabitat] = useState('forest')
   const [specialRequests, setSpecialRequests] = useState('')
-
-  // AI settings
   const [aiSettings, setAiSettings] = useState<AIGenerationSettings>({
     detailLevel: 'high',
     timeout: 120,
@@ -322,19 +309,15 @@ export default function CritterGenerator() {
       )
       logger.debug('[CritterGenerator] Raw API response:', data)
 
-      // Normalize the response
       if (data.critter) {
         const normalized = normalizeCritterResponse(data.critter)
-
         if (!hasValidCritterContent(normalized)) {
           normalized._parseError =
             'AI response missing essential critter content. Showing raw response.'
           setShowRawResponse(true)
         }
-
         setCritter(normalized)
       } else {
-        // No critter wrapper - try to normalize the raw response
         const normalized = normalizeCritterResponse(data as unknown as Record<string, unknown>)
         normalized._parseError = 'Unexpected response format. Attempting to display.'
         setShowRawResponse(true)
@@ -380,6 +363,49 @@ export default function CritterGenerator() {
     }
   }
 
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) return
+
+    setManualSaving(true)
+    setError(null)
+
+    try {
+      await saveCritterApi({
+        name: manualData.name,
+        species: manualData.species || '',
+        critter_type: manualData.critter_type,
+        size: manualData.size,
+        temperament: manualData.temperament,
+        habitat: manualData.habitat,
+        description: manualData.description || '',
+        behavior: manualData.behavior || '',
+        stats: manualData.stats || {},
+        special_abilities: manualData.special_abilities || [],
+        uses: manualData.uses || [],
+        training_difficulty: manualData.training_difficulty || '',
+        diet: manualData.diet || '',
+        lifespan: manualData.lifespan || '',
+        interesting_facts: manualData.interesting_facts || [],
+        encounter_notes: manualData.encounter_notes || '',
+        campaign_id: campaignId || undefined,
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  const handleManualReset = () => {
+    setManualData(defaultCritterData)
+    setManualSaved(false)
+    setError(null)
+  }
+
   const handleCopy = () => {
     if (!critter) return
     const text = `${critter.name}${critter.species ? ` (${critter.species})` : ''}
@@ -411,7 +437,8 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // AI Form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="critter" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -428,14 +455,11 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           onChange={(e) => setCritterType(e.target.value)}
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
-          <option value="bird">Bird</option>
-          <option value="mammal">Mammal</option>
-          <option value="reptile">Reptile</option>
-          <option value="amphibian">Amphibian</option>
-          <option value="insect">Insect</option>
-          <option value="aquatic">Aquatic</option>
-          <option value="magical">Magical</option>
-          <option value="hybrid">Hybrid</option>
+          {critterTypeOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
         </select>
       </FormField>
 
@@ -445,11 +469,11 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           onChange={(e) => setSize(e.target.value)}
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
-          <option value="tiny">Tiny</option>
-          <option value="small">Small</option>
-          <option value="medium">Medium</option>
-          <option value="large">Large</option>
-          <option value="huge">Huge</option>
+          {sizeOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
         </select>
       </FormField>
 
@@ -459,12 +483,11 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           onChange={(e) => setTemperament(e.target.value)}
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
-          <option value="docile">Docile</option>
-          <option value="neutral">Neutral</option>
-          <option value="skittish">Skittish</option>
-          <option value="territorial">Territorial</option>
-          <option value="aggressive">Aggressive</option>
-          <option value="curious">Curious</option>
+          {temperamentOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
         </select>
       </FormField>
 
@@ -474,15 +497,11 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           onChange={(e) => setHabitat(e.target.value)}
           className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
         >
-          <option value="forest">Forest</option>
-          <option value="mountain">Mountain</option>
-          <option value="desert">Desert</option>
-          <option value="swamp">Swamp</option>
-          <option value="plains">Plains</option>
-          <option value="arctic">Arctic</option>
-          <option value="underground">Underground</option>
-          <option value="coastal">Coastal</option>
-          <option value="urban">Urban</option>
+          {habitatOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
         </select>
       </FormField>
 
@@ -498,18 +517,319 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
     </>
   )
 
-  const generatedContent = critter ? (
-    <div className="space-y-6">
-      {/* Parse warning */}
-      {critter._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Critter Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., 'Glimmerwing', 'Forest Prowler'"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <FormField label="Species" description="Scientific or common species name">
+        <input
+          type="text"
+          value={manualData.species}
+          onChange={(e) => setManualData({ ...manualData, species: e.target.value })}
+          placeholder="e.g., 'Felis luminosa', 'Giant Beetle'"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label="Type">
+          <select
+            value={manualData.critter_type}
+            onChange={(e) => setManualData({ ...manualData, critter_type: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {critterTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Size">
+          <select
+            value={manualData.size}
+            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {sizeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label="Temperament">
+          <select
+            value={manualData.temperament}
+            onChange={(e) => setManualData({ ...manualData, temperament: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {temperamentOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Habitat">
+          <select
+            value={manualData.habitat}
+            onChange={(e) => setManualData({ ...manualData, habitat: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {habitatOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Physical appearance, coloring, distinguishing features..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={3}
+        />
+      </FormField>
+
+      <FormField label="Behavior">
+        <textarea
+          value={manualData.behavior}
+          onChange={(e) => setManualData({ ...manualData, behavior: e.target.value })}
+          placeholder="How it acts, hunting patterns, social structure..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={2}
+        />
+      </FormField>
+
+      {/* Stats Section */}
+      <CollapsibleSection title="Stats" icon="Shield" defaultExpanded={false}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <FormField label="AC">
+              <input
+                type="number"
+                value={manualData.stats.ac ?? ''}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    stats: {
+                      ...manualData.stats,
+                      ac: e.target.value ? parseInt(e.target.value) : null,
+                    },
+                  })
+                }
+                placeholder="-"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+            <FormField label="HP">
+              <input
+                type="number"
+                value={manualData.stats.hp ?? ''}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    stats: {
+                      ...manualData.stats,
+                      hp: e.target.value ? parseInt(e.target.value) : null,
+                    },
+                  })
+                }
+                placeholder="-"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+            <FormField label="Speed">
+              <input
+                type="text"
+                value={manualData.stats.speed}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    stats: { ...manualData.stats, speed: e.target.value },
+                  })
+                }
+                placeholder="30 ft."
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
           </div>
-          <p className="text-text-muted text-sm">{critter._parseError}</p>
+
+          <AbilityScoresEditor
+            values={manualData.stats}
+            onChange={(stats) =>
+              setManualData({ ...manualData, stats: { ...manualData.stats, ...stats } })
+            }
+          />
         </div>
+      </CollapsibleSection>
+
+      {/* Special Abilities */}
+      <CollapsibleSection title="Special Abilities" icon="Sparkles" defaultExpanded={false}>
+        <ObjectArrayEditor
+          label=""
+          values={manualData.special_abilities.map((a) => ({
+            name: a.name,
+            description: a.description,
+          }))}
+          onChange={(abilities) =>
+            setManualData({
+              ...manualData,
+              special_abilities: abilities.map((a) => ({
+                name: a.name,
+                description: a.description,
+              })),
+            })
+          }
+          nameLabel="Ability Name"
+          descriptionLabel="Effect"
+          namePlaceholder="e.g., 'Keen Senses'"
+          descriptionPlaceholder="What this ability does..."
+        />
+      </CollapsibleSection>
+
+      {/* Uses */}
+      <CollapsibleSection title="Potential Uses" icon="Wrench" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label=""
+          values={manualData.uses}
+          onChange={(uses) => setManualData({ ...manualData, uses })}
+          placeholder="Add a use..."
+          description="How adventurers might use this critter"
+        />
+      </CollapsibleSection>
+
+      {/* Additional Details */}
+      <CollapsibleSection title="Additional Details" icon="FileText" defaultExpanded={false}>
+        <div className="space-y-4">
+          <FormField label="Training Difficulty">
+            <input
+              type="text"
+              value={manualData.training_difficulty}
+              onChange={(e) =>
+                setManualData({ ...manualData, training_difficulty: e.target.value })
+              }
+              placeholder="e.g., 'Easy', 'Moderate', 'Nearly Impossible'"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Diet">
+            <input
+              type="text"
+              value={manualData.diet}
+              onChange={(e) => setManualData({ ...manualData, diet: e.target.value })}
+              placeholder="e.g., 'Carnivore', 'Omnivore', 'Magical energy'"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Lifespan">
+            <input
+              type="text"
+              value={manualData.lifespan}
+              onChange={(e) => setManualData({ ...manualData, lifespan: e.target.value })}
+              placeholder="e.g., '5-10 years', 'Centuries', 'Unknown'"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <ArrayFieldEditor
+            label="Interesting Facts"
+            values={manualData.interesting_facts}
+            onChange={(facts) => setManualData({ ...manualData, interesting_facts: facts })}
+            placeholder="Add a fact..."
+          />
+
+          <FormField label="Encounter Notes">
+            <textarea
+              value={manualData.encounter_notes}
+              onChange={(e) => setManualData({ ...manualData, encounter_notes: e.target.value })}
+              placeholder="DM notes for encounters..."
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Manual save button */}
+      <button
+        onClick={handleManualSave}
+        disabled={!manualData.name.trim() || manualSaving || manualSaved}
+        className="w-full py-3 px-6 rounded-lg font-semibold bg-primary hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : manualSaved ? (
+          <>
+            <Icon name="Check" className="w-5 h-5" />
+            Saved!
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Critter
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <button
+          onClick={handleManualReset}
+          className="w-full py-2 px-4 text-sm text-text-muted hover:text-text border border-border rounded-lg transition-colors"
+        >
+          Create Another Critter
+        </button>
       )}
+    </>
+  )
+
+  const formContent = (
+    <>
+      <EntryModeToggle mode={entryMode} onChange={setEntryMode} disabled={loading} />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode: no preview needed, just show a simple message
+  const manualPreviewContent = <ManualEntryPreview entityType="critter" />
+
+  // AI generated content - keep the existing display logic
+  const aiGeneratedContent = critter ? (
+    <div className="space-y-6">
+      {critter._parseError && <ParseWarning message={critter._parseError} />}
 
       {/* Header */}
       <div>
@@ -526,7 +846,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </p>
       </div>
 
-      {/* Description */}
       {critter.description && (
         <div>
           <h3 className="text-lg font-semibold text-text mb-2 flex items-center gap-2">
@@ -537,7 +856,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </div>
       )}
 
-      {/* Behavior */}
       {critter.behavior && (
         <div>
           <h3 className="text-lg font-semibold text-text mb-2 flex items-center gap-2">
@@ -548,7 +866,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </div>
       )}
 
-      {/* Stats */}
       {critter.stats &&
         (critter.stats.ac !== null || critter.stats.hp !== null || critter.stats.speed) && (
           <div>
@@ -576,8 +893,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
                 </div>
               )}
             </div>
-
-            {/* Ability Scores */}
             {(critter.stats.str !== null ||
               critter.stats.dex !== null ||
               critter.stats.con !== null ||
@@ -626,7 +941,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
           </div>
         )}
 
-      {/* Special Abilities */}
       {critter.special_abilities.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-text mb-3 flex items-center gap-2">
@@ -644,7 +958,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </div>
       )}
 
-      {/* Uses */}
       {critter.uses.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-text mb-3 flex items-center gap-2">
@@ -662,7 +975,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </div>
       )}
 
-      {/* Training, Diet, Lifespan Grid */}
       {(critter.training_difficulty || critter.diet || critter.lifespan) && (
         <div className="grid md:grid-cols-3 gap-4">
           {critter.training_difficulty && (
@@ -695,7 +1007,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </div>
       )}
 
-      {/* Interesting Facts */}
       {critter.interesting_facts.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-text mb-3 flex items-center gap-2">
@@ -713,7 +1024,6 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </div>
       )}
 
-      {/* Encounter Notes */}
       {critter.encounter_notes && (
         <div>
           <h3 className="text-lg font-semibold text-text mb-2 flex items-center gap-2">
@@ -726,31 +1036,7 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
         </div>
       )}
 
-      {/* Raw/unexpected fields - collapsible */}
-      {critter._raw && Object.keys(critter._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(critter._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(critter._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {critter._raw && <RawDataViewer data={critter._raw} defaultExpanded={showRawResponse} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -761,51 +1047,33 @@ ${critter.encounter_notes ? `Encounter Notes: ${critter.encounter_notes}` : ''}`
     </div>
   ) : null
 
+  const generatedContent = entryMode === 'manual' ? manualPreviewContent : aiGeneratedContent
+
   return (
     <>
       <GeneratorLayout
         title="Critter Generator"
         description="Generate wildlife, companions, and creatures for your campaign"
         icon="PawPrint"
-        formTitle="Critter Details"
-        formIcon="Settings"
-        resultsTitle="Generated Critter"
+        formTitle={entryMode === 'ai' ? 'Critter Details' : 'Create Critter'}
+        formIcon={entryMode === 'ai' ? 'Settings' : 'Pencil'}
+        resultsTitle={entryMode === 'ai' ? 'Generated Critter' : 'Preview'}
         formContent={formContent}
         generatedContent={generatedContent}
         isGenerating={loading}
         onGenerate={generateCritter}
         generateButtonText="Generate Critter"
+        hideGenerateButton={entryMode === 'manual'}
         error={error || undefined}
       />
 
-      {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-background-panel rounded-lg border border-border p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-text mb-4">Save Critter</h3>
-            <p className="text-text-muted mb-6">
-              Save this critter to your collection?{' '}
-              {campaignId && 'It will be linked to your selected campaign.'}
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-text hover:bg-background-panel transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveCritter}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={saveCritter}
+        entityName={critter?.name || 'Critter'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

@@ -20,6 +20,7 @@ type Campaign struct {
 	MagicLevel  *string         `json:"magic_level,omitempty"` // "Low", "Standard", "High"
 	TechLevel   *string         `json:"tech_level,omitempty"`  // "Medieval", "Renaissance", etc.
 	Notes       *string         `json:"notes,omitempty"`
+	Role        string          `json:"role"`      // "owner" (GM) or "player" - user's role in this campaign
 	IsActive    bool            `json:"is_active"` // Currently active campaign
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
@@ -62,6 +63,7 @@ type NPC struct {
 	Personality *string         `json:"personality,omitempty"`
 	Backstory   *string         `json:"backstory,omitempty"`
 	Stats       json.RawMessage `json:"stats,omitempty"`
+	Inventory   json.RawMessage `json:"inventory,omitempty"` // Array of {item_id, quantity, notes} for item cross-references
 	AIGenerated bool            `json:"ai_generated"`
 	AIProvider  *string         `json:"ai_provider,omitempty"`
 	CreatedAt   time.Time       `json:"created_at"`
@@ -131,6 +133,7 @@ type Location struct {
 	Factions    json.RawMessage `json:"factions,omitempty"`   // Array of faction names present
 	NPCs        json.RawMessage `json:"npcs,omitempty"`       // Array of NPC IDs or names
 	Encounters  json.RawMessage `json:"encounters,omitempty"` // Array of encounter hooks
+	Treasure    json.RawMessage `json:"treasure,omitempty"`   // Array of {item_id, quantity, found} for item cross-references
 	Map         *string         `json:"map,omitempty"`        // Map image URL or description
 	ParentID    *string         `json:"parent_id,omitempty"`  // For nested locations (e.g., shop in a city)
 	AIGenerated bool            `json:"ai_generated"`
@@ -462,32 +465,6 @@ type ChaseTemplate struct {
 	CreatedAt               time.Time       `json:"created_at"`
 }
 
-// Container represents a user's open tab/container
-type Container struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Type      string    `json:"type"` // 'internal', 'external', 'git'
-	Tool      string    `json:"tool"`
-	Title     string    `json:"title"`
-	URL       *string   `json:"url,omitempty"`
-	Position  int       `json:"position"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// Kit represents a saved set of containers for quick loading
-type Kit struct {
-	ID          string          `json:"id"`
-	UserID      string          `json:"user_id"`
-	Name        string          `json:"name"`
-	Description *string         `json:"description,omitempty"`
-	Containers  json.RawMessage `json:"containers"` // Array of container configs
-	IsDefault   bool            `json:"is_default"`
-	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
-}
-
 // Settings represents application-wide settings
 type Settings struct {
 	RegistrationEnabled        bool            `json:"registration_enabled"`
@@ -503,13 +480,57 @@ type Settings struct {
 
 // SessionChatMessage represents a chat message in the session chat feature
 type SessionChatMessage struct {
-	ID         string          `json:"id"`
-	CampaignID string          `json:"campaign_id"`
-	UserID     string          `json:"user_id"`
-	Role       string          `json:"role"` // "user" or "assistant"
-	Content    string          `json:"content"`
-	RAGSources json.RawMessage `json:"rag_sources,omitempty"` // Array of {page_title, source_url, similarity}
-	CreatedAt  time.Time       `json:"created_at"`
+	ID             string          `json:"id"`
+	CampaignID     string          `json:"campaign_id"`
+	UserID         string          `json:"user_id"`
+	ConversationID *string         `json:"conversation_id,omitempty"` // Optional conversation grouping
+	Role           string          `json:"role"`                      // "user" or "assistant"
+	Content        string          `json:"content"`
+	RAGSources     json.RawMessage `json:"rag_sources,omitempty"` // Array of {page_title, source_url, similarity}
+	CreatedAt      time.Time       `json:"created_at"`
+}
+
+// ChatConversation represents a conversation thread within a campaign
+type ChatConversation struct {
+	ID         string    `json:"id"`
+	CampaignID string    `json:"campaign_id"`
+	UserID     string    `json:"user_id"`
+	Title      string    `json:"title"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// ChatSourcePreferences represents per-campaign chat source toggles
+type ChatSourcePreferences struct {
+	ID         string `json:"id"`
+	CampaignID string `json:"campaign_id"`
+	UserID     string `json:"user_id"`
+
+	// Campaign content toggles
+	IncludeNPCs            bool `json:"include_npcs"`
+	IncludeMonsters        bool `json:"include_monsters"`
+	IncludeLocations       bool `json:"include_locations"`
+	IncludeQuests          bool `json:"include_quests"`
+	IncludeItems           bool `json:"include_items"`
+	IncludeEncounters      bool `json:"include_encounters"`
+	IncludeRumors          bool `json:"include_rumors"`
+	IncludeTaverns         bool `json:"include_taverns"`
+	IncludeMerchants       bool `json:"include_merchants"`
+	IncludeTraps           bool `json:"include_traps"`
+	IncludeCritters        bool `json:"include_critters"`
+	IncludeChases          bool `json:"include_chases"`
+	IncludeDialogues       bool `json:"include_dialogues"`
+	IncludeCampaignSummary bool `json:"include_campaign_summary"`
+
+	// Wiki knowledge toggle
+	IncludeWikiKnowledge bool            `json:"include_wiki_knowledge"`
+	EnabledWikiSources   json.RawMessage `json:"enabled_wiki_sources,omitempty"` // Array of enabled wiki source slugs ["eberron", "forgotten-realms", ...]
+
+	// Performance tuning
+	MaxContextChunks int `json:"max_context_chunks"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // CampaignSummary represents an AI-generated summary of a campaign for context
@@ -810,17 +831,20 @@ type SessionEvent struct {
 
 // CombatEncounter represents a combat session state
 type CombatEncounter struct {
-	ID           string    `json:"id"`
-	SessionID    string    `json:"session_id"`
-	EncounterID  *string   `json:"encounter_id,omitempty"` // Reference to generated encounter
-	Name         string    `json:"name"`
-	CurrentRound int       `json:"current_round"`
-	CurrentTurn  int       `json:"current_turn"`
-	Status       string    `json:"status"` // 'active', 'paused', 'completed'
-	Difficulty   *string   `json:"difficulty,omitempty"`
-	Environment  *string   `json:"environment,omitempty"`
-	Notes        *string   `json:"notes,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	SessionID      string    `json:"session_id"`
+	CampaignID     *string   `json:"campaign_id,omitempty"`  // Link to campaign for real-time sync
+	EncounterID    *string   `json:"encounter_id,omitempty"` // Reference to generated encounter
+	Name           string    `json:"name"`
+	CurrentRound   int       `json:"current_round"`
+	CurrentTurn    int       `json:"current_turn"`
+	Status         string    `json:"status"` // 'active', 'paused', 'completed'
+	Difficulty     *string   `json:"difficulty,omitempty"`
+	Environment    *string   `json:"environment,omitempty"`
+	Notes          *string   `json:"notes,omitempty"`
+	VisibilityMode string    `json:"visibility_mode"` // 'full', 'gm_controlled'
+	IsActive       bool      `json:"is_active"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 // CombatParticipant represents a PC or NPC/monster in combat
@@ -831,6 +855,7 @@ type CombatParticipant struct {
 	CharacterID     *string `json:"character_id,omitempty"`
 	NPCID           *string `json:"npc_id,omitempty"`
 	MonsterID       *string `json:"monster_id,omitempty"`
+	OwnerUserID     *string `json:"owner_user_id,omitempty"` // User who controls this participant
 
 	// Snapshot fields (captured at import time)
 	Name              string          `json:"name"`
@@ -842,6 +867,7 @@ type CombatParticipant struct {
 	// Live session state
 	Initiative           int             `json:"initiative"`
 	InitiativeBonus      int             `json:"initiative_bonus"`
+	InitiativeRoll       *int            `json:"initiative_roll,omitempty"` // Raw d20 roll
 	CurrentHP            int             `json:"current_hp"`
 	TempHP               int             `json:"temp_hp"`
 	PassivePerception    *int            `json:"passive_perception,omitempty"`
@@ -854,6 +880,11 @@ type CombatParticipant struct {
 	LegendaryActionsMax  int             `json:"legendary_actions_max"`
 	Position             int             `json:"position"` // Order in initiative
 	Notes                *string         `json:"notes,omitempty"`
+
+	// Visibility controls (GM-controlled mode)
+	IsVisibleToPlayers      bool `json:"is_visible_to_players"`
+	ShowHPToPlayers         bool `json:"show_hp_to_players"`
+	ShowConditionsToPlayers bool `json:"show_conditions_to_players"`
 }
 
 // CombatCondition represents a condition affecting a participant
@@ -867,6 +898,19 @@ type CombatCondition struct {
 	Source         *string `json:"source,omitempty"`
 	AppliedRound   int     `json:"applied_round"`
 	Notes          *string `json:"notes,omitempty"`
+}
+
+// CombatSettings represents campaign-level combat preferences
+type CombatSettings struct {
+	ID                  string    `json:"id"`
+	CampaignID          string    `json:"campaign_id"`
+	DefaultVisibility   string    `json:"default_visibility"` // 'full', 'gm_controlled'
+	AllowPlayerSelfJoin bool      `json:"allow_player_self_join"`
+	AutoRollInitiative  bool      `json:"auto_roll_initiative"`
+	ShowMonsterNames    bool      `json:"show_monster_names"`
+	ShowMonsterHP       bool      `json:"show_monster_hp"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // SocialEncounter represents a social/dialogue session state
@@ -1044,4 +1088,241 @@ type SummaryGenerationJob struct {
 	StartedAt       *time.Time `json:"started_at,omitempty"`
 	CompletedAt     *time.Time `json:"completed_at,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`
+}
+
+// CampaignItem represents a many-to-many link between campaigns and items
+// Allows items to be linked to multiple campaigns (reusable item templates)
+type CampaignItem struct {
+	ID         string    `json:"id"`
+	CampaignID string    `json:"campaign_id"`
+	ItemID     string    `json:"item_id"`
+	Quantity   int       `json:"quantity"`
+	Notes      *string   `json:"notes,omitempty"`
+	AddedAt    time.Time `json:"added_at"`
+}
+
+// ItemWithCampaignLink represents an item with its campaign-specific link data
+type ItemWithCampaignLink struct {
+	Item
+	LinkID   string  `json:"link_id"`
+	Quantity int     `json:"quantity"`
+	Notes    *string `json:"notes,omitempty"`
+	AddedAt  string  `json:"added_at"`
+}
+
+// UserContext represents a user's persistent context and preferences
+// This enables "continue where you left off" functionality
+type UserContext struct {
+	ID                     string          `json:"id"`
+	UserID                 string          `json:"user_id"`
+	LastContextType        *string         `json:"last_context_type,omitempty"` // 'gm_campaign', 'player_campaign', 'library'
+	LastCampaignID         *string         `json:"last_campaign_id,omitempty"`
+	LastCharacterID        *string         `json:"last_character_id,omitempty"`
+	HasCompletedOnboarding bool            `json:"has_completed_onboarding"`
+	DefaultGameSystem      *string         `json:"default_game_system,omitempty"`
+	UISettings             json.RawMessage `json:"ui_settings,omitempty"` // JSON object for user UI preferences
+	CreatedAt              time.Time       `json:"created_at"`
+	UpdatedAt              time.Time       `json:"updated_at"`
+}
+
+// CampaignInvite represents an invite code for players to join a GM's campaign
+type CampaignInvite struct {
+	ID            string     `json:"id"`
+	CampaignID    string     `json:"campaign_id"`
+	Code          string     `json:"code"`
+	CreatedBy     string     `json:"created_by"`
+	UsesRemaining *int       `json:"uses_remaining,omitempty"` // NULL = unlimited
+	ExpiresAt     *time.Time `json:"expires_at,omitempty"`     // NULL = never expires
+	IsActive      bool       `json:"is_active"`
+	CreatedAt     time.Time  `json:"created_at"`
+}
+
+// CampaignMember represents a player who joined a campaign via invite code
+type CampaignMember struct {
+	ID             string    `json:"id"`
+	CampaignID     string    `json:"campaign_id"`
+	UserID         string    `json:"user_id"`
+	Role           string    `json:"role"` // 'player' or 'co_gm'
+	CharacterID    *string   `json:"character_id,omitempty"`
+	InviteCodeUsed *string   `json:"invite_code_used,omitempty"`
+	JoinedAt       time.Time `json:"joined_at"`
+}
+
+// CampaignMembershipType indicates how a user is related to a campaign
+type CampaignMembershipType string
+
+const (
+	MembershipOwner        CampaignMembershipType = "owner"         // User owns this campaign (role='owner')
+	MembershipPlayerLocal  CampaignMembershipType = "player_local"  // User's local tracking campaign (role='player')
+	MembershipPlayerJoined CampaignMembershipType = "player_joined" // User joined via invite code
+)
+
+// CampaignWithMembership extends Campaign with membership information
+type CampaignWithMembership struct {
+	Campaign
+	MembershipType CampaignMembershipType `json:"membership_type"`
+	GMName         *string                `json:"gm_name,omitempty"`      // For joined campaigns
+	CharacterID    *string                `json:"character_id,omitempty"` // For joined campaigns
+}
+
+// ============================================================================
+// Player Mode Models
+// ============================================================================
+
+// PlayerJournalEntry represents a session note/journal entry for a player
+type PlayerJournalEntry struct {
+	ID              string          `json:"id"`
+	UserID          string          `json:"user_id"`
+	CampaignID      *string         `json:"campaign_id,omitempty"`
+	CharacterID     *string         `json:"character_id,omitempty"`
+	Title           string          `json:"title"`
+	Content         *string         `json:"content,omitempty"`
+	SessionDate     *string         `json:"session_date,omitempty"` // ISO date string
+	SessionNumber   *int            `json:"session_number,omitempty"`
+	TaggedNPCs      json.RawMessage `json:"tagged_npcs,omitempty"`      // [{npc_id?, name}]
+	TaggedLocations json.RawMessage `json:"tagged_locations,omitempty"` // [{location_id?, name}]
+	TaggedQuests    json.RawMessage `json:"tagged_quests,omitempty"`    // [{quest_id?, title}]
+	IsPrivate       bool            `json:"is_private"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+}
+
+// PlayerQuestTracking represents a quest or personal goal tracked by a player
+type PlayerQuestTracking struct {
+	ID          string          `json:"id"`
+	UserID      string          `json:"user_id"`
+	CampaignID  *string         `json:"campaign_id,omitempty"`
+	CharacterID *string         `json:"character_id,omitempty"`
+	QuestID     *string         `json:"quest_id,omitempty"` // Reference to GM's quest if gm_shared
+	Title       string          `json:"title"`
+	Description *string         `json:"description,omitempty"`
+	QuestType   string          `json:"quest_type"`           // 'personal', 'main', 'side', 'gm_shared'
+	Status      string          `json:"status"`               // 'active', 'completed', 'failed', 'abandoned'
+	Objectives  json.RawMessage `json:"objectives,omitempty"` // [{text, completed, notes?}]
+	Priority    int             `json:"priority"`
+	Notes       *string         `json:"notes,omitempty"`
+	StartedAt   time.Time       `json:"started_at"`
+	CompletedAt *time.Time      `json:"completed_at,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+// PlayerNPCEncounter represents an NPC that the player has met
+type PlayerNPCEncounter struct {
+	ID               string     `json:"id"`
+	UserID           string     `json:"user_id"`
+	CampaignID       *string    `json:"campaign_id,omitempty"`
+	NPCID            *string    `json:"npc_id,omitempty"` // Reference to GM's NPC if revealed
+	Name             string     `json:"name"`
+	Description      *string    `json:"description,omitempty"`
+	Relationship     string     `json:"relationship"` // 'friendly', 'neutral', 'hostile', 'unknown'
+	FirstMetSession  *int       `json:"first_met_session,omitempty"`
+	FirstMetLocation *string    `json:"first_met_location,omitempty"`
+	LastInteraction  *time.Time `json:"last_interaction,omitempty"`
+	Notes            *string    `json:"notes,omitempty"`
+	IsGMRevealed     bool       `json:"is_gm_revealed"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+}
+
+// PlayerLocationVisit represents a location that the player has visited
+type PlayerLocationVisit struct {
+	ID                string    `json:"id"`
+	UserID            string    `json:"user_id"`
+	CampaignID        *string   `json:"campaign_id,omitempty"`
+	LocationID        *string   `json:"location_id,omitempty"` // Reference to GM's location if revealed
+	Name              string    `json:"name"`
+	Description       *string   `json:"description,omitempty"`
+	FirstVisitSession *int      `json:"first_visit_session,omitempty"`
+	Notes             *string   `json:"notes,omitempty"`
+	IsGMRevealed      bool      `json:"is_gm_revealed"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+// PartyLoot represents an item in the shared party inventory
+type PartyLoot struct {
+	ID              string    `json:"id"`
+	CampaignID      string    `json:"campaign_id"`
+	ItemID          *string   `json:"item_id,omitempty"` // Reference to Item if linked
+	Name            string    `json:"name"`
+	Description     *string   `json:"description,omitempty"`
+	Quantity        int       `json:"quantity"`
+	Value           *string   `json:"value,omitempty"`      // e.g., "50gp"
+	ClaimedBy       *string   `json:"claimed_by,omitempty"` // Character ID
+	ClaimedByName   *string   `json:"claimed_by_name,omitempty"`
+	Source          *string   `json:"source,omitempty"` // "Found in Goblin Cave"
+	SessionAcquired *int      `json:"session_acquired,omitempty"`
+	Notes           *string   `json:"notes,omitempty"`
+	CreatedBy       string    `json:"created_by"` // User ID
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+// ContentReveal represents content that a GM has shared with players
+type ContentReveal struct {
+	ID          string    `json:"id"`
+	CampaignID  string    `json:"campaign_id"`
+	RevealedBy  string    `json:"revealed_by"`  // GM's User ID
+	ContentType string    `json:"content_type"` // 'npc', 'location', 'quest', 'item', 'monster', 'encounter'
+	ContentID   string    `json:"content_id"`
+	RevealLevel string    `json:"reveal_level"` // 'name_only', 'summary', 'full'
+	CustomNotes *string   `json:"custom_notes,omitempty"`
+	RevealedAt  time.Time `json:"revealed_at"`
+}
+
+// AbilityUsageTracking represents tracking of limited-use abilities for a character
+type AbilityUsageTracking struct {
+	ID           string     `json:"id"`
+	UserID       string     `json:"user_id"`
+	CharacterID  string     `json:"character_id"`
+	AbilityName  string     `json:"ability_name"`
+	AbilityType  *string    `json:"ability_type,omitempty"` // 'spell_slot', 'class_feature', 'racial', 'item', 'feat', 'other'
+	MaxUses      int        `json:"max_uses"`
+	CurrentUses  int        `json:"current_uses"`
+	RechargeType *string    `json:"recharge_type,omitempty"` // 'short_rest', 'long_rest', 'daily', 'dawn', 'custom'
+	Notes        *string    `json:"notes,omitempty"`
+	LastUsed     *time.Time `json:"last_used,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+// TaggedEntity represents a tagged NPC, location, or quest in journal entries
+type TaggedEntity struct {
+	ID   *string `json:"id,omitempty"`
+	Name string  `json:"name"`
+}
+
+// QuestObjective represents an objective within a tracked quest
+type QuestObjective struct {
+	Text      string  `json:"text"`
+	Completed bool    `json:"completed"`
+	Notes     *string `json:"notes,omitempty"`
+}
+
+// PlayerCombatState represents a player's combat state for their character
+type PlayerCombatState struct {
+	ID                 string          `json:"id"`
+	UserID             string          `json:"user_id"`
+	CharacterID        string          `json:"character_id"`
+	CampaignID         *string         `json:"campaign_id,omitempty"`
+	IsInCombat         bool            `json:"is_in_combat"`
+	CurrentHP          int             `json:"current_hp"`
+	MaxHP              int             `json:"max_hp"`
+	TempHP             int             `json:"temp_hp"`
+	Conditions         json.RawMessage `json:"conditions"` // [{type, source?, duration?, notes?}]
+	ConcentrationSpell *string         `json:"concentration_spell,omitempty"`
+	ReactionUsed       bool            `json:"reaction_used"`
+	Initiative         *int            `json:"initiative,omitempty"`
+	Notes              *string         `json:"notes,omitempty"`
+	CreatedAt          time.Time       `json:"created_at"`
+	UpdatedAt          time.Time       `json:"updated_at"`
+}
+
+// ActiveCondition represents a condition applied to a character
+type ActiveCondition struct {
+	Type     string  `json:"type"`
+	Source   *string `json:"source,omitempty"`
+	Duration *string `json:"duration,omitempty"`
+	Notes    *string `json:"notes,omitempty"`
 }

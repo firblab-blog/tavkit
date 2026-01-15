@@ -2,120 +2,77 @@ package db
 
 import (
 	"context"
-	"time"
 )
 
+// sessionChatOps returns the unified SessionChatOperations for SQLite.
+func (s *SQLiteDB) sessionChatOps() *SessionChatOperations {
+	return NewSessionChatOperations(s.Executor(), s.QueryBuilder())
+}
+
 // =============================================================================
-// Session Chat Operations (SQLite)
+// Session Chat Message Operations (SQLite)
 // =============================================================================
 
-// CreateSessionChatMessage creates a new chat message
 func (s *SQLiteDB) CreateSessionChatMessage(ctx context.Context, msg *SessionChatMessage) error {
-	msg.ID = generateUUID()
-	msg.CreatedAt = time.Now()
-
-	query := `
-		INSERT INTO session_chat_messages (id, campaign_id, user_id, role, content, rag_sources, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
-
-	var ragSources *string
-	if len(msg.RAGSources) > 0 {
-		s := string(msg.RAGSources)
-		ragSources = &s
-	}
-
-	_, err := s.db.ExecContext(ctx, query,
-		msg.ID, msg.CampaignID, msg.UserID, msg.Role, msg.Content, ragSources, msg.CreatedAt)
-	return err
+	return s.sessionChatOps().CreateSessionChatMessage(ctx, msg)
 }
 
-// GetSessionChatMessages retrieves chat messages for a campaign
 func (s *SQLiteDB) GetSessionChatMessages(ctx context.Context, campaignID string, limit int) ([]*SessionChatMessage, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-
-	query := `
-		SELECT id, campaign_id, user_id, role, content, rag_sources, created_at
-		FROM session_chat_messages
-		WHERE campaign_id = ?
-		ORDER BY created_at ASC
-		LIMIT ?`
-
-	rows, err := s.db.QueryContext(ctx, query, campaignID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	var messages []*SessionChatMessage
-	for rows.Next() {
-		msg := &SessionChatMessage{}
-		var ragSources *string
-		if err := rows.Scan(&msg.ID, &msg.CampaignID, &msg.UserID, &msg.Role, &msg.Content, &ragSources, &msg.CreatedAt); err != nil {
-			return nil, err
-		}
-		if ragSources != nil {
-			msg.RAGSources = []byte(*ragSources)
-		}
-		messages = append(messages, msg)
-	}
-
-	return messages, rows.Err()
+	return s.sessionChatOps().GetSessionChatMessages(ctx, campaignID, limit)
 }
 
-// ClearSessionChatMessages deletes all chat messages for a campaign
 func (s *SQLiteDB) ClearSessionChatMessages(ctx context.Context, campaignID, userID string) error {
-	query := `DELETE FROM session_chat_messages WHERE campaign_id = ? AND user_id = ?`
-	_, err := s.db.ExecContext(ctx, query, campaignID, userID)
-	return err
+	return s.sessionChatOps().ClearSessionChatMessages(ctx, campaignID, userID)
 }
 
-// GetRecentSessionChatMessages retrieves the most recent N messages for context
 func (s *SQLiteDB) GetRecentSessionChatMessages(ctx context.Context, campaignID string, limit int) ([]*SessionChatMessage, error) {
-	if limit <= 0 {
-		limit = 10
+	return s.sessionChatOps().GetRecentSessionChatMessages(ctx, campaignID, limit)
+}
+
+func (s *SQLiteDB) GetSessionChatMessagesByConversationID(ctx context.Context, conversationID string, limit int) ([]*SessionChatMessage, error) {
+	return s.sessionChatOps().GetSessionChatMessagesByConversationID(ctx, conversationID, limit)
+}
+
+func (s *SQLiteDB) ClearSessionChatMessagesByConversationID(ctx context.Context, conversationID string) error {
+	return s.sessionChatOps().ClearSessionChatMessagesByConversationID(ctx, conversationID)
+}
+
+// =============================================================================
+// Chat Conversation Operations (SQLite)
+// =============================================================================
+
+func (s *SQLiteDB) CreateChatConversation(ctx context.Context, conv *ChatConversation) error {
+	return s.sessionChatOps().CreateChatConversation(ctx, conv)
+}
+
+func (s *SQLiteDB) GetChatConversationByID(ctx context.Context, id string) (*ChatConversation, error) {
+	return s.sessionChatOps().GetChatConversationByID(ctx, id)
+}
+
+func (s *SQLiteDB) ListChatConversationsByCampaignID(ctx context.Context, campaignID, userID string) ([]*ChatConversation, error) {
+	return s.sessionChatOps().ListChatConversationsByCampaignID(ctx, campaignID, userID)
+}
+
+func (s *SQLiteDB) UpdateChatConversation(ctx context.Context, conv *ChatConversation) error {
+	return s.sessionChatOps().UpdateChatConversation(ctx, conv)
+}
+
+func (s *SQLiteDB) DeleteChatConversation(ctx context.Context, id string) error {
+	// SQLite doesn't always enforce CASCADE, so delete messages first
+	if err := s.sessionChatOps().ClearSessionChatMessagesByConversationID(ctx, id); err != nil {
+		return err
 	}
+	return s.sessionChatOps().DeleteChatConversation(ctx, id)
+}
 
-	// Get recent messages in reverse order, then reverse the result
-	query := `
-		SELECT id, campaign_id, user_id, role, content, rag_sources, created_at
-		FROM session_chat_messages
-		WHERE campaign_id = ?
-		ORDER BY created_at DESC
-		LIMIT ?`
+// =============================================================================
+// Chat Source Preferences Operations (SQLite)
+// =============================================================================
 
-	rows, err := s.db.QueryContext(ctx, query, campaignID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
+func (s *SQLiteDB) GetChatSourcePreferences(ctx context.Context, campaignID string) (*ChatSourcePreferences, error) {
+	return s.sessionChatOps().GetChatSourcePreferences(ctx, campaignID)
+}
 
-	var messages []*SessionChatMessage
-	for rows.Next() {
-		msg := &SessionChatMessage{}
-		var ragSources *string
-		if err := rows.Scan(&msg.ID, &msg.CampaignID, &msg.UserID, &msg.Role, &msg.Content, &ragSources, &msg.CreatedAt); err != nil {
-			return nil, err
-		}
-		if ragSources != nil {
-			msg.RAGSources = []byte(*ragSources)
-		}
-		messages = append(messages, msg)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	// Reverse to get chronological order
-	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
-		messages[i], messages[j] = messages[j], messages[i]
-	}
-
-	return messages, nil
+func (s *SQLiteDB) UpsertChatSourcePreferences(ctx context.Context, prefs *ChatSourcePreferences) error {
+	return s.sessionChatOps().UpsertChatSourcePreferences(ctx, prefs)
 }

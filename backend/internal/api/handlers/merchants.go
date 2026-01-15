@@ -221,16 +221,25 @@ func (h *MerchantHandler) ListMerchants(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	merchants, err := h.db.ListMerchantsByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list merchants", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list merchants"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Merchant, 0)
+		for _, m := range merchants {
+			if m.CampaignID == nil {
+				filtered = append(filtered, m)
+			}
+		}
+		merchants = filtered
 	}
 
 	c.JSON(http.StatusOK, merchants)
@@ -354,6 +363,19 @@ func (h *MerchantHandler) DeleteMerchant(c *gin.Context) {
 		h.db.GetMerchantByID,
 		func(m *db.Merchant) string { return m.UserID },
 		h.db.DeleteMerchant,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns a merchant to a campaign or Personal Library
+func (h *MerchantHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"merchant",
+		h.db.GetMerchantByID,
+		func(m *db.Merchant) string { return m.UserID },
+		func(m *db.Merchant, campaignID *string) { m.CampaignID = campaignID },
+		h.db.UpdateMerchant,
 		h.logger,
 	)
 }

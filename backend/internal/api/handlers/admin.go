@@ -469,6 +469,51 @@ func (h *AdminHandler) GetRAGScrapeStatus(c *gin.Context) {
 	c.JSON(resp.StatusCode, result)
 }
 
+// GetActiveScrapeJobs gets all currently active (in-progress) scrape jobs
+func (h *AdminHandler) GetActiveScrapeJobs(c *gin.Context) {
+	aiServiceURL := getAIServiceURL()
+
+	resp, err := http.Get(aiServiceURL + "/api/v1/rag/scrape/jobs/active")
+	if err != nil {
+		h.logger.Error("Failed to get active scrape jobs", zap.Error(err))
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "AI service unavailable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	var result []map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		h.logger.Error("Failed to decode active jobs response", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse response"})
+		return
+	}
+
+	c.JSON(resp.StatusCode, result)
+}
+
+// CancelScrapeJob cancels an active scrape job
+func (h *AdminHandler) CancelScrapeJob(c *gin.Context) {
+	jobID := c.Param("jobId")
+	aiServiceURL := getAIServiceURL()
+
+	resp, err := http.Post(aiServiceURL+"/api/v1/rag/scrape/job/"+jobID+"/cancel", "application/json", nil)
+	if err != nil {
+		h.logger.Error("Failed to cancel scrape job", zap.Error(err))
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "AI service unavailable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		h.logger.Error("Failed to decode cancel response", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse response"})
+		return
+	}
+
+	c.JSON(resp.StatusCode, result)
+}
+
 // Helper to get AI service URL
 func getAIServiceURL() string {
 	if url := os.Getenv("PYTHON_AI_SERVICE_URL"); url != "" {

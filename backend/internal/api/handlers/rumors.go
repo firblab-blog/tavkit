@@ -219,16 +219,25 @@ func (h *RumorHandler) ListRumors(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	rumors, err := h.db.ListRumorsByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list rumors", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list rumors"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Rumor, 0)
+		for _, r := range rumors {
+			if r.CampaignID == nil {
+				filtered = append(filtered, r)
+			}
+		}
+		rumors = filtered
 	}
 
 	c.JSON(http.StatusOK, rumors)
@@ -315,4 +324,17 @@ func (h *RumorHandler) DeleteRumor(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "rumor deleted"})
+}
+
+// AssignCampaign assigns a rumor to a campaign or Personal Library
+func (h *RumorHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"rumor",
+		h.db.GetRumorByID,
+		func(r *db.Rumor) string { return r.UserID },
+		func(r *db.Rumor, campaignID *string) { r.CampaignID = campaignID },
+		h.db.UpdateRumor,
+		h.logger,
+	)
 }

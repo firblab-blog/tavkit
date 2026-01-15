@@ -1,15 +1,11 @@
-import { useContainerStore } from '../../store/containerStore'
 import Icon from '../common/Icon'
+import { useCampaignStore } from '../../store/campaignStore'
 
 export default function NoCampaignState() {
-  const { openContainer } = useContainerStore()
+  const { openCreateCampaignModal } = useCampaignStore()
 
   const createCampaign = () => {
-    openContainer({
-      type: 'internal',
-      tool: 'campaign',
-      title: 'Campaign Ledger',
-    })
+    openCreateCampaignModal()
   }
 
   return (

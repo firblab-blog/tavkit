@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { apiClient } from '../api/client'
 import { logger } from '../utils/logger'
+import { storeEvents, CAMPAIGN_CHANGED } from '../lib/storeEvents'
 
 // Supporting types for Character
 export interface DeathSaves {
@@ -158,7 +159,8 @@ interface CharacterState {
   loading: boolean
   error: string | null
   lastFetched: number | null
-  fetchCharacters: (forceRefresh?: boolean) => Promise<void>
+  lastCampaignId: string | null // Track which campaign the cached data is for
+  fetchCharacters: (forceRefresh?: boolean, campaignId?: string | null) => Promise<void>
   addCharacter: (character: Character) => void
   updateCharacter: (id: string, updates: Partial<Character>) => void
   deleteCharacter: (id: string) => void
@@ -174,14 +176,24 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   loading: false,
   error: null,
   lastFetched: null,
+  lastCampaignId: null,
 
-  fetchCharacters: async (forceRefresh = false) => {
+  fetchCharacters: async (forceRefresh = false, campaignId?: string | null) => {
     const state = get()
     const now = Date.now()
 
-    // Skip fetch if data was fetched recently (within cache duration) unless force refresh
+    // Prevent concurrent fetches
+    if (state.loading) {
+      return
+    }
+
+    // If campaign context changed, force refresh
+    const campaignChanged = campaignId !== state.lastCampaignId
+
+    // Skip fetch if data was fetched recently (within cache duration) unless force refresh or campaign changed
     if (
       !forceRefresh &&
+      !campaignChanged &&
       state.lastFetched &&
       now - state.lastFetched < CACHE_DURATION &&
       state.characters.length > 0
@@ -192,18 +204,26 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     set({ loading: true, error: null })
 
     try {
-      const response = await apiClient.get('/characters')
+      // Build URL with optional campaign_id query parameter
+      let url = '/characters'
+      if (campaignId) {
+        url += `?campaign_id=${campaignId}`
+      }
+
+      const response = await apiClient.get(url)
       const data = response.data
       set({
         characters: Array.isArray(data) ? data : [],
         loading: false,
         lastFetched: now,
+        lastCampaignId: campaignId ?? null,
       })
     } catch (err) {
       logger.error('Failed to fetch characters:', err)
       set({
         error: err instanceof Error ? err.message : 'Failed to fetch characters',
         loading: false,
+        lastFetched: now, // Set even on error to prevent infinite loading state
       })
     }
   },
@@ -231,6 +251,15 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   },
 
   invalidateCache: () => {
-    set({ lastFetched: null })
+    // Clear timestamps AND data to prevent showing stale characters
+    // This is critical when switching campaigns - the old character data
+    // must not be visible while new data loads
+    set({ lastFetched: null, lastCampaignId: null, characters: [] })
   },
 }))
+
+// Subscribe to campaign change events to invalidate cache
+storeEvents.on(CAMPAIGN_CHANGED, () => {
+  useCharacterStore.getState().invalidateCache()
+  logger.debug('[characterStore] Cache invalidated due to campaign change')
+})

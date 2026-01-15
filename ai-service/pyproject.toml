@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "tavkit-ai-service"
 version = "0.1.0"
-description = "AI service for Tavkit - LLM-powered D&D content generation"
+description = "Minimal AI service for Tavkit - Campaign Summary, Wiki RAG, and Session Chat"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT"
 readme = "README.md"

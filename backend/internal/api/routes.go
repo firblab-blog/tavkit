@@ -57,8 +57,6 @@ func SetupRoutes(
 	adminHandler := handlers.NewAdminHandler(database, aiFactory, logger)
 	proxyHandler := handlers.NewProxyHandler(logger, siteManager)
 	externalSitesHandler := handlers.NewExternalSitesHandler(logger, siteManager, database)
-	containerHandler := handlers.NewContainerHandler(database, logger)
-	kitHandler := handlers.NewKitHandler(database, logger)
 
 	// All AI generator handlers use campaign summary service for context
 	campaignHandler := handlers.NewCampaignHandler(database, logger, campaignSummaryService, chunkedSummaryPipeline)
@@ -70,12 +68,17 @@ func SetupRoutes(
 	campaignContentHandler := handlers.NewCampaignContentHandler(database, logger)
 	campaignStatusHandler := handlers.NewCampaignStatusHandler(database, logger)
 	campaignCharactersHandler := handlers.NewCampaignCharactersHandler(database, logger)
+	campaignItemsHandler := handlers.NewCampaignItemsHandler(database, logger)
+	searchHandler := handlers.NewSearchHandler(database)
 
 	// Initialize session handler
 	sessionHandler := handlers.NewSessionHandler(database, logger)
 
 	// Initialize combat handler
 	combatHandler := handlers.NewCombatHandler(database, logger)
+
+	// Initialize combat WebSocket handler for real-time sync
+	combatWSHandler := handlers.NewCombatWSHandler(database, logger)
 
 	// Initialize session runner handlers
 	socialHandler := handlers.NewSocialHandler(database)
@@ -100,6 +103,9 @@ func SetupRoutes(
 	// Initialize character handler
 	characterHandler := handlers.NewCharacterHandler(database, logger)
 
+	// Initialize campaign members handler (for invite codes and player joining)
+	campaignMembersHandler := handlers.NewCampaignMembersHandler(database, logger)
+
 	// Initialize D&D Beyond handler
 	dndBeyondHandler := handlers.NewDnDBeyondHandler(database, logger)
 
@@ -109,6 +115,9 @@ func SetupRoutes(
 
 	// Initialize session chat handler
 	sessionChatHandler := handlers.NewSessionChatHandler(database, aiClient, logger)
+
+	// Initialize player mode handler
+	playerModeHandler := handlers.NewPlayerModeHandler(database, logger)
 
 	// Public routes
 	public := router.Group("/api/v1")
@@ -157,7 +166,19 @@ func SetupRoutes(
 			users.GET("/me", userHandler.GetMe)
 			users.PUT("/me", userHandler.UpdateMe)
 			users.DELETE("/me", userHandler.DeleteMe)
+
+			// User context routes (for "continue where you left off")
+			users.GET("/me/context", userHandler.GetContext)
+			users.PUT("/me/context", userHandler.UpdateContext)
+			users.POST("/me/onboarding", userHandler.CompleteOnboarding)
+
+			// User UI settings routes
+			users.GET("/me/ui-settings", userHandler.GetUISettings)
+			users.PUT("/me/ui-settings", userHandler.UpdateUISettings)
 		}
+
+		// Search routes - cross-content search
+		protected.GET("/search", searchHandler.Search)
 
 		// Tool routes
 		tools := protected.Group("/tools")
@@ -177,6 +198,7 @@ func SetupRoutes(
 			npcs.GET("", npcHandler.ListNPCs)
 			npcs.GET("/:id", npcHandler.GetNPC)
 			npcs.DELETE("/:id", npcHandler.DeleteNPC)
+			npcs.PATCH("/:id/campaign", npcHandler.AssignCampaign)
 		}
 
 		// Monster routes
@@ -187,6 +209,7 @@ func SetupRoutes(
 			monsters.GET("", monsterHandler.ListMonsters)
 			monsters.GET("/:id", monsterHandler.GetMonster)
 			monsters.DELETE("/:id", monsterHandler.DeleteMonster)
+			monsters.PATCH("/:id/campaign", monsterHandler.AssignCampaign)
 		}
 
 		// Encounter routes
@@ -197,6 +220,7 @@ func SetupRoutes(
 			encounters.GET("", encounterHandler.ListEncounters)
 			encounters.GET("/:id", encounterHandler.GetEncounter)
 			encounters.DELETE("/:id", encounterHandler.DeleteEncounter)
+			encounters.PATCH("/:id/campaign", encounterHandler.AssignCampaign)
 		}
 
 		// Dialogue routes
@@ -207,6 +231,7 @@ func SetupRoutes(
 			dialogues.GET("", dialogueHandler.ListDialogues)
 			dialogues.GET("/:id", dialogueHandler.GetDialogue)
 			dialogues.DELETE("/:id", dialogueHandler.DeleteDialogue)
+			dialogues.PATCH("/:id/campaign", dialogueHandler.AssignCampaign)
 		}
 
 		// Location routes
@@ -218,6 +243,7 @@ func SetupRoutes(
 			locations.GET("/:id", locationHandler.GetLocation)
 			locations.PUT("/:id", locationHandler.UpdateLocation)
 			locations.DELETE("/:id", locationHandler.DeleteLocation)
+			locations.PATCH("/:id/campaign", locationHandler.AssignCampaign)
 		}
 
 		// Quest routes
@@ -229,6 +255,7 @@ func SetupRoutes(
 			quests.GET("/:id", questHandler.GetQuest)
 			quests.PUT("/:id", questHandler.UpdateQuest)
 			quests.DELETE("/:id", questHandler.DeleteQuest)
+			quests.PATCH("/:id/campaign", questHandler.AssignCampaign)
 		}
 
 		// Item routes
@@ -240,6 +267,7 @@ func SetupRoutes(
 			items.GET("/:id", itemHandler.GetItem)
 			items.PUT("/:id", itemHandler.UpdateItem)
 			items.DELETE("/:id", itemHandler.DeleteItem)
+			items.PATCH("/:id/campaign", itemHandler.AssignCampaign)
 		}
 
 		// Rumor routes
@@ -251,6 +279,7 @@ func SetupRoutes(
 			rumors.GET("/:id", rumorHandler.GetRumor)
 			rumors.PUT("/:id", rumorHandler.UpdateRumor)
 			rumors.DELETE("/:id", rumorHandler.DeleteRumor)
+			rumors.PATCH("/:id/campaign", rumorHandler.AssignCampaign)
 		}
 
 		// Tavern routes
@@ -263,6 +292,7 @@ func SetupRoutes(
 			taverns.GET("/:id", tavernHandler.GetTavern)
 			taverns.PUT("/:id", tavernHandler.UpdateTavern)
 			taverns.DELETE("/:id", tavernHandler.DeleteTavern)
+			taverns.PATCH("/:id/campaign", tavernHandler.AssignCampaign)
 		}
 
 		// Merchant routes
@@ -275,6 +305,7 @@ func SetupRoutes(
 			merchants.GET("/:id", merchantHandler.GetMerchant)
 			merchants.PUT("/:id", merchantHandler.UpdateMerchant)
 			merchants.DELETE("/:id", merchantHandler.DeleteMerchant)
+			merchants.PATCH("/:id/campaign", merchantHandler.AssignCampaign)
 		}
 
 		// Trap routes
@@ -287,6 +318,7 @@ func SetupRoutes(
 			traps.GET("/:id", trapHandler.GetTrap)
 			traps.PUT("/:id", trapHandler.UpdateTrap)
 			traps.DELETE("/:id", trapHandler.DeleteTrap)
+			traps.PATCH("/:id/campaign", trapHandler.AssignCampaign)
 		}
 
 		// Critter routes
@@ -299,6 +331,7 @@ func SetupRoutes(
 			critters.GET("/:id", critterHandler.GetCritter)
 			critters.PUT("/:id", critterHandler.UpdateCritter)
 			critters.DELETE("/:id", critterHandler.DeleteCritter)
+			critters.PATCH("/:id/campaign", critterHandler.AssignCampaign)
 		}
 
 		// Chase routes
@@ -311,6 +344,7 @@ func SetupRoutes(
 			chases.GET("/:id", chaseHandler.GetChase)
 			chases.PUT("/:id", chaseHandler.UpdateChase)
 			chases.DELETE("/:id", chaseHandler.DeleteChase)
+			chases.PATCH("/:id/campaign", chaseHandler.AssignCampaign)
 
 			// Nested routes under specific chase
 			chases.GET("/:id/participants", chaseHandler.ListChaseParticipants)
@@ -368,6 +402,15 @@ func SetupRoutes(
 			campaigns.PUT("/:id/activate", campaignHandler.SetActiveCampaign)
 			campaigns.GET("/:id/context", campaignHandler.GetCampaignContext)
 
+			// Campaign membership routes (invite codes and player joining)
+			campaigns.POST("/join", campaignMembersHandler.JoinCampaign)                  // Player joins via invite code
+			campaigns.POST("/:id/invites", campaignMembersHandler.GenerateInviteCode)     // GM generates invite code
+			campaigns.GET("/:id/invites", campaignMembersHandler.ListInvites)             // GM lists invite codes
+			campaigns.DELETE("/:id/invites/:code", campaignMembersHandler.RevokeInvite)   // GM revokes invite code
+			campaigns.GET("/:id/members", campaignMembersHandler.ListMembers)             // List campaign members
+			campaigns.DELETE("/:id/members/:userId", campaignMembersHandler.RemoveMember) // GM removes member
+			campaigns.DELETE("/:id/leave", campaignMembersHandler.LeaveCampaign)          // Player leaves campaign
+
 			// Chunked summary generation routes (async with progress tracking)
 			campaigns.POST("/:id/summary/generate", campaignHandler.StartChunkedSummaryGeneration)
 			campaigns.GET("/:id/summary/job", campaignHandler.GetActiveSummaryJob)
@@ -376,6 +419,9 @@ func SetupRoutes(
 			// Summary content settings routes
 			campaigns.GET("/:id/summary-content", campaignHandler.GetSummaryContent)
 			campaigns.PUT("/:id/summary-content", campaignHandler.UpdateSummaryContent)
+
+			// Campaign activity feed (aggregated endpoint - replaces 13 individual API calls)
+			campaigns.GET("/:id/activity", campaignHandler.GetCampaignActivity)
 
 			// Campaign content routes
 			campaigns.GET("/:id/content", campaignContentHandler.GetCampaignContent)
@@ -393,6 +439,31 @@ func SetupRoutes(
 			campaigns.GET("/:id/characters", campaignCharactersHandler.ListCampaignCharacters)
 			campaigns.POST("/:id/characters/:characterId", campaignCharactersHandler.LinkCharacter)
 			campaigns.DELETE("/:id/characters/:characterId", campaignCharactersHandler.UnlinkCharacter)
+
+			// Campaign item linking routes (many-to-many)
+			campaigns.GET("/:id/items", campaignItemsHandler.ListCampaignItems)
+			campaigns.POST("/:id/items/:itemId", campaignItemsHandler.LinkItem)
+			campaigns.PUT("/:id/items/:itemId", campaignItemsHandler.UpdateItemLink)
+			campaigns.DELETE("/:id/items/:itemId", campaignItemsHandler.UnlinkItem)
+
+			// Party loot routes (campaign-scoped)
+			campaigns.POST("/:id/party-loot", playerModeHandler.CreatePartyLoot)
+			campaigns.GET("/:id/party-loot", playerModeHandler.ListPartyLoot)
+			campaigns.GET("/:id/party-loot/:lootId", playerModeHandler.GetPartyLoot)
+			campaigns.PUT("/:id/party-loot/:lootId", playerModeHandler.UpdatePartyLoot)
+			campaigns.DELETE("/:id/party-loot/:lootId", playerModeHandler.DeletePartyLoot)
+			campaigns.PUT("/:id/party-loot/:lootId/claim", playerModeHandler.ClaimPartyLoot)
+
+			// Content reveals routes (GM only for create/delete, players can list)
+			campaigns.POST("/:id/reveals", playerModeHandler.CreateContentReveal)
+			campaigns.GET("/:id/reveals", playerModeHandler.ListContentReveals)
+			campaigns.DELETE("/:id/reveals/:revealId", playerModeHandler.DeleteContentReveal)
+
+			// Campaign-linked combat routes
+			campaigns.POST("/:id/combat", combatHandler.CreateCampaignCombat)
+			campaigns.GET("/:id/combat/active", combatHandler.GetActiveCampaignCombat)
+			campaigns.GET("/:id/combat-settings", combatHandler.GetCombatSettings)
+			campaigns.PUT("/:id/combat-settings", combatHandler.UpdateCombatSettings)
 		}
 
 		// Session routes - NEW
@@ -416,6 +487,7 @@ func SetupRoutes(
 			combat.GET("/:id", combatHandler.GetCombat)
 			combat.PUT("/:id", combatHandler.UpdateCombat)
 			combat.POST("/:id/next-turn", combatHandler.NextTurn)
+			combat.POST("/:id/join", combatHandler.JoinCombat)
 
 			// Participants
 			combat.POST("/:id/participants", combatHandler.AddParticipant)
@@ -491,28 +563,6 @@ func SetupRoutes(
 			shopping.PUT("/:id/haggle/:haggle_id", shoppingHandler.UpdateHagglingSession)
 		}
 
-		// Container routes
-		containers := protected.Group("/containers")
-		{
-			containers.GET("", containerHandler.ListContainers)
-			containers.POST("", containerHandler.CreateContainer)
-			containers.PUT("/:id", containerHandler.UpdateContainer)
-			containers.DELETE("/:id", containerHandler.DeleteContainer)
-			containers.POST("/bulk", containerHandler.BulkUpdateContainers)
-		}
-
-		// Kit routes (saved container configurations)
-		kits := protected.Group("/kits")
-		{
-			kits.GET("", kitHandler.ListKits)
-			kits.POST("", kitHandler.CreateKit)
-			kits.GET("/:id", kitHandler.GetKit)
-			kits.PUT("/:id", kitHandler.UpdateKit)
-			kits.DELETE("/:id", kitHandler.DeleteKit)
-			kits.PUT("/:id/default", kitHandler.SetDefaultKit)
-			kits.POST("/:id/load", kitHandler.LoadKit)
-		}
-
 		// AI routes (protected)
 		aiRoutes := protected.Group("/ai")
 		{
@@ -532,6 +582,66 @@ func SetupRoutes(
 			chat.POST("/send", sessionChatHandler.SendMessage)
 			chat.GET("/history/:campaign_id", sessionChatHandler.GetChatHistory)
 			chat.DELETE("/history/:campaign_id", sessionChatHandler.ClearChatHistory)
+
+			// Conversation management
+			chat.POST("/conversations", sessionChatHandler.CreateConversation)
+			chat.GET("/conversations/:campaign_id", sessionChatHandler.ListConversations)
+			chat.GET("/conversation/:id", sessionChatHandler.GetConversation)
+			chat.PUT("/conversation/:id", sessionChatHandler.UpdateConversation)
+			chat.DELETE("/conversation/:id", sessionChatHandler.DeleteConversation)
+			chat.GET("/conversation/:id/history", sessionChatHandler.GetConversationHistory)
+
+			// Source preferences
+			chat.GET("/preferences/:campaign_id", sessionChatHandler.GetSourcePreferences)
+			chat.PUT("/preferences/:campaign_id", sessionChatHandler.UpdateSourcePreferences)
+		}
+
+		// Player mode routes (for player tracking features)
+		player := protected.Group("/player")
+		{
+			// Journal entries
+			player.POST("/journal", playerModeHandler.CreateJournalEntry)
+			player.GET("/journal", playerModeHandler.ListJournalEntries)
+			player.GET("/journal/:id", playerModeHandler.GetJournalEntry)
+			player.PUT("/journal/:id", playerModeHandler.UpdateJournalEntry)
+			player.DELETE("/journal/:id", playerModeHandler.DeleteJournalEntry)
+
+			// NPCs met tracking
+			player.POST("/npcs-met", playerModeHandler.CreateNPCEncounter)
+			player.GET("/npcs-met", playerModeHandler.ListNPCEncounters)
+			player.GET("/npcs-met/:id", playerModeHandler.GetNPCEncounter)
+			player.PUT("/npcs-met/:id", playerModeHandler.UpdateNPCEncounter)
+			player.DELETE("/npcs-met/:id", playerModeHandler.DeleteNPCEncounter)
+
+			// Locations visited tracking
+			player.POST("/locations-visited", playerModeHandler.CreateLocationVisit)
+			player.GET("/locations-visited", playerModeHandler.ListLocationVisits)
+			player.GET("/locations-visited/:id", playerModeHandler.GetLocationVisit)
+			player.PUT("/locations-visited/:id", playerModeHandler.UpdateLocationVisit)
+			player.DELETE("/locations-visited/:id", playerModeHandler.DeleteLocationVisit)
+
+			// Quest tracking
+			player.POST("/quests", playerModeHandler.CreateQuestTracking)
+			player.GET("/quests", playerModeHandler.ListQuestTracking)
+			player.GET("/quests/:id", playerModeHandler.GetQuestTracking)
+			player.PUT("/quests/:id", playerModeHandler.UpdateQuestTracking)
+			player.DELETE("/quests/:id", playerModeHandler.DeleteQuestTracking)
+
+			// Ability usage tracking (per character)
+			player.POST("/abilities", playerModeHandler.CreateAbilityTracking)
+			player.GET("/abilities/character/:characterId", playerModeHandler.ListAbilityTracking)
+			player.PUT("/abilities/:id", playerModeHandler.UpdateAbilityTracking)
+			player.DELETE("/abilities/:id", playerModeHandler.DeleteAbilityTracking)
+			player.POST("/abilities/:id/use", playerModeHandler.UseAbility)
+			player.POST("/abilities/:id/reset", playerModeHandler.ResetAbility)
+			player.POST("/abilities/character/:characterId/rest", playerModeHandler.TakeRest)
+
+			// Combat state tracking (per character)
+			player.GET("/combat", playerModeHandler.GetPlayerCombatState)
+			player.PUT("/combat/:characterId", playerModeHandler.UpdatePlayerCombatState)
+
+			// Revealed content (player view)
+			player.GET("/campaigns/:id/revealed", playerModeHandler.GetRevealedContent)
 		}
 
 		// Admin routes (require admin privileges)
@@ -555,6 +665,16 @@ func SetupRoutes(
 			admin.GET("/rag/packs", adminHandler.GetRAGSettingPacks)
 			admin.POST("/rag/scrape/:slug", adminHandler.StartRAGScrape)
 			admin.GET("/rag/scrape/job/:jobId", adminHandler.GetRAGScrapeStatus)
+			admin.GET("/rag/scrape/jobs/active", adminHandler.GetActiveScrapeJobs)
+			admin.POST("/rag/scrape/job/:jobId/cancel", adminHandler.CancelScrapeJob)
 		}
+	}
+
+	// WebSocket routes (authenticated via token query param)
+	ws := router.Group("/ws")
+	ws.Use(middleware.WebSocketAuthMiddleware(jwtManager))
+	{
+		// Combat real-time sync
+		ws.GET("/combat/:combatId", combatWSHandler.HandleCombatWS)
 	}
 }

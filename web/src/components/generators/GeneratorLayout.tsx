@@ -19,6 +19,7 @@ interface GeneratorLayoutProps {
   error?: string
   className?: string
   showActionsInResults?: boolean
+  hideGenerateButton?: boolean
 }
 
 export const GeneratorLayout = ({
@@ -36,6 +37,7 @@ export const GeneratorLayout = ({
   generateButtonIcon = 'Sparkles',
   error,
   className = '',
+  hideGenerateButton = false,
 }: GeneratorLayoutProps) => {
   const [isMobile, setIsMobile] = useState(false)
   const [formExpanded, setFormExpanded] = useState(true)
@@ -105,30 +107,32 @@ export const GeneratorLayout = ({
                 {formContent}
 
                 {/* Generate Button */}
-                <button
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
-                  className="
-                    w-full py-3 px-6 rounded-lg font-semibold
-                    bg-primary hover:bg-primary/90
-                    disabled:bg-primary/50 disabled:cursor-not-allowed
-                    text-white transition-colors
-                    flex items-center justify-center gap-2
-                    shadow-md hover:shadow-lg
-                  "
-                >
-                  {isGenerating ? (
-                    <>
-                      <Icon name="Loader2" className="w-5 h-5 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Icon name={generateButtonIcon} className="w-5 h-5" />
-                      {generateButtonText}
-                    </>
-                  )}
-                </button>
+                {!hideGenerateButton && (
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="
+                      w-full py-3 px-6 rounded-lg font-semibold
+                      bg-primary hover:bg-primary/90
+                      disabled:bg-primary/50 disabled:cursor-not-allowed
+                      text-white transition-colors
+                      flex items-center justify-center gap-2
+                      shadow-md hover:shadow-lg
+                    "
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name={generateButtonIcon} className="w-5 h-5" />
+                        {generateButtonText}
+                      </>
+                    )}
+                  </button>
+                )}
 
                 {/* Error Message */}
                 {error && (

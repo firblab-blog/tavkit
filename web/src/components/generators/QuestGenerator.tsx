@@ -7,6 +7,16 @@ import CampaignSelector from '../common/CampaignSelector'
 import { useCampaignStore } from '../../store/campaignStore'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualQuestData,
+  defaultQuestData,
+  questTypeOptions,
+  difficultyOptions,
+} from './shared/schemas/questSchema'
 import {
   generateQuest as generateQuestApi,
   saveQuest as saveQuestApi,
@@ -165,6 +175,12 @@ export default function QuestGenerator() {
   const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualQuestData>(defaultQuestData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
+
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
 
@@ -279,6 +295,46 @@ export default function QuestGenerator() {
     }
   }
 
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.title.trim()) {
+      setError('Quest title is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError('')
+
+    try {
+      await saveQuestApi({
+        title: manualData.title.trim(),
+        type: manualData.type,
+        category: manualData.combat_intensity,
+        description: manualData.description.trim() || undefined,
+        objectives: manualData.objectives.filter((o) => o.trim()),
+        rewards: manualData.rewards.filter((r) => r.trim()),
+        complications: manualData.complications.filter((c) => c.trim()),
+        npcs_involved: manualData.npcs_involved.filter((n) => n.trim()),
+        locations_involved: manualData.locations_involved.filter((l) => l.trim()),
+        party_level: manualData.party_level ?? partyLevel,
+        combat_intensity: manualData.combat_intensity,
+        time_limit: manualData.time_limit.trim() || undefined,
+        status: 'available',
+        campaign_id: campaignId || undefined,
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultQuestData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   const handleCopy = () => {
     if (!quest) return
     let text = `${quest.title}\n${quest.type}`
@@ -316,7 +372,8 @@ export default function QuestGenerator() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // AI Form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="quest" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -395,18 +452,193 @@ export default function QuestGenerator() {
     </>
   )
 
+  // Manual Form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Quest Title" required>
+        <input
+          type="text"
+          value={manualData.title}
+          onChange={(e) => setManualData({ ...manualData, title: e.target.value })}
+          placeholder="e.g., The Lost Temple of Zandalar"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label="Quest Type">
+          <select
+            value={manualData.type}
+            onChange={(e) => setManualData({ ...manualData, type: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {questTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Difficulty">
+          <select
+            value={manualData.combat_intensity}
+            onChange={(e) => setManualData({ ...manualData, combat_intensity: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {difficultyOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label="Party Level">
+          <input
+            type="number"
+            value={manualData.party_level ?? ''}
+            onChange={(e) =>
+              setManualData({
+                ...manualData,
+                party_level: e.target.value ? parseInt(e.target.value) : null,
+              })
+            }
+            placeholder="5"
+            min={1}
+            max={20}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </FormField>
+
+        <FormField label="Time Limit">
+          <input
+            type="text"
+            value={manualData.time_limit}
+            onChange={(e) => setManualData({ ...manualData, time_limit: e.target.value })}
+            placeholder="e.g., 3 days, Full moon"
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </FormField>
+      </div>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Describe the quest's hook, background, and what the party needs to know..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={4}
+        />
+      </FormField>
+
+      {/* Objectives */}
+      <ArrayFieldEditor
+        label="Objectives"
+        values={manualData.objectives}
+        onChange={(values) => setManualData({ ...manualData, objectives: values })}
+        placeholder="Add an objective..."
+      />
+
+      {/* Details */}
+      <CollapsibleSection title="Rewards & Complications" defaultExpanded={false}>
+        <div className="space-y-4">
+          <ArrayFieldEditor
+            label="Rewards"
+            values={manualData.rewards}
+            onChange={(values) => setManualData({ ...manualData, rewards: values })}
+            placeholder="Add a reward..."
+          />
+
+          <ArrayFieldEditor
+            label="Complications"
+            values={manualData.complications}
+            onChange={(values) => setManualData({ ...manualData, complications: values })}
+            placeholder="Add a complication..."
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* NPCs and Locations */}
+      <CollapsibleSection title="NPCs & Locations" defaultExpanded={false}>
+        <div className="space-y-4">
+          <ArrayFieldEditor
+            label="NPCs Involved"
+            values={manualData.npcs_involved}
+            onChange={(values) => setManualData({ ...manualData, npcs_involved: values })}
+            placeholder="Add an NPC..."
+          />
+
+          <ArrayFieldEditor
+            label="Locations Involved"
+            values={manualData.locations_involved}
+            onChange={(values) => setManualData({ ...manualData, locations_involved: values })}
+            placeholder="Add a location..."
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.title.trim()}
+        className="w-full mt-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : manualSaved ? (
+          <>
+            <Icon name="Check" className="w-5 h-5" />
+            Saved!
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Quest
+          </>
+        )}
+      </button>
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError('')
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content
+  const manualPreviewContent = <ManualEntryPreview entityType="quest" />
+
   const generatedContent = quest ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {quest._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{quest._parseError}</p>
-        </div>
-      )}
+      {quest._parseError && <ParseWarning message={quest._parseError} />}
 
       {/* Header - styled like Monster/NPC */}
       <div>
@@ -560,30 +792,7 @@ export default function QuestGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {quest._raw && Object.keys(quest._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(quest._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(quest._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {quest._raw && <RawDataViewer data={quest._raw} defaultExpanded={showRawResponse} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -602,42 +811,24 @@ export default function QuestGenerator() {
         icon="Scroll"
         formTitle="Quest Parameters"
         formIcon="Settings"
-        resultsTitle="Generated Quest"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Quest'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Quest"
         error={error}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Quest</h3>
-            <p className="text-text-muted mb-6">
-              Save "{quest?.title}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSave}
+        entityName={quest?.title || 'Quest'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

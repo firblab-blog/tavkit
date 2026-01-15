@@ -203,6 +203,8 @@ docs/_build/
 docs/.doctrees/
 docs/archive
 docs/archive/
+docs/plans
+docs/architecture
 
 # ================================
 # Ollama Data (if running locally)

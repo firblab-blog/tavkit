@@ -137,6 +137,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// Create user context for "continue where you left off" functionality
+	userContext := &db.UserContext{
+		UserID:                 user.ID,
+		HasCompletedOnboarding: false,
+	}
+	if err := h.db.CreateUserContext(c.Request.Context(), userContext); err != nil {
+		h.logger.Warn("Failed to create user context for new user",
+			zap.String("user_id", user.ID),
+			zap.Error(err))
+		// Don't fail registration, just log warning
+	}
+
 	// Seed default campaign for new user if enabled
 	if settings.DefaultCampaignEnabled {
 		seeder := seed.NewCrossroadsChronicleSeeder(h.db, h.logger)

@@ -41,6 +41,7 @@ func generateCampaignID() string {
 }
 
 // GetCampaigns returns all campaigns for the authenticated user
+// Includes membership_type to distinguish between owned, local player, and joined campaigns
 func (h *CampaignHandler) GetCampaigns(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -48,7 +49,7 @@ func (h *CampaignHandler) GetCampaigns(c *gin.Context) {
 		return
 	}
 
-	campaigns, err := h.db.ListCampaignsByUserID(c.Request.Context(), userID.(string))
+	campaigns, err := h.db.GetCampaignsWithMembership(c.Request.Context(), userID.(string))
 	if err != nil {
 		h.logger.Error("Failed to fetch campaigns", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch campaigns"})
@@ -955,4 +956,232 @@ func (h *CampaignHandler) UpdateSummaryContent(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// ActivityItem represents a single activity entry for the campaign activity feed
+type ActivityItem struct {
+	ID        string `json:"id"`
+	Type      string `json:"type"`
+	Action    string `json:"action"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+	ContentID string `json:"content_id"`
+}
+
+// GetCampaignActivity returns aggregated recent activity for a campaign
+// This replaces 13 separate frontend API calls with a single backend call
+func (h *CampaignHandler) GetCampaignActivity(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	campaignID := c.Param("id")
+
+	// Verify the user has access to this campaign (either owner or member)
+	campaign, err := h.db.GetCampaignByIDAndUserID(c.Request.Context(), campaignID, userID.(string))
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Campaign not found"})
+		return
+	}
+	if err != nil {
+		h.logger.Error("Failed to verify campaign access", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	var activity []ActivityItem
+
+	// Fetch NPCs
+	npcs, _ := h.db.ListNPCsByUserID(ctx, userID.(string), &campaignID)
+	for _, npc := range npcs {
+		activity = append(activity, ActivityItem{
+			ID:        npc.ID,
+			Type:      "npc",
+			Action:    "created",
+			Name:      npc.Name,
+			CreatedAt: npc.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: npc.ID,
+		})
+	}
+
+	// Fetch Monsters
+	monsters, _ := h.db.ListMonstersByUserID(ctx, userID.(string), &campaignID)
+	for _, monster := range monsters {
+		activity = append(activity, ActivityItem{
+			ID:        monster.ID,
+			Type:      "monster",
+			Action:    "created",
+			Name:      monster.Name,
+			CreatedAt: monster.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: monster.ID,
+		})
+	}
+
+	// Fetch Locations
+	locations, _ := h.db.ListLocationsByUserID(ctx, userID.(string), &campaignID)
+	for _, loc := range locations {
+		activity = append(activity, ActivityItem{
+			ID:        loc.ID,
+			Type:      "location",
+			Action:    "created",
+			Name:      loc.Name,
+			CreatedAt: loc.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: loc.ID,
+		})
+	}
+
+	// Fetch Items
+	items, _ := h.db.ListItemsByUserID(ctx, userID.(string), &campaignID)
+	for _, item := range items {
+		activity = append(activity, ActivityItem{
+			ID:        item.ID,
+			Type:      "item",
+			Action:    "created",
+			Name:      item.Name,
+			CreatedAt: item.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: item.ID,
+		})
+	}
+
+	// Fetch Quests
+	quests, _ := h.db.ListQuestsByUserID(ctx, userID.(string), &campaignID)
+	for _, quest := range quests {
+		activity = append(activity, ActivityItem{
+			ID:        quest.ID,
+			Type:      "quest",
+			Action:    "created",
+			Name:      quest.Title,
+			CreatedAt: quest.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: quest.ID,
+		})
+	}
+
+	// Fetch Encounters
+	encounters, _ := h.db.ListEncountersByUserID(ctx, userID.(string), &campaignID)
+	for _, enc := range encounters {
+		activity = append(activity, ActivityItem{
+			ID:        enc.ID,
+			Type:      "encounter",
+			Action:    "created",
+			Name:      enc.Name,
+			CreatedAt: enc.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: enc.ID,
+		})
+	}
+
+	// Fetch Taverns
+	taverns, _ := h.db.ListTavernsByUserID(ctx, userID.(string), &campaignID)
+	for _, tavern := range taverns {
+		activity = append(activity, ActivityItem{
+			ID:        tavern.ID,
+			Type:      "tavern",
+			Action:    "created",
+			Name:      tavern.Name,
+			CreatedAt: tavern.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: tavern.ID,
+		})
+	}
+
+	// Fetch Merchants
+	merchants, _ := h.db.ListMerchantsByUserID(ctx, userID.(string), &campaignID)
+	for _, merchant := range merchants {
+		activity = append(activity, ActivityItem{
+			ID:        merchant.ID,
+			Type:      "merchant",
+			Action:    "created",
+			Name:      merchant.Name,
+			CreatedAt: merchant.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: merchant.ID,
+		})
+	}
+
+	// Fetch Traps
+	traps, _ := h.db.ListTrapsByUserID(ctx, userID.(string), &campaignID)
+	for _, trap := range traps {
+		activity = append(activity, ActivityItem{
+			ID:        trap.ID,
+			Type:      "trap",
+			Action:    "created",
+			Name:      trap.Name,
+			CreatedAt: trap.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: trap.ID,
+		})
+	}
+
+	// Fetch Critters
+	critters, _ := h.db.ListCrittersByUserID(ctx, userID.(string), &campaignID)
+	for _, critter := range critters {
+		activity = append(activity, ActivityItem{
+			ID:        critter.ID,
+			Type:      "critter",
+			Action:    "created",
+			Name:      critter.Name,
+			CreatedAt: critter.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: critter.ID,
+		})
+	}
+
+	// Fetch Chases
+	chases, _ := h.db.ListChasesByUserID(ctx, userID.(string), &campaignID)
+	for _, chase := range chases {
+		activity = append(activity, ActivityItem{
+			ID:        chase.ID,
+			Type:      "chase",
+			Action:    "created",
+			Name:      chase.Name,
+			CreatedAt: chase.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: chase.ID,
+		})
+	}
+
+	// Fetch Dialogues
+	dialogues, _ := h.db.ListDialoguesByUserID(ctx, userID.(string), &campaignID)
+	for _, dialogue := range dialogues {
+		activity = append(activity, ActivityItem{
+			ID:        dialogue.ID,
+			Type:      "dialogue",
+			Action:    "created",
+			Name:      dialogue.CharacterName,
+			CreatedAt: dialogue.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: dialogue.ID,
+		})
+	}
+
+	// Fetch Rumors
+	rumors, _ := h.db.ListRumorsByUserID(ctx, userID.(string), &campaignID)
+	for _, rumor := range rumors {
+		name := rumor.Text
+		if len(name) > 40 {
+			name = name[:40] + "..."
+		}
+		activity = append(activity, ActivityItem{
+			ID:        rumor.ID,
+			Type:      "rumor",
+			Action:    "created",
+			Name:      name,
+			CreatedAt: rumor.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ContentID: rumor.ID,
+		})
+	}
+
+	// Sort by created_at descending (most recent first)
+	// Using a simple bubble sort for clarity - slice is usually small
+	for i := 0; i < len(activity); i++ {
+		for j := i + 1; j < len(activity); j++ {
+			if activity[j].CreatedAt > activity[i].CreatedAt {
+				activity[i], activity[j] = activity[j], activity[i]
+			}
+		}
+	}
+
+	// Log for debugging
+	h.logger.Debug("Campaign activity fetched",
+		zap.String("campaign_id", campaignID),
+		zap.String("campaign_name", campaign.Name),
+		zap.Int("activity_count", len(activity)))
+
+	c.JSON(http.StatusOK, gin.H{"activity": activity})
 }

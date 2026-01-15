@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import Icon from '../common/Icon'
 
@@ -9,9 +9,20 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [registrationEnabled, setRegistrationEnabled] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    // Check if redirected due to session expiry
+    if (searchParams.get('expired') === 'true') {
+      setSessionExpired(true)
+      // Clean up URL
+      window.history.replaceState({}, '', '/login')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     // Fetch settings to check if registration is enabled
@@ -53,6 +64,13 @@ export default function Login() {
         {/* Login form */}
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
           <h2 className="text-2xl font-bold text-white mb-6">Sign In</h2>
+
+          {sessionExpired && (
+            <div className="mb-4 bg-amber-500/10 border border-amber-500 text-amber-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+              <Icon name="Clock" className="w-4 h-4 flex-shrink-0" />
+              <span>Your session has expired. Please sign in again.</span>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded text-sm flex items-center gap-2">

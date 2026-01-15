@@ -68,24 +68,28 @@ type Database interface {
 	CreateNPC(ctx context.Context, npc *NPC) error
 	GetNPCByID(ctx context.Context, id string) (*NPC, error)
 	ListNPCsByUserID(ctx context.Context, userID string, campaignID *string) ([]*NPC, error)
+	UpdateNPC(ctx context.Context, npc *NPC) error
 	DeleteNPC(ctx context.Context, id string) error
 
 	// Monster operations
 	CreateMonster(ctx context.Context, monster *Monster) error
 	GetMonsterByID(ctx context.Context, id string) (*Monster, error)
 	ListMonstersByUserID(ctx context.Context, userID string, campaignID *string) ([]*Monster, error)
+	UpdateMonster(ctx context.Context, monster *Monster) error
 	DeleteMonster(ctx context.Context, id string) error
 
 	// Encounter operations
 	CreateEncounter(ctx context.Context, encounter *Encounter) error
 	GetEncounterByID(ctx context.Context, id string) (*Encounter, error)
 	ListEncountersByUserID(ctx context.Context, userID string, campaignID *string) ([]*Encounter, error)
+	UpdateEncounter(ctx context.Context, encounter *Encounter) error
 	DeleteEncounter(ctx context.Context, id string) error
 
 	// Dialogue operations
 	CreateDialogue(ctx context.Context, dialogue *Dialogue) error
 	GetDialogueByID(ctx context.Context, id string) (*Dialogue, error)
 	ListDialoguesByUserID(ctx context.Context, userID string, campaignID *string) ([]*Dialogue, error)
+	UpdateDialogue(ctx context.Context, dialogue *Dialogue) error
 	DeleteDialogue(ctx context.Context, id string) error
 
 	// Location operations
@@ -205,21 +209,12 @@ type Database interface {
 	UnlinkCharacterFromCampaign(ctx context.Context, campaignID, characterID string) error
 	ListCampaignCharacters(ctx context.Context, campaignID string) ([]*Character, error)
 
-	// Container operations
-	CreateContainer(ctx context.Context, container *Container) error
-	GetContainerByID(ctx context.Context, id string) (*Container, error)
-	ListContainersByUserID(ctx context.Context, userID string) ([]*Container, error)
-	UpdateContainer(ctx context.Context, container *Container) error
-	DeleteContainer(ctx context.Context, id string) error
-	DeleteAllContainersByUserID(ctx context.Context, userID string) error
-
-	// Kit operations
-	CreateKit(ctx context.Context, kit *Kit) error
-	GetKitByID(ctx context.Context, id string) (*Kit, error)
-	ListKitsByUserID(ctx context.Context, userID string) ([]*Kit, error)
-	UpdateKit(ctx context.Context, kit *Kit) error
-	DeleteKit(ctx context.Context, id string) error
-	SetDefaultKit(ctx context.Context, userID string, kitID string) error
+	// Campaign Item linking operations (many-to-many)
+	LinkItemToCampaign(ctx context.Context, campaignID, itemID string, quantity int, notes *string) error
+	UnlinkItemFromCampaign(ctx context.Context, campaignID, itemID string) error
+	UpdateCampaignItemLink(ctx context.Context, campaignID, itemID string, quantity int, notes *string) error
+	ListCampaignItems(ctx context.Context, campaignID string) ([]*ItemWithCampaignLink, error)
+	ListItemCampaigns(ctx context.Context, itemID string) ([]*Campaign, error)
 
 	// Settings operations
 	GetSettings(ctx context.Context) (*Settings, error)
@@ -312,6 +307,17 @@ type Database interface {
 	ListCombatConditions(ctx context.Context, participantID string) ([]*CombatCondition, error)
 	DeleteCombatCondition(ctx context.Context, id string) error
 
+	// Campaign-linked combat operations
+	GetActiveCombatByCampaignID(ctx context.Context, campaignID string) (*CombatEncounter, error)
+	ListCombatsByCampaignID(ctx context.Context, campaignID string) ([]*CombatEncounter, error)
+	GetParticipantByOwnerUserID(ctx context.Context, combatID, userID string) (*CombatParticipant, error)
+	GetParticipantByCharacterID(ctx context.Context, combatID, characterID string) (*CombatParticipant, error)
+	ListVisibleParticipants(ctx context.Context, combatID string) ([]*CombatParticipant, error)
+
+	// Combat Settings operations
+	GetCombatSettings(ctx context.Context, campaignID string) (*CombatSettings, error)
+	UpsertCombatSettings(ctx context.Context, settings *CombatSettings) error
+
 	// Social Encounter operations
 	CreateSocialEncounter(ctx context.Context, encounter *SocialEncounter) error
 	GetSocialEncounterByID(ctx context.Context, id string) (*SocialEncounter, error)
@@ -371,8 +377,113 @@ type Database interface {
 	ClearSessionChatMessages(ctx context.Context, campaignID, userID string) error
 	GetRecentSessionChatMessages(ctx context.Context, campaignID string, limit int) ([]*SessionChatMessage, error)
 
+	// Chat Conversation operations
+	CreateChatConversation(ctx context.Context, conv *ChatConversation) error
+	GetChatConversationByID(ctx context.Context, id string) (*ChatConversation, error)
+	ListChatConversationsByCampaignID(ctx context.Context, campaignID, userID string) ([]*ChatConversation, error)
+	UpdateChatConversation(ctx context.Context, conv *ChatConversation) error
+	DeleteChatConversation(ctx context.Context, id string) error
+
+	// Chat messages by conversation
+	GetSessionChatMessagesByConversationID(ctx context.Context, conversationID string, limit int) ([]*SessionChatMessage, error)
+	ClearSessionChatMessagesByConversationID(ctx context.Context, conversationID string) error
+
+	// Chat Source Preferences operations
+	GetChatSourcePreferences(ctx context.Context, campaignID string) (*ChatSourcePreferences, error)
+	UpsertChatSourcePreferences(ctx context.Context, prefs *ChatSourcePreferences) error
+
+	// User Context operations
+	CreateUserContext(ctx context.Context, uc *UserContext) error
+	GetUserContextByUserID(ctx context.Context, userID string) (*UserContext, error)
+	UpdateUserContext(ctx context.Context, uc *UserContext) error
+	UpsertUserContext(ctx context.Context, uc *UserContext) error
+	DeleteUserContext(ctx context.Context, userID string) error
+	MarkOnboardingComplete(ctx context.Context, userID string) error
+	GetOrCreateUserContext(ctx context.Context, userID string) (*UserContext, error)
+	UpdateUserUISettings(ctx context.Context, userID string, uiSettings []byte) error
+	GetUserUISettings(ctx context.Context, userID string) ([]byte, error)
+
+	// Campaign Invite operations
+	CreateCampaignInvite(ctx context.Context, invite *CampaignInvite) error
+	GetCampaignInviteByCode(ctx context.Context, code string) (*CampaignInvite, error)
+	ListCampaignInvites(ctx context.Context, campaignID string) ([]*CampaignInvite, error)
+	DecrementInviteUses(ctx context.Context, inviteID string) error
+	DeactivateCampaignInvite(ctx context.Context, campaignID, code string) error
+
+	// Campaign Member operations
+	CreateCampaignMember(ctx context.Context, member *CampaignMember) error
+	GetCampaignMember(ctx context.Context, campaignID, userID string) (*CampaignMember, error)
+	ListCampaignMembers(ctx context.Context, campaignID string) ([]*CampaignMember, error)
+	ListUserMemberships(ctx context.Context, userID string) ([]*CampaignMember, error)
+	DeleteCampaignMember(ctx context.Context, campaignID, userID string) error
+	UpdateCampaignMemberCharacter(ctx context.Context, campaignID, userID string, characterID *string) error
+	GetCampaignsWithMembership(ctx context.Context, userID string) ([]*CampaignWithMembership, error)
+
 	// Wrapper methods for generic helpers
 	GetChaseByIDWithInterface(ctx context.Context, id string) (interface{ GetUserID() string }, error)
 	GetCombatEncounterByIDWithInterface(ctx context.Context, id string) (interface{ GetSessionID() string }, error)
 	GetSessionByIDWithInterface(ctx context.Context, id string) (interface{ GetUserID() string }, error)
+
+	// ============================================================================
+	// Player Mode Operations
+	// ============================================================================
+
+	// Player Journal operations
+	CreatePlayerJournalEntry(ctx context.Context, entry *PlayerJournalEntry) error
+	GetPlayerJournalEntryByID(ctx context.Context, id string) (*PlayerJournalEntry, error)
+	ListPlayerJournalEntries(ctx context.Context, userID string, campaignID *string) ([]*PlayerJournalEntry, error)
+	UpdatePlayerJournalEntry(ctx context.Context, entry *PlayerJournalEntry) error
+	DeletePlayerJournalEntry(ctx context.Context, id string) error
+
+	// Player Quest Tracking operations
+	CreatePlayerQuestTracking(ctx context.Context, quest *PlayerQuestTracking) error
+	GetPlayerQuestTrackingByID(ctx context.Context, id string) (*PlayerQuestTracking, error)
+	ListPlayerQuestTracking(ctx context.Context, userID string, campaignID *string, status *string) ([]*PlayerQuestTracking, error)
+	UpdatePlayerQuestTracking(ctx context.Context, quest *PlayerQuestTracking) error
+	DeletePlayerQuestTracking(ctx context.Context, id string) error
+
+	// Player NPC Encounter operations
+	CreatePlayerNPCEncounter(ctx context.Context, encounter *PlayerNPCEncounter) error
+	GetPlayerNPCEncounterByID(ctx context.Context, id string) (*PlayerNPCEncounter, error)
+	ListPlayerNPCEncounters(ctx context.Context, userID string, campaignID *string) ([]*PlayerNPCEncounter, error)
+	UpdatePlayerNPCEncounter(ctx context.Context, encounter *PlayerNPCEncounter) error
+	DeletePlayerNPCEncounter(ctx context.Context, id string) error
+
+	// Player Location Visit operations
+	CreatePlayerLocationVisit(ctx context.Context, visit *PlayerLocationVisit) error
+	GetPlayerLocationVisitByID(ctx context.Context, id string) (*PlayerLocationVisit, error)
+	ListPlayerLocationVisits(ctx context.Context, userID string, campaignID *string) ([]*PlayerLocationVisit, error)
+	UpdatePlayerLocationVisit(ctx context.Context, visit *PlayerLocationVisit) error
+	DeletePlayerLocationVisit(ctx context.Context, id string) error
+
+	// Party Loot operations
+	CreatePartyLoot(ctx context.Context, loot *PartyLoot) error
+	GetPartyLootByID(ctx context.Context, id string) (*PartyLoot, error)
+	ListPartyLoot(ctx context.Context, campaignID string) ([]*PartyLoot, error)
+	UpdatePartyLoot(ctx context.Context, loot *PartyLoot) error
+	DeletePartyLoot(ctx context.Context, id string) error
+	ClaimPartyLoot(ctx context.Context, lootID string, characterID string, characterName string) error
+
+	// Content Reveal operations
+	CreateContentReveal(ctx context.Context, reveal *ContentReveal) error
+	GetContentReveal(ctx context.Context, campaignID, contentType, contentID string) (*ContentReveal, error)
+	ListContentReveals(ctx context.Context, campaignID string, contentType *string) ([]*ContentReveal, error)
+	DeleteContentReveal(ctx context.Context, id string) error
+
+	// Ability Usage Tracking operations
+	CreateAbilityUsageTracking(ctx context.Context, tracking *AbilityUsageTracking) error
+	GetAbilityUsageTrackingByID(ctx context.Context, id string) (*AbilityUsageTracking, error)
+	ListAbilityUsageTracking(ctx context.Context, characterID string) ([]*AbilityUsageTracking, error)
+	UpdateAbilityUsageTracking(ctx context.Context, tracking *AbilityUsageTracking) error
+	DeleteAbilityUsageTracking(ctx context.Context, id string) error
+	UseAbility(ctx context.Context, id string) error
+	ResetAbility(ctx context.Context, id string) error
+	ResetAbilitiesByRechargeType(ctx context.Context, characterID string, rechargeType string) error
+
+	// Player Combat State operations
+	CreatePlayerCombatState(ctx context.Context, state *PlayerCombatState) error
+	GetPlayerCombatStateByCharacterID(ctx context.Context, characterID string) (*PlayerCombatState, error)
+	UpdatePlayerCombatState(ctx context.Context, state *PlayerCombatState) error
+	UpsertPlayerCombatState(ctx context.Context, state *PlayerCombatState) error
+	DeletePlayerCombatState(ctx context.Context, characterID string) error
 }

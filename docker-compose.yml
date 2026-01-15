@@ -96,9 +96,16 @@ services:
       # Python AI Service URL (used for campaign summary generation)
       - PYTHON_AI_SERVICE_URL=${PYTHON_AI_SERVICE_URL:-http://ai-service:8001}
       # AI Provider Configuration (Go backend handles content generation directly)
+      # OLLAMA CONFIGURATION:
+      # - Containerized Ollama (default): docker compose --profile ollama up
+      #   URL: http://ollama:11434 (internal Docker network)
+      # - Windows/Mac host Ollama: Set OLLAMA_BASE_URL=http://host.docker.internal:11434
+      # - Linux host Ollama: Set OLLAMA_BASE_URL=http://172.17.0.1:11434
+      # - External server: Set OLLAMA_BASE_URL=http://your-server:11434
+      # - No Ollama: Set AI_PROVIDER=anthropic or AI_PROVIDER=openai
       - ENABLE_AI=${ENABLE_AI:-true}
       - AI_PROVIDER=${AI_PROVIDER:-ollama}
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:3b}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}

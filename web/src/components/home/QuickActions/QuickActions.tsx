@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useContainerStore } from '../../../store/containerStore'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../../store/authStore'
+import { useContainerStore } from '../../../store/containerStore'
 import { getApiUrl } from '../../../config/api'
 import Icon from '../../common/Icon'
 import { logger } from '@/utils/logger'
@@ -53,6 +54,10 @@ const getFaviconUrl = (url: string): string => {
 }
 
 export default function QuickActions() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const openContainer = useContainerStore((state) => state.openContainer)
+
   const [externalSites, setExternalSites] = useState<ExternalSite[]>([])
   const [customTools, setCustomTools] = useState<CustomTool[]>([])
   const [showCustomModal, setShowCustomModal] = useState(false)
@@ -60,7 +65,14 @@ export default function QuickActions() {
   const [customName, setCustomName] = useState('')
   const [editingTool, setEditingTool] = useState<CustomTool | null>(null)
   const [hoveredToolId, setHoveredToolId] = useState<string | null>(null)
-  const { openContainer } = useContainerStore()
+
+  // Determine context path from current location
+  const getToolsPath = () => {
+    if (location.pathname.includes('/gm')) return '/dashboard/gm/tools'
+    if (location.pathname.includes('/player')) return '/dashboard/player/tools'
+    if (location.pathname.includes('/sandbox')) return '/dashboard/sandbox/tools'
+    return '/dashboard/gm/tools' // Default to GM
+  }
 
   useEffect(() => {
     const isAuthenticated = useAuthStore.getState().isAuthenticated
@@ -101,21 +113,29 @@ export default function QuickActions() {
   }, [])
 
   const handleOpenExternalSite = (site: ExternalSite) => {
+    const logoUrl = SITE_LOGOS[site.id] || getFaviconUrl(site.base_url)
     openContainer({
       type: 'external',
       tool: site.id,
       title: site.name,
       url: site.base_url,
+      icon: logoUrl,
     })
+    navigate(getToolsPath())
   }
 
   const handleOpenCustomTool = (tool: CustomTool) => {
-    openContainer({
-      type: 'external',
-      tool: tool.id,
-      title: tool.name,
-      url: tool.url || '',
-    })
+    if (tool.url) {
+      const iconUrl = tool.config?.icon || getFaviconUrl(tool.url)
+      openContainer({
+        type: 'external',
+        tool: tool.id,
+        title: tool.name,
+        url: tool.url,
+        icon: iconUrl,
+      })
+      navigate(getToolsPath())
+    }
   }
 
   const handleAddOrUpdateCustomTool = async () => {
@@ -251,9 +271,18 @@ export default function QuickActions() {
     <>
       {/* External Tools */}
       <div className="bg-background-panel border border-border rounded-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Icon name="ExternalLink" className="w-6 h-6 text-primary" />
-          <h2 className="text-xl font-bold text-text">External Tools</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Icon name="ExternalLink" className="w-6 h-6 text-primary" />
+            <h2 className="text-xl font-bold text-text">External Tools</h2>
+          </div>
+          <button
+            onClick={() => navigate(getToolsPath())}
+            className="text-sm text-primary hover:text-primary-light transition-colors flex items-center gap-1"
+          >
+            <span>Open Toolkit</span>
+            <Icon name="ArrowRight" className="w-4 h-4" />
+          </button>
         </div>
 
         {externalSites.length === 0 && filteredCustomTools.length === 0 ? (

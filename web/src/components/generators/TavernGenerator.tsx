@@ -7,6 +7,15 @@ import Icon from '../common/Icon'
 import CampaignSelector from '../common/CampaignSelector'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualTavernData,
+  defaultTavernData,
+  tavernTypeOptions,
+} from './shared/schemas/tavernSchema'
 import {
   generateTavern as generateTavernApi,
   saveTavern as saveTavernApi,
@@ -317,10 +326,15 @@ export default function TavernGenerator() {
   const [error, setError] = useState<string | null>(null)
   const [tavern, setTavern] = useState<TavernData | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const { activeCampaignId } = useCampaignStore()
+
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualTavernData>(defaultTavernData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
 
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
@@ -348,7 +362,6 @@ export default function TavernGenerator() {
     setLoading(true)
     setError(null)
     setTavern(null)
-    setShowRawResponse(false)
     setIsSaved(false)
 
     try {
@@ -373,7 +386,6 @@ export default function TavernGenerator() {
         if (!hasValidTavernContent(normalized)) {
           normalized._parseError =
             'AI response missing essential tavern content. Showing raw response.'
-          setShowRawResponse(true)
         }
 
         setTavern(normalized)
@@ -381,7 +393,6 @@ export default function TavernGenerator() {
         // No tavern wrapper - try to normalize the raw response
         const normalized = normalizeTavernResponse(data as unknown as Record<string, unknown>)
         normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
         setTavern(normalized)
       }
     } catch (err) {
@@ -475,7 +486,53 @@ export default function TavernGenerator() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('Tavern name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError(null)
+
+    try {
+      await saveTavernApi({
+        campaign_id: campaignId || undefined,
+        name: manualData.name.trim(),
+        type: manualData.tavern_type,
+        atmosphere: manualData.atmosphere.trim() || '',
+        description: manualData.description.trim() || '',
+        keeper_name: manualData.owner_name.trim() || '',
+        keeper_personality: '',
+        keeper_description: manualData.owner_description.trim() || '',
+        menu_food: manualData.menu_items
+          .filter((m) => m.name.trim())
+          .map((m) => ({ name: m.name, description: m.description, price: m.price })),
+        menu_drinks: [],
+        rooms: [],
+        patrons: manualData.regular_patrons
+          .filter((p) => p.trim())
+          .map((p) => ({ name: p, race: '', description: '' })),
+        events: [],
+        rumors: manualData.rumors.filter((r) => r.trim()),
+        special_notes: manualData.secrets.filter((s) => s.trim()).join('\n'),
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultTavernData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  // AI generation form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="tavern" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -541,18 +598,275 @@ export default function TavernGenerator() {
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Tavern Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., The Rusty Anchor, Dragon's Breath Inn"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label="Establishment Type">
+          <select
+            value={manualData.tavern_type}
+            onChange={(e) => setManualData({ ...manualData, tavern_type: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {tavernTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Size">
+          <select
+            value={manualData.size}
+            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="tiny">Tiny</option>
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
+            <option value="massive">Massive</option>
+          </select>
+        </FormField>
+      </div>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Describe the tavern's appearance and layout..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={3}
+        />
+      </FormField>
+
+      <FormField label="Atmosphere">
+        <input
+          type="text"
+          value={manualData.atmosphere}
+          onChange={(e) => setManualData({ ...manualData, atmosphere: e.target.value })}
+          placeholder="e.g., Warm and cozy, Rowdy and loud, Dark and mysterious"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      {/* Owner/Keeper */}
+      <CollapsibleSection title="Owner/Keeper" defaultExpanded>
+        <div className="space-y-3">
+          <FormField label="Owner Name">
+            <input
+              type="text"
+              value={manualData.owner_name}
+              onChange={(e) => setManualData({ ...manualData, owner_name: e.target.value })}
+              placeholder="e.g., Greta Ironhand, Old Tom"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Owner Description">
+            <textarea
+              value={manualData.owner_description}
+              onChange={(e) => setManualData({ ...manualData, owner_description: e.target.value })}
+              placeholder="Describe the owner's appearance and personality..."
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Notable Staff */}
+      <CollapsibleSection title="Notable Staff" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Staff Members"
+          values={manualData.notable_staff}
+          onChange={(notable_staff) => setManualData({ ...manualData, notable_staff })}
+          placeholder="Add a staff member..."
+        />
+      </CollapsibleSection>
+
+      {/* Menu Items - Custom editor for 3-field objects */}
+      <CollapsibleSection title="Menu Items" defaultExpanded={false}>
+        <div className="space-y-3">
+          {manualData.menu_items.map((item, idx) => (
+            <div key={idx} className="bg-background p-3 rounded border border-border space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-text">Item {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newItems = [...manualData.menu_items]
+                    newItems.splice(idx, 1)
+                    setManualData({ ...manualData, menu_items: newItems })
+                  }}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={item.name}
+                  onChange={(e) => {
+                    const newItems = [...manualData.menu_items]
+                    newItems[idx] = { ...item, name: e.target.value }
+                    setManualData({ ...manualData, menu_items: newItems })
+                  }}
+                  placeholder="Item name"
+                  className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <input
+                  type="text"
+                  value={item.price}
+                  onChange={(e) => {
+                    const newItems = [...manualData.menu_items]
+                    newItems[idx] = { ...item, price: e.target.value }
+                    setManualData({ ...manualData, menu_items: newItems })
+                  }}
+                  placeholder="Price (e.g., 2 sp)"
+                  className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <input
+                type="text"
+                value={item.description}
+                onChange={(e) => {
+                  const newItems = [...manualData.menu_items]
+                  newItems[idx] = { ...item, description: e.target.value }
+                  setManualData({ ...manualData, menu_items: newItems })
+                }}
+                placeholder="Description (optional)"
+                className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setManualData({
+                ...manualData,
+                menu_items: [...manualData.menu_items, { name: '', description: '', price: '' }],
+              })
+            }
+            className="w-full px-3 py-2 border border-dashed border-border text-text-muted hover:border-primary hover:text-primary rounded transition-colors text-sm"
+          >
+            + Add Menu Item
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      {/* Regular Patrons */}
+      <CollapsibleSection title="Regular Patrons" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Patrons"
+          values={manualData.regular_patrons}
+          onChange={(regular_patrons) => setManualData({ ...manualData, regular_patrons })}
+          placeholder="Add a regular patron..."
+        />
+      </CollapsibleSection>
+
+      {/* Rumors */}
+      <CollapsibleSection title="Rumors & Gossip" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Rumors"
+          values={manualData.rumors}
+          onChange={(rumors) => setManualData({ ...manualData, rumors })}
+          placeholder="Add a rumor..."
+        />
+      </CollapsibleSection>
+
+      {/* Special Features */}
+      <CollapsibleSection title="Special Features" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Features"
+          values={manualData.special_features}
+          onChange={(special_features) => setManualData({ ...manualData, special_features })}
+          placeholder="Add a special feature..."
+        />
+      </CollapsibleSection>
+
+      {/* Secrets */}
+      <CollapsibleSection title="Secrets (DM Only)" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Secrets"
+          values={manualData.secrets}
+          onChange={(secrets) => setManualData({ ...manualData, secrets })}
+          placeholder="Add a secret..."
+        />
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full px-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Tavern
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <div className="text-center text-green-400 text-sm">
+          Tavern saved! You can find it in the Saved Content section.
+        </div>
+      )}
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError(null)
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content (simple message)
+  const manualPreviewContent = <ManualEntryPreview entityType="tavern" />
+
   const generatedContent = tavern ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {tavern._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{tavern._parseError}</p>
-        </div>
-      )}
+      {tavern._parseError && <ParseWarning message={tavern._parseError} />}
 
       {/* Header */}
       <div>
@@ -730,30 +1044,7 @@ export default function TavernGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {tavern._raw && Object.keys(tavern._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(tavern._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(tavern._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {tavern._raw && <RawDataViewer data={tavern._raw} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -772,41 +1063,23 @@ export default function TavernGenerator() {
         icon="Beer"
         formTitle="Establishment Details"
         formIcon="Settings"
-        resultsTitle="Generated Tavern"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Tavern'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={generateTavern}
         generateButtonText="Generate Tavern"
         error={error || undefined}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Tavern</h3>
-            <p className="text-text-muted mb-6">
-              Save "{tavern?.name}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveTavern}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={saveTavern}
+        entityName={tavern?.name || 'Tavern'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

@@ -11,18 +11,31 @@ func CORSMiddleware(allowedOrigins []string, allowCredentials bool) gin.HandlerF
 
 		// Check if origin is allowed
 		allowed := false
+		isWildcard := false
 		for _, allowedOrigin := range allowedOrigins {
-			if allowedOrigin == "*" || allowedOrigin == origin {
+			if allowedOrigin == "*" {
+				allowed = true
+				isWildcard = true
+				break
+			}
+			if allowedOrigin == origin {
 				allowed = true
 				break
 			}
 		}
 
 		if allowed {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			// Security: When credentials are allowed, we must use the specific origin,
+			// not "*", as per CORS specification
+			if isWildcard && !allowCredentials {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+			} else if origin != "" {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			}
 		}
 
-		if allowCredentials {
+		// Security: Only set credentials header when not using wildcard origin
+		if allowCredentials && !isWildcard {
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 

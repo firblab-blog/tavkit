@@ -646,14 +646,14 @@ CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     campaign_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
+    session_type TEXT,
     name TEXT NOT NULL,
-    session_number INTEGER DEFAULT 1 CHECK (session_number >= 1),
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed')),
-    current_round INTEGER DEFAULT 0 CHECK (current_round >= 0),
-    notes TEXT,
-    summary TEXT,
     started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    completed_at DATETIME,
+    ended_at DATETIME,
+    duration_minutes INTEGER,
+    summary TEXT,
+    notes TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -666,11 +666,14 @@ CREATE INDEX IF NOT EXISTS idx_sessions_campaign_id ON sessions(campaign_id);
 CREATE TABLE IF NOT EXISTS session_events (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL,
-    round INTEGER DEFAULT 0,
     event_type TEXT NOT NULL,
-    description TEXT,
+    round INTEGER,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    actor TEXT,
+    action TEXT NOT NULL,
     details TEXT,
-    is_important BOOLEAN DEFAULT 0,
+    outcome TEXT,
+    important BOOLEAN DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
@@ -679,38 +682,65 @@ CREATE TABLE IF NOT EXISTS session_events (
 CREATE TABLE IF NOT EXISTS combat_encounters (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL,
+    campaign_id TEXT,
+    encounter_id TEXT,
     name TEXT,
     current_round INTEGER DEFAULT 1 CHECK (current_round >= 0),
     current_turn INTEGER DEFAULT 0 CHECK (current_turn >= 0),
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed')),
+    difficulty TEXT,
     environment TEXT,
     notes TEXT,
+    visibility_mode TEXT DEFAULT 'full',
+    is_active BOOLEAN DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_combat_encounters_session ON combat_encounters(session_id);
+CREATE INDEX IF NOT EXISTS idx_combat_encounters_campaign ON combat_encounters(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_combat_encounters_campaign_active ON combat_encounters(campaign_id, is_active);
 
 -- Combat participants table
 CREATE TABLE IF NOT EXISTS combat_participants (
     id TEXT PRIMARY KEY,
     combat_id TEXT NOT NULL,
-    name TEXT NOT NULL,
     participant_type TEXT NOT NULL CHECK (participant_type IN ('pc', 'npc', 'monster', 'ally', 'other')),
-    initiative INTEGER DEFAULT 0,
-    initiative_modifier INTEGER DEFAULT 0,
-    armor_class INTEGER DEFAULT 10 CHECK (armor_class >= 0),
+    character_id TEXT,
+    npc_id TEXT,
+    monster_id TEXT,
+    owner_user_id TEXT,
+    name TEXT NOT NULL,
     max_hp INTEGER DEFAULT 1 CHECK (max_hp >= 1),
+    ac INTEGER DEFAULT 10 CHECK (ac >= 0),
+    stats_snapshot TEXT,
+    abilities_snapshot TEXT,
+    initiative INTEGER DEFAULT 0,
+    initiative_bonus INTEGER DEFAULT 0,
+    initiative_roll INTEGER,
     current_hp INTEGER DEFAULT 1,
     temp_hp INTEGER DEFAULT 0 CHECK (temp_hp >= 0),
-    is_active BOOLEAN DEFAULT 1,
+    passive_perception INTEGER,
+    conditions TEXT,
+    concentration_spell TEXT,
+    death_saves TEXT,
+    is_surprised BOOLEAN DEFAULT 0,
+    has_reaction BOOLEAN DEFAULT 1,
+    legendary_actions_used INTEGER DEFAULT 0,
+    legendary_actions_max INTEGER DEFAULT 0,
+    position INTEGER DEFAULT 0,
+    is_visible_to_players BOOLEAN DEFAULT 1,
+    show_hp_to_players BOOLEAN DEFAULT 1,
+    show_conditions_to_players BOOLEAN DEFAULT 1,
     notes TEXT,
-    source_id TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (combat_id) REFERENCES combat_encounters(id) ON DELETE CASCADE
+    FOREIGN KEY (combat_id) REFERENCES combat_encounters(id) ON DELETE CASCADE,
+    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_combat_participants_combat ON combat_participants(combat_id);
+CREATE INDEX IF NOT EXISTS idx_combat_participants_owner ON combat_participants(owner_user_id);
 
 -- Combat conditions table
 CREATE TABLE IF NOT EXISTS combat_conditions (

@@ -30,16 +30,21 @@ class SessionChatRequest(BaseModel):
     """Request for session chat."""
     message: str = Field(..., description="User's message/question")
     campaign_id: str = Field(..., description="Campaign ID for context")
+    conversation_id: Optional[str] = Field(None, description="Conversation ID for tracking")
     campaign_name: Optional[str] = Field(None, description="Campaign name")
     campaign_system: Optional[str] = Field(None, description="Game system (e.g., 'D&D 5e')")
     campaign_theme: Optional[str] = Field(None, description="Campaign theme")
     campaign_tone: Optional[str] = Field(None, description="Campaign tone")
-    setting_slug: Optional[str] = Field(None, description="Setting pack slug (e.g., 'eberron')")
+    setting_slug: Optional[str] = Field(None, description="Setting pack slug (e.g., 'eberron') - deprecated, use enabled_wiki_sources")
     chat_history: Optional[list[ChatMessage]] = Field(
         default_factory=list,
         description="Previous messages in the conversation"
     )
     max_context_chunks: int = Field(5, ge=1, le=10, description="Max RAG chunks to include")
+    # New fields for source control
+    campaign_context: Optional[str] = Field(None, description="Pre-built campaign content context")
+    include_wiki_knowledge: bool = Field(True, description="Whether to include wiki RAG")
+    enabled_wiki_sources: Optional[list[str]] = Field(None, description="List of wiki source slugs to search (e.g., ['eberron', 'forgotten-realms'])")
 
 
 class RAGSource(BaseModel):
@@ -79,7 +84,7 @@ CHAT_SYSTEM_PROMPT = """You are a knowledgeable tabletop RPG game master assista
 
 async def get_rag_context(query: str, setting_slug: str, max_chunks: int = 5) -> tuple[str, list[RAGSource]]:
     """
-    Get RAG context from the wiki knowledge base.
+    Get RAG context from the wiki knowledge base for a single setting.
 
     Returns a tuple of (context_text, sources).
     """
@@ -116,13 +121,75 @@ async def get_rag_context(query: str, setting_slug: str, max_chunks: int = 5) ->
         return "", []
 
 
+async def get_rag_context_multi(query: str, setting_slugs: list[str], max_chunks: int = 5) -> tuple[str, list[RAGSource]]:
+    """
+    Get RAG context from multiple wiki knowledge bases.
+
+    Searches across all specified settings and returns the most relevant results.
+    Returns a tuple of (context_text, sources).
+    """
+    if not setting_slugs:
+        return "", []
+
+    # Import here to avoid circular imports
+    try:
+        from app.wiki_rag.rag_service import RAGService
+
+        rag_service = RAGService()
+
+        # Search across all specified settings
+        all_results = []
+        for slug in setting_slugs:
+            try:
+                results = await rag_service.search_setting_knowledge(
+                    setting_slug=slug,
+                    query=query,
+                    limit=max_chunks  # Get max_chunks per source, then we'll take top overall
+                )
+                if results:
+                    # Tag results with their source setting
+                    for r in results:
+                        r['setting_slug'] = slug
+                    all_results.extend(results)
+            except Exception as e:
+                logger.warning(f"Failed to search setting {slug}: {e}")
+                continue
+
+        if not all_results:
+            return "", []
+
+        # Sort by similarity and take top max_chunks
+        all_results.sort(key=lambda x: x.get('similarity', 0), reverse=True)
+        top_results = all_results[:max_chunks]
+
+        # Build context text and sources
+        context_parts = []
+        sources = []
+
+        for result in top_results:
+            setting_name = result.get('setting_slug', '').replace('-', ' ').title()
+            context_parts.append(f"### {result.get('page_title', 'Unknown')} ({setting_name})\n{result.get('content', '')}")
+            sources.append(RAGSource(
+                page_title=f"{result.get('page_title', 'Unknown')} ({setting_name})",
+                source_url=result.get('source_url'),
+                similarity=result.get('similarity', 0.0)
+            ))
+
+        return "\n\n".join(context_parts), sources
+
+    except Exception as e:
+        logger.warning(f"Failed to get multi-source RAG context: {e}")
+        return "", []
+
+
 def build_system_prompt(
     campaign_name: Optional[str],
     campaign_system: Optional[str],
     campaign_theme: Optional[str],
     campaign_tone: Optional[str],
     setting_context: str,
-    setting_name: str
+    setting_name: str,
+    campaign_content_context: Optional[str] = None
 ) -> str:
     """Build the system prompt with campaign and setting context."""
     campaign_section = ""
@@ -139,6 +206,15 @@ def build_system_prompt(
     if campaign_parts:
         campaign_section = f"""## Campaign Context
 {chr(10).join(campaign_parts)}"""
+
+    # Add campaign content context if provided
+    if campaign_content_context:
+        campaign_section += f"""
+
+## Campaign Content
+The following is relevant content from this specific campaign:
+
+{campaign_content_context}"""
 
     setting_section = ""
     if setting_context:
@@ -182,35 +258,52 @@ async def session_chat(request: SessionChatRequest) -> SessionChatResponse:
     Generate a chat response with RAG context from campaign settings.
 
     Flow:
-    1. Get RAG context for the user message (if setting is specified)
+    1. Get RAG context for the user message (if wiki sources are specified and wiki knowledge enabled)
     2. Build system prompt with campaign context + RAG knowledge
     3. Generate response using configured AI provider
     4. Return response with source citations
     """
-    logger.info(f"Session chat request for campaign {request.campaign_id}")
+    logger.info(f"Session chat request for campaign {request.campaign_id}, conversation {request.conversation_id}")
 
-    # Get RAG context if a setting is specified
+    # Get RAG context if wiki knowledge is enabled
     rag_context = ""
     rag_sources: list[RAGSource] = []
-    setting_name = "General"
+    setting_name = "Wiki Sources"
 
-    if request.setting_slug:
-        setting_name = request.setting_slug.replace("-", " ").title()
-        rag_context, rag_sources = await get_rag_context(
-            query=request.message,
-            setting_slug=request.setting_slug,
-            max_chunks=request.max_context_chunks
-        )
-        logger.info(f"Retrieved {len(rag_sources)} RAG sources for setting {request.setting_slug}")
+    if request.include_wiki_knowledge:
+        # Use enabled_wiki_sources if provided, otherwise fall back to setting_slug for backwards compatibility
+        if request.enabled_wiki_sources and len(request.enabled_wiki_sources) > 0:
+            # Multi-source search
+            setting_name = ", ".join([s.replace("-", " ").title() for s in request.enabled_wiki_sources])
+            rag_context, rag_sources = await get_rag_context_multi(
+                query=request.message,
+                setting_slugs=request.enabled_wiki_sources,
+                max_chunks=request.max_context_chunks
+            )
+            logger.info(f"Retrieved {len(rag_sources)} RAG sources from {len(request.enabled_wiki_sources)} settings: {request.enabled_wiki_sources}")
+        elif request.setting_slug:
+            # Legacy single-source search
+            setting_name = request.setting_slug.replace("-", " ").title()
+            rag_context, rag_sources = await get_rag_context(
+                query=request.message,
+                setting_slug=request.setting_slug,
+                max_chunks=request.max_context_chunks
+            )
+            logger.info(f"Retrieved {len(rag_sources)} RAG sources for setting {request.setting_slug}")
+        else:
+            logger.info("Wiki knowledge enabled but no sources specified, skipping RAG")
+    else:
+        logger.info("Wiki knowledge disabled, skipping RAG")
 
-    # Build system prompt with campaign info
+    # Build system prompt with campaign info and optional campaign content
     system_prompt = build_system_prompt(
         campaign_name=request.campaign_name,
         campaign_system=request.campaign_system,
         campaign_theme=request.campaign_theme,
         campaign_tone=request.campaign_tone,
         setting_context=rag_context,
-        setting_name=setting_name
+        setting_name=setting_name,
+        campaign_content_context=request.campaign_context
     )
 
     # Build conversation prompt with history

@@ -587,3 +587,635 @@ func (h *CombatHandler) RemoveCondition(c *gin.Context) {
 		h.logger,
 	)
 }
+
+// ============================================================================
+// CAMPAIGN-LINKED COMBAT HANDLERS
+// ============================================================================
+
+// Request/Response types for campaign combat
+
+type CreateCampaignCombatRequest struct {
+	Name           string  `json:"name" binding:"required"`
+	Difficulty     *string `json:"difficulty,omitempty"`
+	Environment    *string `json:"environment,omitempty"`
+	Notes          *string `json:"notes,omitempty"`
+	VisibilityMode *string `json:"visibility_mode,omitempty"` // 'full' or 'gm_controlled'
+}
+
+type CombatSettingsRequest struct {
+	DefaultVisibility   *string `json:"default_visibility,omitempty"`
+	AllowPlayerSelfJoin *bool   `json:"allow_player_self_join,omitempty"`
+	AutoRollInitiative  *bool   `json:"auto_roll_initiative,omitempty"`
+	ShowMonsterNames    *bool   `json:"show_monster_names,omitempty"`
+	ShowMonsterHP       *bool   `json:"show_monster_hp,omitempty"`
+}
+
+type JoinCombatRequest struct {
+	CharacterID string `json:"character_id" binding:"required"`
+	Initiative  int    `json:"initiative" binding:"required"`
+}
+
+// CreateCampaignCombat starts a new combat encounter linked to a campaign
+// POST /api/v1/campaigns/:campaignId/combat
+func (h *CombatHandler) CreateCampaignCombat(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	campaignID := c.Param("id")
+
+	// Verify campaign ownership
+	campaign, err := h.db.GetCampaignByID(c.Request.Context(), campaignID)
+	if err != nil {
+		h.logger.Error("Failed to get campaign", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
+		return
+	}
+
+	if campaign.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	var req CreateCampaignCombatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get or create a session for this combat
+	// We need a session_id for backwards compatibility
+	sessions, err := h.db.ListSessionsByCampaignID(c.Request.Context(), campaignID)
+	if err != nil {
+		h.logger.Error("Failed to list sessions", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get sessions"})
+		return
+	}
+
+	var sessionID string
+	for _, s := range sessions {
+		if s.Status == "active" {
+			sessionID = s.ID
+			break
+		}
+	}
+
+	// Create a session if none exists
+	if sessionID == "" {
+		session := &db.Session{
+			CampaignID: campaignID,
+			UserID:     userID,
+			Name:       "Combat Session - " + time.Now().Format("2006-01-02"),
+			Status:     "active",
+			CreatedAt:  time.Now(),
+		}
+		if err := h.db.CreateSession(c.Request.Context(), session); err != nil {
+			h.logger.Error("Failed to create session", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create session"})
+			return
+		}
+		sessionID = session.ID
+	}
+
+	visibilityMode := "full"
+	if req.VisibilityMode != nil {
+		visibilityMode = *req.VisibilityMode
+	}
+
+	combat := &db.CombatEncounter{
+		SessionID:      sessionID,
+		CampaignID:     &campaignID,
+		Name:           req.Name,
+		CurrentRound:   0,
+		CurrentTurn:    0,
+		Status:         "active",
+		Difficulty:     req.Difficulty,
+		Environment:    req.Environment,
+		Notes:          req.Notes,
+		VisibilityMode: visibilityMode,
+		IsActive:       true,
+		CreatedAt:      time.Now(),
+	}
+
+	if err := h.db.CreateCombatEncounter(c.Request.Context(), combat); err != nil {
+		h.logger.Error("Failed to create combat encounter", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create combat"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"combat": combat})
+}
+
+// GetActiveCampaignCombat retrieves the active combat for a campaign
+// GET /api/v1/campaigns/:campaignId/combat/active
+func (h *CombatHandler) GetActiveCampaignCombat(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	campaignID := c.Param("id")
+
+	// Check if user has access to this campaign (either as GM or player)
+	campaign, err := h.db.GetCampaignByID(c.Request.Context(), campaignID)
+	if err != nil {
+		h.logger.Error("Failed to get campaign", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
+		return
+	}
+
+	isGM := campaign.UserID == userID
+
+	// Check if user is a member of the campaign
+	if !isGM {
+		members, err := h.db.ListCampaignMembers(c.Request.Context(), campaignID)
+		if err != nil {
+			h.logger.Error("Failed to list campaign members", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check access"})
+			return
+		}
+
+		isMember := false
+		for _, m := range members {
+			if m.UserID == userID {
+				isMember = true
+				break
+			}
+		}
+
+		if !isMember {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+	}
+
+	combat, err := h.db.GetActiveCombatByCampaignID(c.Request.Context(), campaignID)
+	if err != nil {
+		// No active combat is not an error
+		c.JSON(http.StatusOK, gin.H{"combat": nil, "is_gm": isGM})
+		return
+	}
+
+	// Get participants based on role
+	var participants []*db.CombatParticipant
+	if isGM {
+		participants, err = h.db.ListCombatParticipants(c.Request.Context(), combat.ID)
+	} else {
+		participants, err = h.db.ListVisibleParticipants(c.Request.Context(), combat.ID)
+	}
+
+	if err != nil {
+		h.logger.Error("Failed to get participants", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get participants"})
+		return
+	}
+
+	// For players in gm_controlled mode, filter HP/conditions based on visibility
+	if !isGM && combat.VisibilityMode == "gm_controlled" {
+		for _, p := range participants {
+			if !p.ShowHPToPlayers {
+				p.CurrentHP = 0
+				p.MaxHP = 0
+				p.TempHP = 0
+			}
+			if !p.ShowConditionsToPlayers {
+				p.Conditions = nil
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"combat":       combat,
+		"participants": participants,
+		"is_gm":        isGM,
+	})
+}
+
+// JoinCombat allows a player to join an active combat
+// POST /api/v1/combat/:id/join
+func (h *CombatHandler) JoinCombat(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	combatID := c.Param("id")
+
+	combat, err := h.db.GetCombatEncounterByID(c.Request.Context(), combatID)
+	if err != nil {
+		h.logger.Error("Failed to get combat", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "combat not found"})
+		return
+	}
+
+	if combat.CampaignID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "combat is not campaign-linked"})
+		return
+	}
+
+	// Check combat settings for self-join
+	settings, err := h.db.GetCombatSettings(c.Request.Context(), *combat.CampaignID)
+	if err == nil && !settings.AllowPlayerSelfJoin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "player self-join is disabled"})
+		return
+	}
+
+	var req JoinCombatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify character ownership
+	character, err := h.db.GetCharacterByID(c.Request.Context(), req.CharacterID)
+	if err != nil {
+		h.logger.Error("Failed to get character", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "character not found"})
+		return
+	}
+
+	if character.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not your character"})
+		return
+	}
+
+	// Check if already in combat
+	existing, _ := h.db.GetParticipantByCharacterID(c.Request.Context(), combatID, req.CharacterID)
+	if existing != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "character already in combat", "participant": existing})
+		return
+	}
+
+	participant := &db.CombatParticipant{
+		CombatID:                combatID,
+		ParticipantType:         "pc",
+		CharacterID:             &req.CharacterID,
+		OwnerUserID:             &userID,
+		Name:                    character.Name,
+		MaxHP:                   character.MaxHitPoints,
+		AC:                      character.ArmorClass,
+		Initiative:              req.Initiative,
+		InitiativeBonus:         0, // Could calculate from DEX
+		CurrentHP:               character.MaxHitPoints,
+		TempHP:                  0,
+		IsSurprised:             false,
+		HasReaction:             true,
+		IsVisibleToPlayers:      true,
+		ShowHPToPlayers:         true,
+		ShowConditionsToPlayers: true,
+	}
+
+	if err := h.db.CreateCombatParticipant(c.Request.Context(), participant); err != nil {
+		h.logger.Error("Failed to add participant", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to join combat"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"participant": participant})
+}
+
+// GetCombatSettings retrieves combat settings for a campaign
+// GET /api/v1/campaigns/:campaignId/combat-settings
+func (h *CombatHandler) GetCombatSettings(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	campaignID := c.Param("id")
+
+	// Verify campaign ownership
+	campaign, err := h.db.GetCampaignByID(c.Request.Context(), campaignID)
+	if err != nil {
+		h.logger.Error("Failed to get campaign", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
+		return
+	}
+
+	if campaign.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	settings, err := h.db.GetCombatSettings(c.Request.Context(), campaignID)
+	if err != nil {
+		// Return defaults if no settings exist
+		c.JSON(http.StatusOK, gin.H{"settings": db.CombatSettings{
+			CampaignID:          campaignID,
+			DefaultVisibility:   "full",
+			AllowPlayerSelfJoin: true,
+			AutoRollInitiative:  false,
+			ShowMonsterNames:    true,
+			ShowMonsterHP:       true,
+		}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"settings": settings})
+}
+
+// UpdateCombatSettings updates combat settings for a campaign
+// PUT /api/v1/campaigns/:campaignId/combat-settings
+func (h *CombatHandler) UpdateCombatSettings(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	campaignID := c.Param("id")
+
+	// Verify campaign ownership
+	campaign, err := h.db.GetCampaignByID(c.Request.Context(), campaignID)
+	if err != nil {
+		h.logger.Error("Failed to get campaign", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
+		return
+	}
+
+	if campaign.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	var req CombatSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get existing or create new
+	settings, err := h.db.GetCombatSettings(c.Request.Context(), campaignID)
+	if err != nil {
+		settings = &db.CombatSettings{
+			CampaignID:          campaignID,
+			DefaultVisibility:   "full",
+			AllowPlayerSelfJoin: true,
+			AutoRollInitiative:  false,
+			ShowMonsterNames:    true,
+			ShowMonsterHP:       true,
+			CreatedAt:           time.Now(),
+		}
+	}
+
+	// Update fields
+	if req.DefaultVisibility != nil {
+		settings.DefaultVisibility = *req.DefaultVisibility
+	}
+	if req.AllowPlayerSelfJoin != nil {
+		settings.AllowPlayerSelfJoin = *req.AllowPlayerSelfJoin
+	}
+	if req.AutoRollInitiative != nil {
+		settings.AutoRollInitiative = *req.AutoRollInitiative
+	}
+	if req.ShowMonsterNames != nil {
+		settings.ShowMonsterNames = *req.ShowMonsterNames
+	}
+	if req.ShowMonsterHP != nil {
+		settings.ShowMonsterHP = *req.ShowMonsterHP
+	}
+
+	settings.UpdatedAt = time.Now()
+
+	if err := h.db.UpsertCombatSettings(c.Request.Context(), settings); err != nil {
+		h.logger.Error("Failed to update combat settings", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update settings"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"settings": settings})
+}
+
+// ImportPartyRequest allows specifying which members to import and their initiatives
+type ImportPartyRequest struct {
+	Members []PartyMemberImport `json:"members"`
+}
+
+type PartyMemberImport struct {
+	CharacterID string `json:"character_id" binding:"required"`
+	Initiative  int    `json:"initiative" binding:"required"`
+}
+
+// ImportParty adds party members to combat as participants
+// POST /api/v1/combat/:id/import-party
+func (h *CombatHandler) ImportParty(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	combatID := c.Param("id")
+
+	combat, err := h.db.GetCombatEncounterByID(c.Request.Context(), combatID)
+	if err != nil {
+		h.logger.Error("Failed to get combat", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "combat not found"})
+		return
+	}
+
+	if combat.CampaignID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "combat is not campaign-linked"})
+		return
+	}
+
+	// Verify GM ownership
+	campaign, err := h.db.GetCampaignByID(c.Request.Context(), *combat.CampaignID)
+	if err != nil {
+		h.logger.Error("Failed to get campaign", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
+		return
+	}
+
+	if campaign.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only the GM can import party members"})
+		return
+	}
+
+	var req ImportPartyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get campaign members
+	members, err := h.db.ListCampaignMembers(c.Request.Context(), *combat.CampaignID)
+	if err != nil {
+		h.logger.Error("Failed to list campaign members", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get party members"})
+		return
+	}
+
+	// Build lookup of member character IDs to user IDs
+	memberCharacterToUser := make(map[string]string)
+	for _, m := range members {
+		if m.CharacterID != nil {
+			memberCharacterToUser[*m.CharacterID] = m.UserID
+		}
+	}
+
+	imported := []*db.CombatParticipant{}
+	skipped := []string{}
+
+	for _, memberReq := range req.Members {
+		// Check if already in combat
+		existing, _ := h.db.GetParticipantByCharacterID(c.Request.Context(), combatID, memberReq.CharacterID)
+		if existing != nil {
+			skipped = append(skipped, memberReq.CharacterID+" (already in combat)")
+			continue
+		}
+
+		// Get character
+		character, err := h.db.GetCharacterByID(c.Request.Context(), memberReq.CharacterID)
+		if err != nil {
+			h.logger.Warn("Failed to get character", zap.String("character_id", memberReq.CharacterID), zap.Error(err))
+			skipped = append(skipped, memberReq.CharacterID+" (character not found)")
+			continue
+		}
+
+		// Get owner user ID if this is a campaign member's character
+		var ownerUserID *string
+		if uid, ok := memberCharacterToUser[memberReq.CharacterID]; ok {
+			ownerUserID = &uid
+		}
+
+		participant := &db.CombatParticipant{
+			CombatID:                combatID,
+			ParticipantType:         "pc",
+			CharacterID:             &memberReq.CharacterID,
+			OwnerUserID:             ownerUserID,
+			Name:                    character.Name,
+			MaxHP:                   character.MaxHitPoints,
+			CurrentHP:               character.MaxHitPoints,
+			TempHP:                  0,
+			AC:                      character.ArmorClass,
+			Initiative:              memberReq.Initiative,
+			InitiativeBonus:         character.Initiative,
+			IsSurprised:             false,
+			HasReaction:             true,
+			IsVisibleToPlayers:      true,
+			ShowHPToPlayers:         true,
+			ShowConditionsToPlayers: true,
+		}
+
+		if err := h.db.CreateCombatParticipant(c.Request.Context(), participant); err != nil {
+			h.logger.Error("Failed to create participant", zap.Error(err))
+			skipped = append(skipped, character.Name+" (failed to add)")
+			continue
+		}
+
+		imported = append(imported, participant)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"imported": imported,
+		"skipped":  skipped,
+	})
+}
+
+// GetPartyForCombat returns campaign members that can be imported to combat
+// GET /api/v1/combat/:id/party
+func (h *CombatHandler) GetPartyForCombat(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	combatID := c.Param("id")
+
+	combat, err := h.db.GetCombatEncounterByID(c.Request.Context(), combatID)
+	if err != nil {
+		h.logger.Error("Failed to get combat", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "combat not found"})
+		return
+	}
+
+	if combat.CampaignID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "combat is not campaign-linked"})
+		return
+	}
+
+	// Verify GM ownership
+	campaign, err := h.db.GetCampaignByID(c.Request.Context(), *combat.CampaignID)
+	if err != nil {
+		h.logger.Error("Failed to get campaign", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
+		return
+	}
+
+	if campaign.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only the GM can view party members for import"})
+		return
+	}
+
+	// Get campaign members
+	members, err := h.db.ListCampaignMembers(c.Request.Context(), *combat.CampaignID)
+	if err != nil {
+		h.logger.Error("Failed to list campaign members", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get party members"})
+		return
+	}
+
+	// Get existing participants to mark who is already in combat
+	existingParticipants, err := h.db.ListCombatParticipants(c.Request.Context(), combatID)
+	if err != nil {
+		h.logger.Error("Failed to list participants", zap.Error(err))
+		existingParticipants = []*db.CombatParticipant{}
+	}
+
+	existingCharacterIDs := make(map[string]bool)
+	for _, p := range existingParticipants {
+		if p.CharacterID != nil {
+			existingCharacterIDs[*p.CharacterID] = true
+		}
+	}
+
+	type PartyMember struct {
+		CharacterID     string `json:"character_id"`
+		CharacterName   string `json:"character_name"`
+		PlayerName      string `json:"player_name"`
+		MaxHP           int    `json:"max_hp"`
+		AC              int    `json:"ac"`
+		InitiativeBonus int    `json:"initiative_bonus"`
+		AlreadyInCombat bool   `json:"already_in_combat"`
+	}
+
+	partyMembers := []PartyMember{}
+
+	for _, m := range members {
+		if m.CharacterID == nil {
+			continue
+		}
+
+		character, err := h.db.GetCharacterByID(c.Request.Context(), *m.CharacterID)
+		if err != nil {
+			continue
+		}
+
+		user, _ := h.db.GetUserByID(c.Request.Context(), m.UserID)
+		playerName := "Unknown Player"
+		if user != nil && user.DisplayName != nil {
+			playerName = *user.DisplayName
+		} else if user != nil {
+			playerName = user.Username
+		}
+
+		partyMembers = append(partyMembers, PartyMember{
+			CharacterID:     *m.CharacterID,
+			CharacterName:   character.Name,
+			PlayerName:      playerName,
+			MaxHP:           character.MaxHitPoints,
+			AC:              character.ArmorClass,
+			InitiativeBonus: character.Initiative,
+			AlreadyInCombat: existingCharacterIDs[*m.CharacterID],
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"party": partyMembers})
+}

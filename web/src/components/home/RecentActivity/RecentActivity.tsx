@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useCampaignStore } from '../../../store/campaignStore'
-import { useContainerStore } from '../../../store/containerStore'
 import ActivityItem from './ActivityItem'
 import Icon from '../../common/Icon'
 import { logger } from '@/utils/logger'
@@ -11,7 +11,7 @@ interface RecentActivityProps {
 
 export default function RecentActivity({ campaignId }: RecentActivityProps) {
   const { recentActivity, activityLoading, fetchRecentActivity } = useCampaignStore()
-  const { openContainer } = useContainerStore()
+  const navigate = useNavigate()
 
   useEffect(() => {
     logger.debug('RecentActivity mounting, fetching for campaign:', campaignId)
@@ -24,11 +24,7 @@ export default function RecentActivity({ campaignId }: RecentActivityProps) {
   }
 
   const handleViewAll = () => {
-    openContainer({
-      type: 'internal',
-      tool: 'saved',
-      title: 'Saved Content',
-    })
+    navigate('/dashboard/gm/saved')
   }
 
   if (activityLoading) {

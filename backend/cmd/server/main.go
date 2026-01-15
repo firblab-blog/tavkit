@@ -60,9 +60,12 @@ func main() {
 
 	// Initialize database based on type
 	var database db.Database
+	logger.Info("Initializing database", zap.String("type", cfg.Database.Type), zap.String("path", cfg.Database.Path))
 	if cfg.Database.Type == "sqlite" {
+		logger.Info("Using SQLite database")
 		database, err = db.NewSQLiteDB(cfg.Database.Path)
 	} else {
+		logger.Info("Using PostgreSQL database", zap.String("host", cfg.Database.Host))
 		database, err = db.NewPostgresDB(cfg.Database)
 	}
 	if err != nil {
@@ -218,10 +221,6 @@ func createDefaultAdminIfNeeded(database db.Database, logger *zap.Logger) error 
 
 	// Hash the password using Argon2 (same as auth handler)
 	hasher := auth.NewPasswordHasher()
-	logger.Debug("Admin password setup",
-		zap.String("password", adminPassword),
-		zap.Int("password_length", len(adminPassword)),
-	)
 	hashedPassword, err := hasher.HashPassword(adminPassword)
 	if err != nil {
 		return fmt.Errorf("failed to hash admin password: %w", err)
@@ -244,7 +243,6 @@ func createDefaultAdminIfNeeded(database db.Database, logger *zap.Logger) error 
 	logger.Info("Created default admin user",
 		zap.String("email", adminEmail),
 		zap.String("username", adminUsername),
-		zap.String("hash_preview", hashedPassword[:50]+"..."),
 	)
 	logger.Warn("⚠️  Default admin credentials are in use. Change them immediately in production!")
 

@@ -226,16 +226,25 @@ func (h *DialogueHandler) ListDialogues(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	dialogues, err := h.db.ListDialoguesByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list dialogues", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list dialogues"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Dialogue, 0)
+		for _, d := range dialogues {
+			if d.CampaignID == nil {
+				filtered = append(filtered, d)
+			}
+		}
+		dialogues = filtered
 	}
 
 	c.JSON(http.StatusOK, gin.H{"dialogues": dialogues})
@@ -249,6 +258,19 @@ func (h *DialogueHandler) DeleteDialogue(c *gin.Context) {
 		h.db.GetDialogueByID,
 		func(d *db.Dialogue) string { return d.UserID },
 		h.db.DeleteDialogue,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns a dialogue to a campaign or Personal Library
+func (h *DialogueHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"dialogue",
+		h.db.GetDialogueByID,
+		func(d *db.Dialogue) string { return d.UserID },
+		func(d *db.Dialogue, campaignID *string) { d.CampaignID = campaignID },
+		h.db.UpdateDialogue,
 		h.logger,
 	)
 }

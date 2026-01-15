@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import Icon, { IconName } from './common/Icon'
 import SavedContentDetail from './SavedContentDetail'
+import AssignCampaignModal from './common/AssignCampaignModal'
 import { useCampaignStore } from '../store/campaignStore'
+import { useUISettingsStore, type ContentType as UIContentType } from '../store/uiSettingsStore'
 import { apiClient } from '@/api/client'
 import { logger } from '@/utils/logger'
 
@@ -23,6 +25,7 @@ type ContentType =
 interface SavedNPC {
   id: string
   name: string
+  campaign_id?: string | null
   race?: string
   class?: string
   personality?: string
@@ -36,6 +39,7 @@ interface SavedNPC {
 interface SavedMonster {
   id: string
   name: string
+  campaign_id?: string | null
   cr: number
   stats?: any
   lore?: string
@@ -47,6 +51,7 @@ interface SavedMonster {
 interface SavedEncounter {
   id: string
   name?: string
+  campaign_id?: string | null
   difficulty: string
   party_level: number
   party_size: number
@@ -64,6 +69,7 @@ interface SavedEncounter {
 interface SavedDialogue {
   id: string
   character_name: string
+  campaign_id?: string | null
   scene_setting?: string
   mood?: string
   dialogue_tree?: any
@@ -77,6 +83,7 @@ interface SavedDialogue {
 interface SavedLocation {
   id: string
   name: string
+  campaign_id?: string | null
   type: string
   theme?: string
   description?: string
@@ -96,6 +103,7 @@ interface SavedLocation {
 interface SavedQuest {
   id: string
   title: string
+  campaign_id?: string | null
   type: string
   category?: string
   description?: string
@@ -119,6 +127,7 @@ interface SavedQuest {
 interface SavedItem {
   id: string
   name: string
+  campaign_id?: string | null
   type: string
   rarity?: string
   description?: string
@@ -136,6 +145,7 @@ interface SavedItem {
 interface SavedRumor {
   id: string
   text: string
+  campaign_id?: string | null
   source?: string
   veracity: string
   leads_to?: string
@@ -153,6 +163,7 @@ interface SavedRumor {
 interface SavedTavern {
   id: string
   name: string
+  campaign_id?: string | null
   type: string
   quality?: string
   size?: string
@@ -172,6 +183,7 @@ interface SavedTavern {
 interface SavedMerchant {
   id: string
   name: string
+  campaign_id?: string | null
   shop_type: string
   quality?: string
   size?: string
@@ -193,6 +205,7 @@ interface SavedMerchant {
 interface SavedTrap {
   id: string
   name: string
+  campaign_id?: string | null
   trap_type: string
   difficulty?: string
   party_level?: number
@@ -216,6 +229,7 @@ interface SavedTrap {
 interface SavedCritter {
   id: string
   name: string
+  campaign_id?: string | null
   species?: string
   critter_type: string
   size: string
@@ -240,6 +254,7 @@ interface SavedCritter {
 interface SavedChase {
   id: string
   name: string
+  campaign_id?: string | null
   chase_type: string
   terrain: string
   difficulty: string
@@ -281,11 +296,20 @@ export default function SavedContent() {
   const [error, setError] = useState('')
   const [selectedItem, setSelectedItem] = useState<any>(null)
 
+  // Assign campaign modal state
+  const [assignModalItem, setAssignModalItem] = useState<{
+    type: ContentType
+    id: string
+    name: string
+    currentCampaignId?: string | null
+  } | null>(null)
+
   // Mobile drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
   const { campaigns, fetchCampaigns } = useCampaignStore()
+  const librarySettings = useUISettingsStore((state) => state.librarySettings)
 
   // Fetch campaigns on mount
   useEffect(() => {
@@ -341,7 +365,13 @@ export default function SavedContent() {
 
     try {
       // Build URL with optional campaign_id query parameter
-      const url = selectedCampaignId ? `/${type}?campaign_id=${selectedCampaignId}` : `/${type}`
+      // "library" is a special value meaning campaign_id IS NULL (Personal Library)
+      let url = `/${type}`
+      if (selectedCampaignId === 'library') {
+        url = `/${type}?campaign_id=null`
+      } else if (selectedCampaignId) {
+        url = `/${type}?campaign_id=${selectedCampaignId}`
+      }
       const response = await apiClient.get(url)
       const data = response.data
 
@@ -413,7 +443,7 @@ export default function SavedContent() {
     fetchContent(activeTab)
   }, [activeTab, selectedCampaignId])
 
-  const tabs: { key: ContentType; label: string; iconName: IconName }[] = [
+  const allTabs: { key: ContentType; label: string; iconName: IconName }[] = [
     { key: 'npcs', label: 'NPCs', iconName: 'Users' },
     { key: 'monsters', label: 'Monsters', iconName: 'Shield' },
     { key: 'encounters', label: 'Encounters', iconName: 'Swords' },
@@ -428,6 +458,11 @@ export default function SavedContent() {
     { key: 'critters', label: 'Critters', iconName: 'Shield' },
     { key: 'chases', label: 'Chases', iconName: 'Sparkles' },
   ]
+
+  // Filter tabs based on library settings
+  const tabs = allTabs.filter(
+    (tab) => librarySettings.enabledContentTypes[tab.key as UIContentType]
+  )
 
   return (
     <>
@@ -520,24 +555,27 @@ export default function SavedContent() {
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-6">
-              {/* Campaign Filter */}
-              <div className="mb-6">
-                <label className="block text-tavern-mauve text-sm font-semibold mb-2">
-                  Filter by Campaign
-                </label>
-                <select
-                  value={selectedCampaignId}
-                  onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  className="w-full md:w-64 px-4 py-2 bg-background-panel border border-border rounded-lg text-tavern-cream focus:outline-none focus:border-tavern-purple transition-colors"
-                >
-                  <option value="">All Campaigns</option>
-                  {campaigns.map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Campaign Filter - conditionally rendered based on settings */}
+              {librarySettings.showCampaignFilter && (
+                <div className="mb-6">
+                  <label className="block text-tavern-mauve text-sm font-semibold mb-2">
+                    Filter by Campaign
+                  </label>
+                  <select
+                    value={selectedCampaignId}
+                    onChange={(e) => setSelectedCampaignId(e.target.value)}
+                    className="w-full md:w-64 px-4 py-2 bg-background-panel border border-border rounded-lg text-tavern-cream focus:outline-none focus:border-tavern-purple transition-colors"
+                  >
+                    <option value="">All Content</option>
+                    <option value="library">Personal Library (No Campaign)</option>
+                    {campaigns.map((campaign) => (
+                      <option key={campaign.id} value={campaign.id}>
+                        {campaign.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Error message */}
               {error && (
@@ -586,15 +624,32 @@ export default function SavedContent() {
                                   Created: {new Date(npc.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('npcs', npc.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'npcs',
+                                      id: npc.id,
+                                      name: npc.name,
+                                      currentCampaignId: npc.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('npcs', npc.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -624,15 +679,32 @@ export default function SavedContent() {
                                   Created: {new Date(monster.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('monsters', monster.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'monsters',
+                                      id: monster.id,
+                                      name: monster.name,
+                                      currentCampaignId: monster.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('monsters', monster.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -681,15 +753,32 @@ export default function SavedContent() {
                                   Created: {new Date(encounter.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('encounters', encounter.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'encounters',
+                                      id: encounter.id,
+                                      name: encounter.name || `${encounter.difficulty} Encounter`,
+                                      currentCampaignId: encounter.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('encounters', encounter.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -723,15 +812,32 @@ export default function SavedContent() {
                                   Created: {new Date(dialogue.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('dialogues', dialogue.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'dialogues',
+                                      id: dialogue.id,
+                                      name: dialogue.character_name,
+                                      currentCampaignId: dialogue.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('dialogues', dialogue.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -768,15 +874,32 @@ export default function SavedContent() {
                                   Created: {new Date(location.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('locations', location.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'locations',
+                                      id: location.id,
+                                      name: location.name,
+                                      currentCampaignId: location.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('locations', location.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -818,15 +941,32 @@ export default function SavedContent() {
                                   Created: {new Date(quest.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('quests', quest.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'quests',
+                                      id: quest.id,
+                                      name: quest.title,
+                                      currentCampaignId: quest.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('quests', quest.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -870,15 +1010,32 @@ export default function SavedContent() {
                                   Created: {new Date(item.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('items', item.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'items',
+                                      id: item.id,
+                                      name: item.name,
+                                      currentCampaignId: item.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('items', item.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -930,15 +1087,34 @@ export default function SavedContent() {
                                   Created: {new Date(rumor.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('rumors', rumor.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'rumors',
+                                      id: rumor.id,
+                                      name:
+                                        rumor.text.substring(0, 40) +
+                                        (rumor.text.length > 40 ? '...' : ''),
+                                      currentCampaignId: rumor.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('rumors', rumor.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -987,15 +1163,32 @@ export default function SavedContent() {
                                   Created: {new Date(tavern.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('taverns', tavern.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'taverns',
+                                      id: tavern.id,
+                                      name: tavern.name,
+                                      currentCampaignId: tavern.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('taverns', tavern.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -1051,15 +1244,32 @@ export default function SavedContent() {
                                   Created: {new Date(merchant.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('merchants', merchant.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'merchants',
+                                      id: merchant.id,
+                                      name: merchant.name,
+                                      currentCampaignId: merchant.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('merchants', merchant.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -1118,15 +1328,32 @@ export default function SavedContent() {
                                   Created: {new Date(trap.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('traps', trap.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'traps',
+                                      id: trap.id,
+                                      name: trap.name,
+                                      currentCampaignId: trap.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('traps', trap.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -1183,15 +1410,32 @@ export default function SavedContent() {
                                   Created: {new Date(critter.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('critters', critter.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'critters',
+                                      id: critter.id,
+                                      name: critter.name,
+                                      currentCampaignId: critter.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('critters', critter.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -1235,15 +1479,32 @@ export default function SavedContent() {
                                   Created: {new Date(chase.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete('chases', chase.id)
-                                }}
-                                className="text-red-400 hover:text-red-300 transition-colors p-2"
-                              >
-                                <Icon name="Trash2" className="w-5 h-5" />
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAssignModalItem({
+                                      type: 'chases',
+                                      id: chase.id,
+                                      name: chase.name,
+                                      currentCampaignId: chase.campaign_id,
+                                    })
+                                  }}
+                                  className="text-tavern-mauve hover:text-tavern-cream transition-colors p-2"
+                                  title="Assign to Campaign"
+                                >
+                                  <Icon name="FolderInput" className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete('chases', chase.id)
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-2"
+                                >
+                                  <Icon name="Trash2" className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -1263,6 +1524,19 @@ export default function SavedContent() {
           content={selectedItem}
           type={selectedItem.type}
           onClose={() => setSelectedItem(null)}
+        />
+      )}
+
+      {/* Assign Campaign Modal */}
+      {assignModalItem && (
+        <AssignCampaignModal
+          isOpen={true}
+          onClose={() => setAssignModalItem(null)}
+          contentType={assignModalItem.type}
+          contentId={assignModalItem.id}
+          contentName={assignModalItem.name}
+          currentCampaignId={assignModalItem.currentCampaignId}
+          onSuccess={() => fetchContent(activeTab)}
         />
       )}
     </>

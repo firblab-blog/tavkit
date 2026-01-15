@@ -18,9 +18,9 @@ help:
 	@echo ""
 	@echo "Docker:"
 	@echo "  make build         - Build all Docker images"
-	@echo "  make up            - Start core services (backend, AI, web) with SQLite"
-	@echo "  make up-ollama     - Start with Ollama (recommended for local testing)"
-	@echo "  make up-postgres   - Start with PostgreSQL database"
+	@echo "  make up            - Start services based on .env (auto-detects DB + AI provider)"
+	@echo "  make up-ollama     - Start with Ollama + SQLite"
+	@echo "  make up-postgres   - Start with PostgreSQL (no Ollama)"
 	@echo "  make up-full       - Start everything (Ollama + PostgreSQL)"
 	@echo "  make down          - Stop all services"
 	@echo "  make logs          - View logs"
@@ -81,17 +81,22 @@ up:
 	@echo "🚀 Starting services based on .env configuration..."
 	@PROFILES=""; \
 	if grep -q "^DB_TYPE=postgres" .env 2>/dev/null && grep -q "^DB_HOST=postgres" .env 2>/dev/null; then \
-		echo "📊 Detected bundled PostgreSQL (DB_HOST=postgres)"; \
+		echo "📊 PostgreSQL: bundled container"; \
 		PROFILES="$$PROFILES --profile postgres"; \
 	elif grep -q "^DB_TYPE=postgres" .env 2>/dev/null; then \
-		echo "📊 Detected external PostgreSQL (using existing database)"; \
+		echo "📊 PostgreSQL: external database"; \
+	else \
+		echo "💾 SQLite: local file database"; \
 	fi; \
-	if grep -q "^OLLAMA_BASE_URL=http://ollama:" .env 2>/dev/null; then \
-		echo "🤖 Detected containerized Ollama configuration"; \
+	if grep -q "^AI_PROVIDER=ollama" .env 2>/dev/null; then \
+		echo "🤖 Ollama: containerized (first run downloads model ~2GB)"; \
 		PROFILES="$$PROFILES --profile ollama"; \
-	fi; \
-	if [ -z "$$PROFILES" ]; then \
-		echo "💾 Using SQLite with external/cloud AI"; \
+	elif grep -q "^AI_PROVIDER=anthropic" .env 2>/dev/null; then \
+		echo "🤖 AI Provider: Anthropic Claude"; \
+	elif grep -q "^AI_PROVIDER=openai" .env 2>/dev/null; then \
+		echo "🤖 AI Provider: OpenAI"; \
+	else \
+		echo "🤖 AI Provider: none configured"; \
 	fi; \
 	$(DOCKER_COMPOSE) $$PROFILES up -d
 
@@ -222,4 +227,3 @@ version:
 visualize:
 	@echo "Generating architecture diagrams..."
 	@./scripts/generate-visualizations.sh
-

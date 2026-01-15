@@ -1,160 +1,88 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import Icon from '../common/Icon'
-import { useCampaignStore } from '../../store/campaignStore'
-import { authFetch } from '@/utils/authFetch'
-import { logger } from '@/utils/logger'
+import { useSessionChat, type ChatMessage } from '../../hooks/useSessionChat'
+import ConversationList from './ConversationList'
+import ChatSourceModal from './ChatSourceModal'
 
-interface ChatMessage {
-  id: string
-  campaign_id: string
-  user_id: string
-  role: 'user' | 'assistant'
-  content: string
-  rag_sources?: RAGSource[]
-  created_at: string
-}
-
-interface RAGSource {
-  page_title: string
-  source_url: string
-  similarity: number
-}
+type SidebarTab = 'history' | 'options'
 
 export default function SessionChat() {
-  const activeCampaign = useCampaignStore((state) => state.getActiveCampaign())
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [inputValue, setInputValue] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const {
+    activeCampaign,
+    messages,
+    inputValue,
+    setInputValue,
+    isLoading,
+    isLoadingHistory,
+    error,
+    messagesEndRef,
+    inputRef,
+    conversations,
+    activeConversationId,
+    loadingConversations,
+    sourcePreferences,
+    sendMessage,
+    handleKeyDown,
+    createConversation,
+    deleteConversation,
+    renameConversation,
+    savePreferences,
+    selectConversation,
+  } = useSessionChat()
 
-  // Scroll to bottom when messages change
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  // Mobile drawer state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Sidebar tab state
+  const [activeTab, setActiveTab] = useState<SidebarTab>('history')
+
+  // Source preferences modal state
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false)
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // Close drawer when switching to desktop
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, scrollToBottom])
+    if (!isMobile) {
+      setIsDrawerOpen(false)
+    }
+  }, [isMobile])
 
-  // Load chat history when campaign changes
+  // Prevent body scroll when drawer open on mobile
   useEffect(() => {
-    const loadChatHistory = async () => {
-      if (!activeCampaign?.id) {
-        setMessages([])
-        setIsLoadingHistory(false)
-        return
-      }
+    if (isMobile && isDrawerOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
 
-      setIsLoadingHistory(true)
-      try {
-        const response = await authFetch(`/api/v1/chat/history/${activeCampaign.id}`)
-        if (response.ok) {
-          const data = await response.json()
-          // Parse RAG sources from JSON strings if needed
-          const parsedMessages = (data.messages || []).map((msg: ChatMessage) => ({
-            ...msg,
-            rag_sources: msg.rag_sources
-              ? typeof msg.rag_sources === 'string'
-                ? JSON.parse(msg.rag_sources)
-                : msg.rag_sources
-              : undefined,
-          }))
-          setMessages(parsedMessages)
-        } else if (response.status !== 404) {
-          logger.error('Failed to load chat history:', response.status)
-        }
-      } catch (err) {
-        logger.error('Error loading chat history:', err)
-      } finally {
-        setIsLoadingHistory(false)
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isMobile, isDrawerOpen])
+
+  // Handle Escape key to close drawer
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDrawerOpen) {
+        setIsDrawerOpen(false)
       }
     }
 
-    loadChatHistory()
-  }, [activeCampaign?.id])
-
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || !activeCampaign?.id || isLoading) return
-
-    const userMessage = inputValue.trim()
-    setInputValue('')
-    setError(null)
-
-    // Optimistically add user message
-    const tempUserMessage: ChatMessage = {
-      id: `temp-${Date.now()}`,
-      campaign_id: activeCampaign.id,
-      user_id: '',
-      role: 'user',
-      content: userMessage,
-      created_at: new Date().toISOString(),
-    }
-    setMessages((prev) => [...prev, tempUserMessage])
-
-    setIsLoading(true)
-    try {
-      const response = await authFetch('/api/v1/chat/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage,
-          campaign_id: activeCampaign.id,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to send message')
-      }
-
-      const data = await response.json()
-
-      // Add assistant response
-      const assistantMessage: ChatMessage = {
-        id: data.message_id || `assistant-${Date.now()}`,
-        campaign_id: activeCampaign.id,
-        user_id: '',
-        role: 'assistant',
-        content: data.response,
-        rag_sources: data.rag_sources,
-        created_at: new Date().toISOString(),
-      }
-      setMessages((prev) => [...prev, assistantMessage])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send message')
-      // Remove the optimistic user message on error
-      setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id))
-    } finally {
-      setIsLoading(false)
-      inputRef.current?.focus()
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
-  }
-
-  const handleClearChat = async () => {
-    if (!activeCampaign?.id) return
-    if (!confirm('Are you sure you want to clear all chat history for this campaign?')) return
-
-    try {
-      const response = await authFetch(`/api/v1/chat/history/${activeCampaign.id}`, {
-        method: 'DELETE',
-      })
-      if (response.ok) {
-        setMessages([])
-      }
-    } catch (err) {
-      logger.error('Failed to clear chat history:', err)
-    }
-  }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isDrawerOpen])
 
   if (!activeCampaign) {
     return (
@@ -169,149 +97,306 @@ export default function SessionChat() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-background overflow-x-hidden">
       {/* Header */}
-      <div className="flex-none p-4 border-b border-border bg-background-panel">
+      <div className="flex-shrink-0 border-b border-border bg-background-panel px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Icon name="MessageSquare" className="w-6 h-6 text-primary" />
+            {/* Mobile Menu Button */}
+            {isMobile && (
+              <button
+                onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+                className="p-2 hover:bg-tavern-dark rounded transition-colors lg:hidden"
+                aria-label="Open navigation menu"
+                aria-expanded={isDrawerOpen}
+              >
+                <svg
+                  className="w-6 h-6 text-text"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </button>
+            )}
             <div>
-              <h2 className="text-lg font-bold text-text">Session Chat</h2>
-              <p className="text-sm text-text-muted">{activeCampaign.name}</p>
+              <h1 className="text-2xl font-bold text-text flex items-center gap-2">
+                <Icon name="MessageSquare" className="w-8 h-8 text-primary" />
+                Session Chat
+              </h1>
+              <p className="text-sm text-text-muted mt-1">{activeCampaign.name}</p>
             </div>
           </div>
           <button
-            onClick={handleClearChat}
-            className="p-2 hover:bg-background rounded-lg transition-colors text-text-muted hover:text-text"
-            title="Clear chat history"
+            onClick={() => setIsSourceModalOpen(true)}
+            className="p-2 hover:bg-tavern-dark rounded-lg transition-colors text-text-muted hover:text-text"
+            title="Chat source preferences"
           >
-            <Icon name="Trash2" className="w-5 h-5" />
+            <Icon name="Settings" className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {isLoadingHistory ? (
-          <div className="flex items-center justify-center h-full">
-            <Icon name="Loader2" className="w-8 h-8 text-primary animate-spin" />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-md">
-              <Icon name="Sparkles" className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-text mb-2">Start a Conversation</h3>
-              <p className="text-text-muted text-sm">
-                Ask questions about your campaign setting, get suggestions for encounters, or
-                brainstorm plot ideas. The AI will use knowledge from your campaign context.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] ${
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
-                      : 'bg-background-panel border border-border rounded-2xl rounded-bl-md'
-                  } p-4`}
-                >
-                  <div
-                    className={`whitespace-pre-wrap ${message.role === 'assistant' ? 'text-text' : ''}`}
-                  >
-                    {message.content}
-                  </div>
+      {/* Content */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Backdrop - Mobile only */}
+        {isMobile && isDrawerOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 transition-opacity lg:hidden"
+            onClick={() => setIsDrawerOpen(false)}
+            aria-label="Close navigation"
+          />
+        )}
 
-                  {/* RAG Sources */}
-                  {message.role === 'assistant' &&
-                    message.rag_sources &&
-                    message.rag_sources.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border/50">
-                        <div className="flex items-center gap-1 text-xs text-text-muted mb-2">
-                          <Icon name="BookOpen" className="w-3 h-3" />
-                          <span>Sources</span>
-                        </div>
-                        <div className="space-y-1">
-                          {message.rag_sources.map((source, idx) => (
-                            <a
-                              key={idx}
-                              href={source.source_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block text-xs text-primary hover:underline"
-                            >
-                              {source.page_title}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+        {/* Sidebar */}
+        <aside
+          className={`
+            ${isMobile ? 'fixed top-0 left-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out' : 'w-64 flex-shrink-0'}
+            ${isMobile && !isDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
+            border-r border-border bg-background-panel overflow-hidden flex flex-col
+          `}
+          role="navigation"
+          aria-label="Chat options"
+        >
+          {/* Tab bar */}
+          <div className="flex border-b border-border">
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'history'
+                  ? 'text-primary border-b-2 border-primary bg-primary/5'
+                  : 'text-text-muted hover:text-text hover:bg-tavern-dark'
+              }`}
+            >
+              <Icon name="History" className="w-4 h-4 inline mr-1.5" />
+              History
+            </button>
+            <button
+              onClick={() => setActiveTab('options')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'options'
+                  ? 'text-primary border-b-2 border-primary bg-primary/5'
+                  : 'text-text-muted hover:text-text hover:bg-tavern-dark'
+              }`}
+            >
+              <Icon name="Info" className="w-4 h-4 inline mr-1.5" />
+              Options
+            </button>
+          </div>
+
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {activeTab === 'history' ? (
+              <ConversationList
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                onSelectConversation={selectConversation}
+                onCreateConversation={createConversation}
+                onDeleteConversation={deleteConversation}
+                onRenameConversation={renameConversation}
+                loading={loadingConversations}
+              />
+            ) : (
+              <div className="space-y-4">
+                {/* Chat info */}
+                <div className="bg-background rounded-lg p-4 border border-border">
+                  <h3 className="text-sm font-semibold text-text mb-2 flex items-center gap-2">
+                    <Icon name="Info" className="w-4 h-4 text-primary" />
+                    About Session Chat
+                  </h3>
+                  <p className="text-xs text-text-muted">
+                    Ask questions about your campaign setting, get suggestions for encounters, or
+                    brainstorm plot ideas. The AI uses knowledge from your campaign context.
+                  </p>
                 </div>
-              </div>
-            ))}
 
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-background-panel border border-border rounded-2xl rounded-bl-md p-4">
-                  <div className="flex items-center gap-2 text-text-muted">
-                    <Icon name="Loader2" className="w-4 h-4 animate-spin" />
-                    <span>Thinking...</span>
-                  </div>
+                {/* Message count */}
+                <div className="bg-background rounded-lg p-4 border border-border">
+                  <h3 className="text-sm font-semibold text-text mb-2 flex items-center gap-2">
+                    <Icon name="MessageCircle" className="w-4 h-4 text-primary" />
+                    Conversation
+                  </h3>
+                  <p className="text-xs text-text-muted">
+                    {messages.length} message{messages.length !== 1 ? 's' : ''} in this session
+                  </p>
+                </div>
+
+                {/* Tips */}
+                <div className="bg-background rounded-lg p-4 border border-border">
+                  <h3 className="text-sm font-semibold text-text mb-2 flex items-center gap-2">
+                    <Icon name="Sparkles" className="w-4 h-4 text-primary" />
+                    Tips
+                  </h3>
+                  <ul className="text-xs text-text-muted space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      Ask about NPCs, locations, or lore from your campaign
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      Get encounter ideas tailored to your setting
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      Brainstorm plot hooks and quest ideas
+                    </li>
+                  </ul>
                 </div>
               </div>
             )}
+          </div>
+        </aside>
 
-            <div ref={messagesEndRef} />
-          </>
-        )}
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center h-full">
+                <Icon name="Loader2" className="w-8 h-8 text-primary animate-spin" />
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center max-w-md">
+                  <Icon name="Sparkles" className="w-12 h-12 text-primary mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-text mb-2">Start a Conversation</h3>
+                  <p className="text-text-muted text-sm">
+                    Ask questions about your campaign setting, get suggestions for encounters, or
+                    brainstorm plot ideas. The AI will use knowledge from your campaign context.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {messages.map((message) => (
+                  <MessageBubble key={message.id} message={message} />
+                ))}
+
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-background-panel border border-border rounded-2xl rounded-bl-md p-4">
+                      <div className="flex items-center gap-2 text-text-muted">
+                        <Icon name="Loader2" className="w-4 h-4 animate-spin" />
+                        <span>Thinking...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="flex-none px-4 py-2 bg-red-900/20 border-t border-red-900/50">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+
+          {/* Input area */}
+          <div className="flex-none p-4 border-t border-border bg-background-panel">
+            <div className="flex gap-3">
+              <textarea
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about your campaign..."
+                className="flex-1 px-4 py-3 bg-background border border-border rounded-xl text-text placeholder-text-muted resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                rows={1}
+                disabled={isLoading}
+                style={{
+                  minHeight: '48px',
+                  maxHeight: '200px',
+                  height: 'auto',
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement
+                  target.style.height = 'auto'
+                  target.style.height = Math.min(target.scrollHeight, 200) + 'px'
+                }}
+              />
+              <button
+                onClick={sendMessage}
+                disabled={!inputValue.trim() || isLoading}
+                className="px-4 py-3 bg-primary hover:bg-primary-dark text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="ArrowRight" className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-text-muted mt-2 text-center">
+              Press Enter to send, Shift+Enter for new line
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Error message */}
-      {error && (
-        <div className="flex-none px-4 py-2 bg-red-900/20 border-t border-red-900/50">
-          <p className="text-sm text-red-400">{error}</p>
-        </div>
-      )}
+      {/* Source Preferences Modal */}
+      <ChatSourceModal
+        isOpen={isSourceModalOpen}
+        onClose={() => setIsSourceModalOpen(false)}
+        campaignId={activeCampaign.id}
+        preferences={sourcePreferences}
+        onSave={savePreferences}
+      />
+    </div>
+  )
+}
 
-      {/* Input area */}
-      <div className="flex-none p-4 border-t border-border bg-background-panel">
-        <div className="flex gap-3">
-          <textarea
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your campaign..."
-            className="flex-1 px-4 py-3 bg-background border border-border rounded-xl text-text placeholder-text-muted resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            rows={1}
-            disabled={isLoading}
-            style={{
-              minHeight: '48px',
-              maxHeight: '200px',
-              height: 'auto',
-            }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement
-              target.style.height = 'auto'
-              target.style.height = Math.min(target.scrollHeight, 200) + 'px'
-            }}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading}
-            className="px-4 py-3 bg-primary hover:bg-primary-dark text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Icon name="ArrowRight" className="w-5 h-5" />
-          </button>
-        </div>
-        <p className="text-xs text-text-muted mt-2 text-center">
-          Press Enter to send, Shift+Enter for new line
-        </p>
+interface MessageBubbleProps {
+  message: ChatMessage
+}
+
+function MessageBubble({ message }: MessageBubbleProps) {
+  const isUser = message.role === 'user'
+
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={`max-w-[80%] ${
+          isUser
+            ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
+            : 'bg-background-panel border border-border rounded-2xl rounded-bl-md'
+        } p-4`}
+      >
+        {isUser ? (
+          <div className="whitespace-pre-wrap">{message.content}</div>
+        ) : (
+          <div className="prose prose-invert prose-sm max-w-none text-tavern-cream">
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          </div>
+        )}
+
+        {/* RAG Sources */}
+        {!isUser && message.rag_sources && message.rag_sources.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <div className="flex items-center gap-1 text-xs text-text-muted mb-2">
+              <Icon name="BookOpen" className="w-3 h-3" />
+              <span>Sources</span>
+            </div>
+            <div className="space-y-1">
+              {message.rag_sources.map((source, idx) => (
+                <a
+                  key={idx}
+                  href={source.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-xs text-primary hover:underline"
+                >
+                  {source.page_title}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

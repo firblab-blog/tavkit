@@ -246,16 +246,25 @@ func (h *LocationHandler) ListLocations(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	locations, err := h.db.ListLocationsByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list locations", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list locations"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Location, 0)
+		for _, l := range locations {
+			if l.CampaignID == nil {
+				filtered = append(filtered, l)
+			}
+		}
+		locations = filtered
 	}
 
 	c.JSON(http.StatusOK, locations)
@@ -353,4 +362,17 @@ func (h *LocationHandler) DeleteLocation(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "location deleted"})
+}
+
+// AssignCampaign assigns a location to a campaign or Personal Library
+func (h *LocationHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"location",
+		h.db.GetLocationByID,
+		func(l *db.Location) string { return l.UserID },
+		func(l *db.Location, campaignID *string) { l.CampaignID = campaignID },
+		h.db.UpdateLocation,
+		h.logger,
+	)
 }

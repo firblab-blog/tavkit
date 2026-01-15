@@ -17,7 +17,9 @@ type SQLiteDB struct {
 
 // NewSQLiteDB creates a new SQLite database connection
 func NewSQLiteDB(path string) (*SQLiteDB, error) {
-	db, err := sql.Open("sqlite3", path)
+	// Add _loc=auto to parse timestamps correctly
+	connStr := path + "?_loc=auto"
+	db, err := sql.Open("sqlite3", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}

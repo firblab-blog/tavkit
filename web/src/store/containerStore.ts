@@ -1,208 +1,105 @@
 import { create } from 'zustand'
-import { logger } from '../utils/logger'
+import { persist } from 'zustand/middleware'
 
-export type ContainerType = 'internal' | 'external' | 'git' | 'settings'
+export type ContainerType = 'external' | 'internal'
 
 export interface ContainerInstance {
   id: string
   type: ContainerType
   tool: string
   title: string
-  url?: string
-  position?: number
-  is_active?: boolean
+  url: string
+  icon?: string
 }
 
 interface ContainerState {
   containers: ContainerInstance[]
   activeId: string | null
-  isLoading: boolean
-  isInitialized: boolean
 
-  openContainer: (container: Omit<ContainerInstance, 'id'>) => Promise<void>
-  closeContainer: (id: string) => Promise<void>
-  closeAllContainers: () => Promise<void>
-  moveContainer: (id: string, direction: 'left' | 'right') => Promise<void>
-  setActive: (id: string | null) => Promise<void>
-  loadContainers: () => Promise<void>
-  syncContainers: () => Promise<void>
+  openContainer: (container: Omit<ContainerInstance, 'id'>) => void
+  closeContainer: (id: string) => void
+  closeAllContainers: () => void
+  setActive: (id: string | null) => void
+  moveContainer: (id: string, direction: 'left' | 'right') => void
 }
 
 let nextId = 0
 const generateId = () => `container-${++nextId}-${Date.now()}`
 
-// Helper to get CSRF token from cookie
-function getCSRFToken(): string | null {
-  const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : null
-}
+export const useContainerStore = create<ContainerState>()(
+  persist(
+    (set, get) => ({
+      containers: [],
+      activeId: null,
 
-// API helpers - uses HttpOnly cookies for auth and CSRF token for state-changing requests
-// eslint-disable-next-line no-undef
-async function apiCall(endpoint: string, options?: RequestInit) {
-  const csrfToken = getCSRFToken()
-  const method = options?.method?.toUpperCase() || 'GET'
+      openContainer: (container) => {
+        // Check if a container with the same url already exists
+        const existingContainer = get().containers.find((c) => c.url === container.url)
 
-  logger.debug('[containerStore] API call:', endpoint, 'method:', method)
+        // If exists, just switch to that tab
+        if (existingContainer) {
+          set({ activeId: existingContainer.id })
+          return
+        }
 
-  // Build headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...((options?.headers as Record<string, string>) || {}),
-  }
+        // Otherwise, create a new container
+        const id = generateId()
+        const newContainer = { ...container, id }
 
-  // Add CSRF token for state-changing requests
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && csrfToken) {
-    headers['X-CSRF-Token'] = csrfToken
-  }
+        set((state) => ({
+          containers: [...state.containers, newContainer],
+          activeId: id,
+        }))
+      },
 
-  const response = await fetch(endpoint, {
-    ...options,
-    headers,
-    credentials: 'include', // Send cookies with request
-  })
+      closeContainer: (id) => {
+        set((state) => {
+          const remaining = state.containers.filter((c) => c.id !== id)
+          // If closing active tab, switch to the last remaining tab
+          const newActiveId =
+            state.activeId === id
+              ? remaining.length > 0
+                ? remaining[remaining.length - 1].id
+                : null
+              : state.activeId
 
-  if (!response.ok) {
-    logger.error('[containerStore] API call failed:', response.status, response.statusText)
-    throw new Error(`API call failed: ${response.statusText}`)
-  }
+          return {
+            containers: remaining,
+            activeId: newActiveId,
+          }
+        })
+      },
 
-  return response.json()
-}
+      closeAllContainers: () => {
+        set({ containers: [], activeId: null })
+      },
 
-export const useContainerStore = create<ContainerState>((set, get) => ({
-  containers: [],
-  activeId: null,
-  isLoading: false,
-  isInitialized: false,
+      setActive: (id) => {
+        set({ activeId: id })
+      },
 
-  loadContainers: async () => {
-    if (get().isLoading) return
+      moveContainer: (id, direction) => {
+        set((state) => {
+          const index = state.containers.findIndex((c) => c.id === id)
+          if (index === -1) return state
 
-    set({ isLoading: true })
-    try {
-      const data = await apiCall('/api/v1/containers')
-      const containers = data.containers || []
-      const activeContainer = containers.find((c: ContainerInstance) => c.is_active)
+          const newIndex = direction === 'left' ? index - 1 : index + 1
+          if (newIndex < 0 || newIndex >= state.containers.length) return state
 
-      set({
-        containers,
-        // Only set activeId if there's an explicitly active container
-        // Don't default to first container - let homepage show instead
-        activeId: activeContainer?.id || null,
-        isInitialized: true,
-      })
-    } catch (error) {
-      logger.error('Failed to load containers:', error)
-      set({ isInitialized: true })
-    } finally {
-      set({ isLoading: false })
+          const newContainers = [...state.containers]
+          const [movedContainer] = newContainers.splice(index, 1)
+          newContainers.splice(newIndex, 0, movedContainer)
+
+          return { containers: newContainers }
+        })
+      },
+    }),
+    {
+      name: 'tavkit-containers',
+      partialize: (state) => ({
+        containers: state.containers,
+        activeId: state.activeId,
+      }),
     }
-  },
-
-  syncContainers: async () => {
-    const { containers, activeId } = get()
-
-    try {
-      await apiCall('/api/v1/containers/bulk', {
-        method: 'POST',
-        body: JSON.stringify({
-          containers: containers.map((c, index) => ({
-            type: c.type,
-            tool: c.tool,
-            title: c.title,
-            url: c.url,
-            position: index,
-            is_active: c.id === activeId,
-          })),
-        }),
-      })
-    } catch (error) {
-      logger.error('Failed to sync containers:', error)
-    }
-  },
-
-  openContainer: async (container) => {
-    // Check if a container with the same type, tool, and url already exists
-    const existingContainer = get().containers.find((c) => {
-      const sameType = c.type === container.type
-      const sameTool = c.tool === container.tool
-      const sameUrl = container.url ? c.url === container.url : true
-      return sameType && sameTool && sameUrl
-    })
-
-    // If exists, just switch to that tab
-    if (existingContainer) {
-      set({ activeId: existingContainer.id })
-      get()
-        .syncContainers()
-        .catch((err) => logger.error('Failed to sync containers', err))
-      return
-    }
-
-    // Otherwise, create a new container
-    const id = generateId()
-    const newContainer = { ...container, id }
-
-    set((state) => ({
-      containers: [...state.containers, newContainer],
-      activeId: id,
-    }))
-
-    // Sync to backend (fire and forget)
-    get()
-      .syncContainers()
-      .catch((err) => logger.error('Failed to sync containers', err))
-  },
-
-  closeContainer: async (id) => {
-    set((state) => {
-      const remaining = state.containers.filter((c) => c.id !== id)
-      return {
-        containers: remaining,
-        activeId: remaining.length > 0 ? remaining[remaining.length - 1].id : null,
-      }
-    })
-
-    // Sync to backend (fire and forget)
-    get()
-      .syncContainers()
-      .catch((err) => logger.error('Failed to sync containers', err))
-  },
-
-  closeAllContainers: async () => {
-    set({ containers: [], activeId: null })
-    get()
-      .syncContainers()
-      .catch((err) => logger.error('Failed to sync containers', err))
-  },
-
-  moveContainer: async (id, direction) => {
-    set((state) => {
-      const index = state.containers.findIndex((c) => c.id === id)
-      if (index === -1) return state
-
-      const newIndex = direction === 'left' ? index - 1 : index + 1
-      if (newIndex < 0 || newIndex >= state.containers.length) return state
-
-      const newContainers = [...state.containers]
-      const [movedContainer] = newContainers.splice(index, 1)
-      newContainers.splice(newIndex, 0, movedContainer)
-
-      return { containers: newContainers }
-    })
-
-    get()
-      .syncContainers()
-      .catch((err) => logger.error('Failed to sync containers', err))
-  },
-
-  setActive: async (id) => {
-    set({ activeId: id })
-
-    // Sync to backend (fire and forget)
-    get()
-      .syncContainers()
-      .catch((err) => logger.error('Failed to sync containers', err))
-  },
-}))
+  )
+)

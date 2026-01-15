@@ -235,16 +235,25 @@ func (h *ItemHandler) ListItems(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	items, err := h.db.ListItemsByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list items", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list items"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Item, 0)
+		for _, item := range items {
+			if item.CampaignID == nil {
+				filtered = append(filtered, item)
+			}
+		}
+		items = filtered
 	}
 
 	c.JSON(http.StatusOK, items)
@@ -340,4 +349,17 @@ func (h *ItemHandler) DeleteItem(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "item deleted"})
+}
+
+// AssignCampaign assigns an item to a campaign or Personal Library
+func (h *ItemHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"item",
+		h.db.GetItemByID,
+		func(i *db.Item) string { return i.UserID },
+		func(i *db.Item, campaignID *string) { i.CampaignID = campaignID },
+		h.db.UpdateItem,
+		h.logger,
+	)
 }

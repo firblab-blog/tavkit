@@ -197,16 +197,25 @@ func (h *NPCHandler) ListNPCs(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	npcs, err := h.db.ListNPCsByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list NPCs", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list NPCs"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.NPC, 0)
+		for _, npc := range npcs {
+			if npc.CampaignID == nil {
+				filtered = append(filtered, npc)
+			}
+		}
+		npcs = filtered
 	}
 
 	c.JSON(http.StatusOK, npcs)
@@ -220,6 +229,19 @@ func (h *NPCHandler) DeleteNPC(c *gin.Context) {
 		h.db.GetNPCByID,
 		func(n *db.NPC) string { return n.UserID },
 		h.db.DeleteNPC,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns an NPC to a campaign or Personal Library
+func (h *NPCHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"NPC",
+		h.db.GetNPCByID,
+		func(n *db.NPC) string { return n.UserID },
+		func(n *db.NPC, campaignID *string) { n.CampaignID = campaignID },
+		h.db.UpdateNPC,
 		h.logger,
 	)
 }

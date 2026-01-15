@@ -220,16 +220,25 @@ func (h *EncounterHandler) ListEncounters(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	encounters, err := h.db.ListEncountersByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list encounters", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list encounters"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Encounter, 0)
+		for _, e := range encounters {
+			if e.CampaignID == nil {
+				filtered = append(filtered, e)
+			}
+		}
+		encounters = filtered
 	}
 
 	c.JSON(http.StatusOK, gin.H{"encounters": encounters})
@@ -243,6 +252,19 @@ func (h *EncounterHandler) DeleteEncounter(c *gin.Context) {
 		h.db.GetEncounterByID,
 		func(encounter *db.Encounter) string { return encounter.UserID },
 		h.db.DeleteEncounter,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns an encounter to a campaign or Personal Library
+func (h *EncounterHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"encounter",
+		h.db.GetEncounterByID,
+		func(e *db.Encounter) string { return e.UserID },
+		func(e *db.Encounter, campaignID *string) { e.CampaignID = campaignID },
+		h.db.UpdateEncounter,
 		h.logger,
 	)
 }

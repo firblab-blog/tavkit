@@ -4,6 +4,8 @@ import { useAuthStore } from './store/authStore'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AIProvider } from './contexts/AIContext'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
+import { ToastContainer } from './components/common/Toast'
+import GlobalModals from './components/common/GlobalModals'
 import Login from './components/auth/Login'
 import Register from './components/auth/Register'
 import Dashboard from './components/dashboard/Dashboard'
@@ -33,6 +35,8 @@ function App() {
               />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Routes>
+            <ToastContainer />
+            <GlobalModals />
           </BrowserRouter>
         </AIProvider>
       </ThemeProvider>

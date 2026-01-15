@@ -7,6 +7,16 @@ import CampaignSelector from '../common/CampaignSelector'
 import { useCampaignStore } from '../../store/campaignStore'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ObjectArrayEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualItemData,
+  defaultItemData,
+  itemTypeOptions,
+  rarityOptions,
+} from './shared/schemas/itemSchema'
 import {
   generateItem as generateItemApi,
   saveItem as saveItemApi,
@@ -271,6 +281,12 @@ export default function ItemGenerator() {
   const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualItemData>(defaultItemData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
+
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
 
@@ -381,6 +397,50 @@ export default function ItemGenerator() {
     }
   }
 
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('Item name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError('')
+
+    try {
+      // Convert properties array to object
+      const propertiesObj: Record<string, unknown> = {}
+      manualData.properties
+        .filter((p) => p.name.trim())
+        .forEach((p) => {
+          propertiesObj[p.name] = p.value || true
+        })
+
+      await saveItemApi({
+        name: manualData.name.trim(),
+        type: manualData.type,
+        rarity: manualData.rarity,
+        description: manualData.description.trim() || undefined,
+        origin: manualData.origin.trim() || undefined,
+        properties: propertiesObj,
+        value: manualData.value ?? 0,
+        weight: manualData.weight ?? 0,
+        attunement: manualData.attunement,
+        campaign_id: campaignId || undefined,
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultItemData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   const handleCopy = () => {
     if (!item) return
     let text = `${item.name}\n${item.rarity} • ${item.type}\n\nDescription:\n${item.description}`
@@ -429,7 +489,8 @@ export default function ItemGenerator() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // AI Form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="item" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -512,18 +573,194 @@ export default function ItemGenerator() {
     </>
   )
 
+  // Manual Form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Item Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., Flamebrand Longsword"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label="Item Type">
+          <select
+            value={manualData.type}
+            onChange={(e) => setManualData({ ...manualData, type: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {itemTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Rarity">
+          <select
+            value={manualData.rarity}
+            onChange={(e) => setManualData({ ...manualData, rarity: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {rarityOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Describe the item's appearance, aura, history..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={4}
+        />
+      </FormField>
+
+      <FormField label="Origin">
+        <textarea
+          value={manualData.origin}
+          onChange={(e) => setManualData({ ...manualData, origin: e.target.value })}
+          placeholder="Where did this item come from? Who made it?"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={2}
+        />
+      </FormField>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <FormField label="Value (gp)">
+          <input
+            type="number"
+            value={manualData.value ?? ''}
+            onChange={(e) =>
+              setManualData({
+                ...manualData,
+                value: e.target.value ? parseInt(e.target.value) : null,
+              })
+            }
+            placeholder="100"
+            min={0}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </FormField>
+
+        <FormField label="Weight (lb)">
+          <input
+            type="number"
+            value={manualData.weight ?? ''}
+            onChange={(e) =>
+              setManualData({
+                ...manualData,
+                weight: e.target.value ? parseFloat(e.target.value) : null,
+              })
+            }
+            placeholder="3"
+            min={0}
+            step="0.1"
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </FormField>
+
+        <FormField label="Attunement">
+          <div className="flex items-center h-full pt-1">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={manualData.attunement}
+                onChange={(e) => setManualData({ ...manualData, attunement: e.target.checked })}
+                className="w-5 h-5 rounded border-border bg-background text-primary focus:ring-primary"
+              />
+              <span className="text-text">Required</span>
+            </label>
+          </div>
+        </FormField>
+      </div>
+
+      {/* Properties */}
+      <CollapsibleSection title="Properties" defaultExpanded={false}>
+        <ObjectArrayEditor
+          label="Magical Properties"
+          values={manualData.properties.map((p) => ({ name: p.name, description: p.value }))}
+          onChange={(props) =>
+            setManualData({
+              ...manualData,
+              properties: props.map((p) => ({ name: p.name, value: p.description })),
+            })
+          }
+          namePlaceholder="Property name (e.g., Damage Bonus)"
+          descriptionPlaceholder="Property value or effect..."
+        />
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full mt-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : manualSaved ? (
+          <>
+            <Icon name="Check" className="w-5 h-5" />
+            Saved!
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Item
+          </>
+        )}
+      </button>
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError('')
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content
+  const manualPreviewContent = <ManualEntryPreview entityType="item" />
+
   const generatedContent = item ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {item._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{item._parseError}</p>
-        </div>
-      )}
+      {item._parseError && <ParseWarning message={item._parseError} />}
 
       {/* Header - styled like Monster/NPC */}
       <div>
@@ -646,30 +883,7 @@ export default function ItemGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {item._raw && Object.keys(item._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(item._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(item._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {item._raw && <RawDataViewer data={item._raw} defaultExpanded={showRawResponse} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -688,42 +902,24 @@ export default function ItemGenerator() {
         icon="Package"
         formTitle="Item Details"
         formIcon="Settings"
-        resultsTitle="Generated Item"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Item'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Item"
         error={error}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Item</h3>
-            <p className="text-text-muted mb-6">
-              Save "{item?.name}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSave}
+        entityName={item?.name || 'Item'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

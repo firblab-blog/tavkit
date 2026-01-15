@@ -7,6 +7,16 @@ import CampaignSelector from '../common/CampaignSelector'
 import { useCampaignStore } from '../../store/campaignStore'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualLocationData,
+  defaultLocationData,
+  locationTypeOptions,
+  sizeOptions,
+} from './shared/schemas/locationSchema'
 import {
   generateLocation as generateLocationApi,
   saveLocation as saveLocationApi,
@@ -222,8 +232,13 @@ export default function LocationGenerator() {
   const [error, setError] = useState('')
   const [location, setLocation] = useState<LocationData | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualLocationData>(defaultLocationData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
 
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
@@ -252,7 +267,6 @@ export default function LocationGenerator() {
     setLoading(true)
     setError('')
     setLocation(null)
-    setShowRawResponse(false)
     setIsSaved(false)
 
     try {
@@ -279,7 +293,6 @@ export default function LocationGenerator() {
         if (!hasValidLocationContent(normalized)) {
           normalized._parseError =
             'AI response missing essential location content. Showing raw response.'
-          setShowRawResponse(true)
         }
 
         setLocation(normalized)
@@ -287,7 +300,6 @@ export default function LocationGenerator() {
         // AI returned data at root level instead of nested
         const normalized = normalizeLocationResponse(data as unknown as Record<string, unknown>)
         normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
         setLocation(normalized)
       }
     } catch (err) {
@@ -381,7 +393,44 @@ export default function LocationGenerator() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('Location name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError('')
+
+    try {
+      await saveLocationApi({
+        campaign_id: campaignId || undefined,
+        name: manualData.name.trim(),
+        type: manualData.location_type,
+        theme: '', // manual entries don't have theme
+        description: manualData.description.trim() || '',
+        features: manualData.notable_features.filter((f) => f.trim()),
+        secrets: manualData.secrets.filter((s) => s.trim()),
+        factions: [], // not in manual schema
+        npcs: manualData.inhabitants.filter((i) => i.trim()),
+        encounters: manualData.hazards.filter((h) => h.trim()),
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultLocationData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  // AI generation form content
+  const aiFormContent = (
     <>
       {/* AI Settings */}
       <AISettings generatorType="location" onSettingsChange={setAiSettings} />
@@ -480,18 +529,202 @@ export default function LocationGenerator() {
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Location Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., The Sunken Crypt, Willowbrook Village"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label="Location Type">
+          <select
+            value={manualData.location_type}
+            onChange={(e) => setManualData({ ...manualData, location_type: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {locationTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Size">
+          <select
+            value={manualData.size}
+            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {sizeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Describe the location..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={3}
+        />
+      </FormField>
+
+      <FormField label="Atmosphere">
+        <input
+          type="text"
+          value={manualData.atmosphere}
+          onChange={(e) => setManualData({ ...manualData, atmosphere: e.target.value })}
+          placeholder="e.g., Dark and foreboding, Peaceful and serene"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      {/* Notable Features */}
+      <CollapsibleSection title="Notable Features" defaultExpanded>
+        <ArrayFieldEditor
+          label="Features"
+          values={manualData.notable_features}
+          onChange={(notable_features) => setManualData({ ...manualData, notable_features })}
+          placeholder="Add a notable feature..."
+        />
+      </CollapsibleSection>
+
+      {/* Inhabitants */}
+      <CollapsibleSection title="Inhabitants" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Inhabitants"
+          values={manualData.inhabitants}
+          onChange={(inhabitants) => setManualData({ ...manualData, inhabitants })}
+          placeholder="Add an inhabitant or NPC..."
+        />
+      </CollapsibleSection>
+
+      {/* Secrets */}
+      <CollapsibleSection title="Secrets (DM Only)" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Secrets"
+          values={manualData.secrets}
+          onChange={(secrets) => setManualData({ ...manualData, secrets })}
+          placeholder="Add a secret..."
+        />
+      </CollapsibleSection>
+
+      {/* Hazards */}
+      <CollapsibleSection title="Hazards & Encounters" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Hazards"
+          values={manualData.hazards}
+          onChange={(hazards) => setManualData({ ...manualData, hazards })}
+          placeholder="Add a hazard or encounter hook..."
+        />
+      </CollapsibleSection>
+
+      {/* Treasure */}
+      <CollapsibleSection title="Treasure & Loot" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Treasure"
+          values={manualData.treasure}
+          onChange={(treasure) => setManualData({ ...manualData, treasure })}
+          placeholder="Add treasure or loot..."
+        />
+      </CollapsibleSection>
+
+      {/* Connections */}
+      <CollapsibleSection title="Connections to Other Locations" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Connections"
+          values={manualData.connections}
+          onChange={(connections) => setManualData({ ...manualData, connections })}
+          placeholder="Add a connection..."
+        />
+      </CollapsibleSection>
+
+      {/* History */}
+      <CollapsibleSection title="History & Lore" defaultExpanded={false}>
+        <FormField label="History">
+          <textarea
+            value={manualData.history}
+            onChange={(e) => setManualData({ ...manualData, history: e.target.value })}
+            placeholder="Historical background of this location..."
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            rows={3}
+          />
+        </FormField>
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full px-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Location
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <div className="text-center text-green-400 text-sm">
+          Location saved! You can find it in the Saved Content section.
+        </div>
+      )}
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError('')
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content (simple message)
+  const manualPreviewContent = <ManualEntryPreview entityType="location" />
+
   const generatedContent = location ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {location._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{location._parseError}</p>
-        </div>
-      )}
+      {location._parseError && <ParseWarning message={location._parseError} />}
 
       {/* Header */}
       <div>
@@ -603,30 +836,7 @@ export default function LocationGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {location._raw && Object.keys(location._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(location._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(location._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {location._raw && <RawDataViewer data={location._raw} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -645,42 +855,24 @@ export default function LocationGenerator() {
         icon="Map"
         formTitle="Location Parameters"
         formIcon="Settings"
-        resultsTitle="Generated Location"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Location'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Location"
         error={error}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Location</h3>
-            <p className="text-text-muted mb-6">
-              Save "{location?.name}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSave}
+        entityName={location?.name || 'Location'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

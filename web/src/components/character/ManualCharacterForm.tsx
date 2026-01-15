@@ -6,6 +6,7 @@ import { logger } from '@/utils/logger'
 interface ManualCharacterFormProps {
   onSuccess: () => void
   onCancel: () => void
+  campaignId?: string | null
 }
 
 interface CharacterFormData {
@@ -120,7 +121,11 @@ function CollapsibleSection({
   )
 }
 
-export default function ManualCharacterForm({ onSuccess, onCancel }: ManualCharacterFormProps) {
+export default function ManualCharacterForm({
+  onSuccess,
+  onCancel,
+  campaignId,
+}: ManualCharacterFormProps) {
   const [formData, setFormData] = useState<CharacterFormData>({
     // Basic Info
     name: '',
@@ -288,6 +293,11 @@ export default function ManualCharacterForm({ onSuccess, onCancel }: ManualChara
           .map((l) => l.trim())
           .filter((l) => l)
         if (langs.length > 0) payload.languages = langs
+      }
+
+      // Associate with campaign if provided
+      if (campaignId) {
+        payload.campaign_id = campaignId
       }
 
       const response = await apiClient.post('/characters', payload)

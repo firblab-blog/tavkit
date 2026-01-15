@@ -7,6 +7,11 @@ import Icon from '../common/Icon'
 import CampaignSelector from '../common/CampaignSelector'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import { ManualTrapData, defaultTrapData, trapTypeOptions } from './shared/schemas/trapSchema'
 import {
   generateTrap as generateTrapApi,
   saveTrap as saveTrapApi,
@@ -292,6 +297,12 @@ export default function TrapGenerator() {
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const { activeCampaignId } = useCampaignStore()
 
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualTrapData>(defaultTrapData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
+
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
 
@@ -454,7 +465,64 @@ export default function TrapGenerator() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('Trap name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError(null)
+
+    try {
+      await saveTrapApi({
+        campaign_id: campaignId || undefined,
+        name: manualData.name.trim(),
+        trap_type: manualData.trap_type,
+        difficulty: '',
+        description: manualData.lore.trim() || '',
+        environment: '',
+        trigger: manualData.trigger.trim() || '',
+        effect: manualData.effect.trim() || '',
+        damage: manualData.damage.trim() || '',
+        detection: {
+          passive_perception_dc: manualData.detection_dc,
+          investigation_dc: null,
+          clues: [],
+        },
+        solution_paths: manualData.disarm_dc
+          ? [
+              {
+                approach: 'Disarm',
+                skill: "Thieves' Tools",
+                dc: manualData.disarm_dc,
+                description: manualData.bypass.trim() || 'Standard disarm',
+                time: '1 action',
+                failure: 'Triggers the trap',
+              },
+            ]
+          : [],
+        complications: manualData.countermeasures.filter((c) => c.trim()),
+        rewards: [],
+        scaling: { easier: '', harder: '' },
+        dm_notes: manualData.reset.trim() || '',
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultTrapData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  // AI generation form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="trap" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -534,18 +602,233 @@ export default function TrapGenerator() {
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Trap Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., Pendulum Blade, Poison Dart Trap"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <FormField label="Trap Type">
+        <select
+          value={manualData.trap_type}
+          onChange={(e) => setManualData({ ...manualData, trap_type: e.target.value })}
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {trapTypeOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      {/* Trap Mechanics */}
+      <CollapsibleSection title="Trap Mechanics" defaultExpanded>
+        <div className="space-y-3">
+          <FormField label="Trigger">
+            <input
+              type="text"
+              value={manualData.trigger}
+              onChange={(e) => setManualData({ ...manualData, trigger: e.target.value })}
+              placeholder="e.g., Pressure plate, Tripwire, Opening a door"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Effect">
+            <textarea
+              value={manualData.effect}
+              onChange={(e) => setManualData({ ...manualData, effect: e.target.value })}
+              placeholder="What happens when the trap is triggered?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Damage">
+              <input
+                type="text"
+                value={manualData.damage}
+                onChange={(e) => setManualData({ ...manualData, damage: e.target.value })}
+                placeholder="e.g., 2d10 piercing"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+
+            <FormField label="Save DC">
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={manualData.save_dc || ''}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    save_dc: e.target.value ? parseInt(e.target.value) : null,
+                  })
+                }
+                placeholder="DC"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Detection & Disarm */}
+      <CollapsibleSection title="Detection & Disarm" defaultExpanded={false}>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Detection DC">
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={manualData.detection_dc || ''}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    detection_dc: e.target.value ? parseInt(e.target.value) : null,
+                  })
+                }
+                placeholder="Perception DC"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+
+            <FormField label="Disarm DC">
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={manualData.disarm_dc || ''}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    disarm_dc: e.target.value ? parseInt(e.target.value) : null,
+                  })
+                }
+                placeholder="Thieves' Tools DC"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+          </div>
+
+          <FormField label="Bypass Method">
+            <textarea
+              value={manualData.bypass}
+              onChange={(e) => setManualData({ ...manualData, bypass: e.target.value })}
+              placeholder="How can the trap be avoided or bypassed?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Reset & Countermeasures */}
+      <CollapsibleSection title="Reset & Countermeasures" defaultExpanded={false}>
+        <div className="space-y-3">
+          <FormField label="Reset Mechanism">
+            <input
+              type="text"
+              value={manualData.reset}
+              onChange={(e) => setManualData({ ...manualData, reset: e.target.value })}
+              placeholder="e.g., Automatic (1 minute), Manual, None"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <ArrayFieldEditor
+            label="Countermeasures"
+            values={manualData.countermeasures}
+            onChange={(countermeasures) => setManualData({ ...manualData, countermeasures })}
+            placeholder="Add a countermeasure..."
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Lore */}
+      <CollapsibleSection title="Lore & Description" defaultExpanded={false}>
+        <FormField label="Lore/Description">
+          <textarea
+            value={manualData.lore}
+            onChange={(e) => setManualData({ ...manualData, lore: e.target.value })}
+            placeholder="Background, purpose, or description of the trap..."
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            rows={3}
+          />
+        </FormField>
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full px-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Trap
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <div className="text-center text-green-400 text-sm">
+          Trap saved! You can find it in the Saved Content section.
+        </div>
+      )}
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError(null)
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content (simple message)
+  const manualPreviewContent = <ManualEntryPreview entityType="trap" />
+
   const generatedContent = trap ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {trap._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{trap._parseError}</p>
-        </div>
-      )}
+      {trap._parseError && <ParseWarning message={trap._parseError} />}
 
       {/* Header */}
       <div>
@@ -755,30 +1038,7 @@ export default function TrapGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {trap._raw && Object.keys(trap._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(trap._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(trap._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {trap._raw && <RawDataViewer data={trap._raw} defaultExpanded={showRawResponse} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -797,42 +1057,24 @@ export default function TrapGenerator() {
         icon="Skull"
         formTitle="Trap Details"
         formIcon="Settings"
-        resultsTitle="Generated Trap"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Trap'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={generateTrap}
         generateButtonText="Generate Trap"
         error={error || undefined}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Trap</h3>
-            <p className="text-text-muted mb-6">
-              Save "{trap?.name}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveTrap}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={saveTrap}
+        entityName={trap?.name || 'Trap'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

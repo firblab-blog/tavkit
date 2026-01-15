@@ -7,6 +7,14 @@ import CampaignSelector from '../common/CampaignSelector'
 import { useCampaignStore } from '../../store/campaignStore'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { EntryModeToggle, type EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  veracityOptions,
+  defaultRumorData,
+  type ManualRumorData,
+} from './shared/schemas/rumorSchema'
 import {
   generateRumor as generateRumorApi,
   saveRumor as saveRumorApi,
@@ -214,6 +222,15 @@ function hasValidRumorContent(response: RumorsResponse): boolean {
 // ============================================================================
 
 export default function RumorGenerator() {
+  // Entry mode: AI or Manual
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+
+  // Manual entry state
+  const [manualData, setManualData] = useState<ManualRumorData>(defaultRumorData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
+
+  // AI generation state
   const [specialRequests, setSpecialRequests] = useState('')
   const [count, setCount] = useState<number>(3)
   const [veracity, setVeracity] = useState('mixed')
@@ -225,7 +242,6 @@ export default function RumorGenerator() {
   const [error, setError] = useState('')
   const [rumorsResponse, setRumorsResponse] = useState<RumorsResponse | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
   // Track if user has made an explicit campaign selection
@@ -251,11 +267,15 @@ export default function RumorGenerator() {
     }
   }, [activeCampaignId])
 
+  // Reset manual saved state when switching modes or changing data
+  useEffect(() => {
+    setManualSaved(false)
+  }, [entryMode, manualData])
+
   const handleGenerate = async () => {
     setLoading(true)
     setError('')
     setRumorsResponse(null)
-    setShowRawResponse(false)
     setIsSaved(false)
 
     try {
@@ -282,7 +302,6 @@ export default function RumorGenerator() {
       if (!hasValidRumorContent(normalized)) {
         normalized._parseError =
           normalized._parseError || 'AI response missing essential rumor content.'
-        setShowRawResponse(true)
       }
 
       setRumorsResponse(normalized)
@@ -326,6 +345,44 @@ export default function RumorGenerator() {
     }
   }
 
+  // Save manual entry
+  const handleManualSave = async () => {
+    if (!manualData.text.trim()) return
+
+    setManualSaving(true)
+    setError('')
+
+    try {
+      const activeCampaignId = useCampaignStore.getState().activeCampaignId
+
+      await saveRumorApi({
+        text: manualData.text,
+        source: manualData.source || 'Unknown source',
+        veracity: manualData.veracity || 'unknown',
+        leads_to: manualData.leads_to || '',
+        context: manualData.context || '',
+        foreshadowing: manualData.foreshadowing || false,
+        tags: manualData.tags || [],
+        campaign_id: activeCampaignId || undefined,
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  // Reset manual form
+  const handleManualReset = () => {
+    setManualData(defaultRumorData)
+    setManualSaved(false)
+    setError('')
+  }
+
   const handleCopy = () => {
     if (!rumorsResponse || rumorsResponse.rumors.length === 0) return
     let text = 'Generated Rumors:\n\n'
@@ -350,7 +407,8 @@ export default function RumorGenerator() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // AI Form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="rumor" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -440,6 +498,141 @@ export default function RumorGenerator() {
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      <FormField label="Rumor Text" description="The actual rumor content" required>
+        <textarea
+          value={manualData.text}
+          onChange={(e) => setManualData({ ...manualData, text: e.target.value })}
+          placeholder="e.g., 'I heard the old mill is haunted. Strange lights have been seen there at midnight...'"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={4}
+        />
+      </FormField>
+
+      <FormField label="Source" description="Who shared this rumor">
+        <input
+          type="text"
+          value={manualData.source}
+          onChange={(e) => setManualData({ ...manualData, source: e.target.value })}
+          placeholder="e.g., 'Drunk patron at the tavern', 'Town crier'"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <FormField label="Veracity" description="Is this rumor true, false, or unknown?">
+        <select
+          value={manualData.veracity}
+          onChange={(e) => setManualData({ ...manualData, veracity: e.target.value })}
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {veracityOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      <FormField label="Adventure Hook" description="What could this rumor lead to?">
+        <textarea
+          value={manualData.leads_to}
+          onChange={(e) => setManualData({ ...manualData, leads_to: e.target.value })}
+          placeholder="e.g., 'Investigation of the old mill reveals a secret meeting place for the thieves guild'"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={2}
+        />
+      </FormField>
+
+      <FormField label="Context" description="Background information or setting">
+        <textarea
+          value={manualData.context}
+          onChange={(e) => setManualData({ ...manualData, context: e.target.value })}
+          placeholder="e.g., 'The mill has been abandoned for 10 years since the miller disappeared'"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={2}
+        />
+      </FormField>
+
+      <FormField label="Foreshadowing">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={manualData.foreshadowing}
+            onChange={(e) => setManualData({ ...manualData, foreshadowing: e.target.checked })}
+            className="w-5 h-5 rounded border-border bg-background text-primary focus:ring-primary focus:ring-offset-0"
+          />
+          <span className="text-text">This rumor foreshadows future events</span>
+        </label>
+      </FormField>
+
+      <ArrayFieldEditor
+        label="Tags"
+        values={manualData.tags}
+        onChange={(tags) => setManualData({ ...manualData, tags })}
+        placeholder="Add a tag..."
+        description="Keywords to help organize rumors"
+      />
+
+      {/* Manual save button */}
+      <button
+        onClick={handleManualSave}
+        disabled={!manualData.text.trim() || manualSaving || manualSaved}
+        className="
+          w-full py-3 px-6 rounded-lg font-semibold
+          bg-primary hover:bg-primary/90
+          disabled:bg-primary/50 disabled:cursor-not-allowed
+          text-white transition-colors
+          flex items-center justify-center gap-2
+          shadow-md hover:shadow-lg
+        "
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : manualSaved ? (
+          <>
+            <Icon name="Check" className="w-5 h-5" />
+            Saved!
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Rumor
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <button
+          onClick={handleManualReset}
+          className="w-full py-2 px-4 text-sm text-text-muted hover:text-text border border-border rounded-lg transition-colors"
+        >
+          Create Another Rumor
+        </button>
+      )}
+    </>
+  )
+
+  // Form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle mode={entryMode} onChange={setEntryMode} disabled={loading} />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
   // Get veracity color
   const getVeracityColor = (veracity: string) => {
     const lower = veracity.toLowerCase()
@@ -455,19 +648,85 @@ export default function RumorGenerator() {
     return { text: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/30' }
   }
 
-  const generatedContent =
+  // Render a single rumor card (shared between AI and manual preview)
+  const renderRumorCard = (rumor: RumorData, index: number, isManual: boolean = false) => {
+    const veracityColor = getVeracityColor(rumor.veracity)
+    return (
+      <div key={index} className="bg-background p-4 rounded border border-primary/30">
+        <div className="flex items-start gap-3">
+          <Icon name="Quote" className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+          <div className="flex-1">
+            <p className="text-text italic mb-4 text-lg">"{rumor.text}"</p>
+
+            {/* Source and Veracity - styled cards */}
+            <div className="grid md:grid-cols-2 gap-3 mb-3">
+              <div className="bg-blue-500/10 p-3 rounded border border-blue-500/30">
+                <p className="text-xs text-text-muted mb-1">Source</p>
+                <p className="text-blue-400 font-medium">{rumor.source || 'Unknown'}</p>
+              </div>
+              <div className={`${veracityColor.bg} p-3 rounded border ${veracityColor.border}`}>
+                <p className="text-xs text-text-muted mb-1">Veracity</p>
+                <p className={`${veracityColor.text} font-medium capitalize`}>{rumor.veracity}</p>
+              </div>
+            </div>
+
+            {/* Leads To - styled with amber accent */}
+            {rumor.leads_to && (
+              <div className="bg-amber-500/10 p-3 rounded border border-amber-500/30 mb-3">
+                <p className="text-xs text-text-muted mb-1">Adventure Hook</p>
+                <p className="text-amber-400">{rumor.leads_to}</p>
+              </div>
+            )}
+
+            {/* Context - styled with purple accent */}
+            {rumor.context && (
+              <div className="bg-purple-500/10 p-3 rounded border border-purple-500/30 mb-3">
+                <p className="text-xs text-text-muted mb-1">Context</p>
+                <p className="text-text">{rumor.context}</p>
+              </div>
+            )}
+
+            {/* Badges row */}
+            <div className="flex flex-wrap gap-2">
+              {isManual && (
+                <span className="px-2 py-1 bg-primary/20 text-primary border border-primary/30 rounded text-xs font-medium">
+                  Manual Entry
+                </span>
+              )}
+              {rumor.foreshadowing && (
+                <span className="px-2 py-1 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded text-xs font-medium">
+                  Foreshadowing
+                </span>
+              )}
+              {rumor.tags &&
+                rumor.tags.length > 0 &&
+                rumor.tags.map((tag, tagIdx) => (
+                  <span
+                    key={tagIdx}
+                    className="px-2 py-1 bg-background border border-border rounded text-xs text-text-muted"
+                  >
+                    {tag}
+                  </span>
+                ))}
+            </div>
+
+            {/* Raw/unexpected fields for this rumor */}
+            {rumor._raw && <RawDataViewer data={rumor._raw} />}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Manual mode: no preview needed, just show a simple message
+  const manualPreviewContent = <ManualEntryPreview entityType="rumor" />
+
+  // AI generated content
+  const aiGeneratedContent =
     rumorsResponse && rumorsResponse.rumors.length > 0 ? (
       <div className="space-y-6">
         {/* Parse warning */}
-        {rumorsResponse._parseError && (
-          <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-              <Icon name="AlertCircle" className="w-5 h-5" />
-              Response Format Warning
-            </div>
-            <p className="text-text-muted text-sm">{rumorsResponse._parseError}</p>
-          </div>
-        )}
+        {rumorsResponse._parseError && <ParseWarning message={rumorsResponse._parseError} />}
 
         {/* Header - styled like Monster/NPC */}
         <div>
@@ -477,88 +736,7 @@ export default function RumorGenerator() {
 
         {/* Rumors list - styled with colored cards */}
         <div className="space-y-4">
-          {rumorsResponse.rumors.map((rumor, index) => {
-            const veracityColor = getVeracityColor(rumor.veracity)
-            return (
-              <div key={index} className="bg-background p-4 rounded border border-primary/30">
-                <div className="flex items-start gap-3">
-                  <Icon name="Quote" className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <div className="flex-1">
-                    <p className="text-text italic mb-4 text-lg">"{rumor.text}"</p>
-
-                    {/* Source and Veracity - styled cards */}
-                    <div className="grid md:grid-cols-2 gap-3 mb-3">
-                      <div className="bg-blue-500/10 p-3 rounded border border-blue-500/30">
-                        <p className="text-xs text-text-muted mb-1">Source</p>
-                        <p className="text-blue-400 font-medium">{rumor.source}</p>
-                      </div>
-                      <div
-                        className={`${veracityColor.bg} p-3 rounded border ${veracityColor.border}`}
-                      >
-                        <p className="text-xs text-text-muted mb-1">Veracity</p>
-                        <p className={`${veracityColor.text} font-medium capitalize`}>
-                          {rumor.veracity}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Leads To - styled with amber accent */}
-                    {rumor.leads_to && (
-                      <div className="bg-amber-500/10 p-3 rounded border border-amber-500/30 mb-3">
-                        <p className="text-xs text-text-muted mb-1">Adventure Hook</p>
-                        <p className="text-amber-400">{rumor.leads_to}</p>
-                      </div>
-                    )}
-
-                    {/* Context - styled with purple accent */}
-                    {rumor.context && (
-                      <div className="bg-purple-500/10 p-3 rounded border border-purple-500/30 mb-3">
-                        <p className="text-xs text-text-muted mb-1">Context</p>
-                        <p className="text-text">{rumor.context}</p>
-                      </div>
-                    )}
-
-                    {/* Badges row */}
-                    <div className="flex flex-wrap gap-2">
-                      {rumor.foreshadowing && (
-                        <span className="px-2 py-1 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded text-xs font-medium">
-                          Foreshadowing
-                        </span>
-                      )}
-                      {rumor.tags &&
-                        rumor.tags.length > 0 &&
-                        rumor.tags.map((tag, tagIdx) => (
-                          <span
-                            key={tagIdx}
-                            className="px-2 py-1 bg-background border border-border rounded text-xs text-text-muted"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                    </div>
-
-                    {/* Raw/unexpected fields for this rumor */}
-                    {rumor._raw && Object.keys(rumor._raw).length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <button
-                          onClick={() => setShowRawResponse(!showRawResponse)}
-                          className="text-xs text-text-muted hover:text-text flex items-center gap-1"
-                        >
-                          <Icon name="FileText" className="w-3 h-3" />
-                          Additional fields ({Object.keys(rumor._raw).length})
-                        </button>
-                        {showRawResponse && (
-                          <pre className="mt-2 text-xs text-text-muted overflow-x-auto whitespace-pre-wrap bg-background-panel p-2 rounded">
-                            {JSON.stringify(rumor._raw, null, 2)}
-                          </pre>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          {rumorsResponse.rumors.map((rumor, index) => renderRumorCard(rumor, index))}
         </div>
 
         <ActionsBar
@@ -570,52 +748,35 @@ export default function RumorGenerator() {
       </div>
     ) : null
 
+  // Choose which content to show based on mode
+  const generatedContent = entryMode === 'manual' ? manualPreviewContent : aiGeneratedContent
+
   return (
     <>
       <GeneratorLayout
         title="Rumor Generator"
         description="Generate rumors, plot hooks, and gossip for your campaign"
         icon="Quote"
-        formTitle="Rumor Parameters"
-        formIcon="Settings"
-        resultsTitle="Generated Rumors"
+        formTitle={entryMode === 'ai' ? 'Rumor Parameters' : 'Create Rumor'}
+        formIcon={entryMode === 'ai' ? 'Settings' : 'Pencil'}
+        resultsTitle={entryMode === 'ai' ? 'Generated Rumors' : 'Preview'}
         formContent={formContent}
         generatedContent={generatedContent}
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Rumors"
+        hideGenerateButton={entryMode === 'manual'}
         error={error}
       />
 
-      {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Rumors</h3>
-            <p className="text-text-muted mb-6">
-              Save {rumorsResponse?.rumors.length || 0} rumor
-              {(rumorsResponse?.rumors.length || 0) > 1 ? 's' : ''} to your campaign for future
-              reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Save Modal (AI mode only) */}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSave}
+        entityName={`${rumorsResponse?.rumors.length || 0} rumor${(rumorsResponse?.rumors.length || 0) > 1 ? 's' : ''}`}
+        campaignId={campaignId}
+      />
     </>
   )
 }

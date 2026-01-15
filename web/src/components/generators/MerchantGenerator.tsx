@@ -7,6 +7,15 @@ import Icon from '../common/Icon'
 import CampaignSelector from '../common/CampaignSelector'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualMerchantData,
+  defaultMerchantData,
+  merchantTypeOptions,
+} from './shared/schemas/merchantSchema'
 import {
   generateMerchant as generateMerchantApi,
   saveMerchant as saveMerchantApi,
@@ -330,6 +339,12 @@ export default function MerchantGenerator() {
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const { activeCampaignId } = useCampaignStore()
 
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualMerchantData>(defaultMerchantData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
+
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
 
@@ -483,7 +498,56 @@ export default function MerchantGenerator() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('Merchant name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError(null)
+
+    try {
+      await saveMerchantApi({
+        campaign_id: campaignId || undefined,
+        name: manualData.name.trim(),
+        shop_type: manualData.merchant_type,
+        atmosphere: '',
+        description: manualData.description.trim() || '',
+        location: '',
+        owner_name: manualData.name.trim(),
+        owner_personality: manualData.personality.trim() || '',
+        owner_description: manualData.appearance.trim() || '',
+        inventory: manualData.inventory
+          .filter((i) => i.name.trim())
+          .map((i) => ({ name: i.name, description: i.description, price: i.price })),
+        services: manualData.services
+          .filter((s) => s.trim())
+          .map((s) => ({ name: s, description: '', price: 'varies' })),
+        special_items: manualData.specialties
+          .filter((s) => s.trim())
+          .map((s) => ({ name: s, description: '', price: 'varies' })),
+        rumors: manualData.rumors.filter((r) => r.trim()),
+        recently_sold: [],
+        special_notes: manualData.quirks.filter((q) => q.trim()).join('; '),
+        haggle_willingness: '',
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultMerchantData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  // AI generation form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="merchant" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -568,18 +632,259 @@ export default function MerchantGenerator() {
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Merchant Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., Grimshaw's Emporium, The Wandering Peddler"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <FormField label="Merchant Type">
+        <select
+          value={manualData.merchant_type}
+          onChange={(e) => setManualData({ ...manualData, merchant_type: e.target.value })}
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {merchantTypeOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Describe the shop and its atmosphere..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={3}
+        />
+      </FormField>
+
+      {/* Merchant Details */}
+      <CollapsibleSection title="Merchant Details" defaultExpanded>
+        <div className="space-y-3">
+          <FormField label="Personality">
+            <input
+              type="text"
+              value={manualData.personality}
+              onChange={(e) => setManualData({ ...manualData, personality: e.target.value })}
+              placeholder="e.g., Gruff but fair, Overly friendly"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Appearance">
+            <textarea
+              value={manualData.appearance}
+              onChange={(e) => setManualData({ ...manualData, appearance: e.target.value })}
+              placeholder="Physical description..."
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+
+          <FormField label="Backstory">
+            <textarea
+              value={manualData.backstory}
+              onChange={(e) => setManualData({ ...manualData, backstory: e.target.value })}
+              placeholder="How did they become a merchant?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Inventory - Custom editor for 3-field objects */}
+      <CollapsibleSection title="Inventory" defaultExpanded={false}>
+        <div className="space-y-3">
+          {manualData.inventory.map((item, idx) => (
+            <div key={idx} className="bg-background p-3 rounded border border-border space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-text">Item {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newItems = [...manualData.inventory]
+                    newItems.splice(idx, 1)
+                    setManualData({ ...manualData, inventory: newItems })
+                  }}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={item.name}
+                  onChange={(e) => {
+                    const newItems = [...manualData.inventory]
+                    newItems[idx] = { ...item, name: e.target.value }
+                    setManualData({ ...manualData, inventory: newItems })
+                  }}
+                  placeholder="Item name"
+                  className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <input
+                  type="text"
+                  value={item.price}
+                  onChange={(e) => {
+                    const newItems = [...manualData.inventory]
+                    newItems[idx] = { ...item, price: e.target.value }
+                    setManualData({ ...manualData, inventory: newItems })
+                  }}
+                  placeholder="Price (e.g., 5 gp)"
+                  className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <input
+                type="text"
+                value={item.description}
+                onChange={(e) => {
+                  const newItems = [...manualData.inventory]
+                  newItems[idx] = { ...item, description: e.target.value }
+                  setManualData({ ...manualData, inventory: newItems })
+                }}
+                placeholder="Description (optional)"
+                className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setManualData({
+                ...manualData,
+                inventory: [...manualData.inventory, { name: '', description: '', price: '' }],
+              })
+            }
+            className="w-full px-3 py-2 border border-dashed border-border text-text-muted hover:border-primary hover:text-primary rounded transition-colors text-sm"
+          >
+            + Add Inventory Item
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      {/* Services */}
+      <CollapsibleSection title="Services Offered" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Services"
+          values={manualData.services}
+          onChange={(services) => setManualData({ ...manualData, services })}
+          placeholder="Add a service..."
+        />
+      </CollapsibleSection>
+
+      {/* Specialties */}
+      <CollapsibleSection title="Specialties" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Specialties"
+          values={manualData.specialties}
+          onChange={(specialties) => setManualData({ ...manualData, specialties })}
+          placeholder="Add a specialty..."
+        />
+      </CollapsibleSection>
+
+      {/* Quirks */}
+      <CollapsibleSection title="Quirks & Traits" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Quirks"
+          values={manualData.quirks}
+          onChange={(quirks) => setManualData({ ...manualData, quirks })}
+          placeholder="Add a quirk..."
+        />
+      </CollapsibleSection>
+
+      {/* Rumors */}
+      <CollapsibleSection title="Rumors" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Rumors"
+          values={manualData.rumors}
+          onChange={(rumors) => setManualData({ ...manualData, rumors })}
+          placeholder="Add a rumor..."
+        />
+      </CollapsibleSection>
+
+      {/* Connections */}
+      <CollapsibleSection title="Connections" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Connections"
+          values={manualData.connections}
+          onChange={(connections) => setManualData({ ...manualData, connections })}
+          placeholder="Add a connection..."
+        />
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full px-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Merchant
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <div className="text-center text-green-400 text-sm">
+          Merchant saved! You can find it in the Saved Content section.
+        </div>
+      )}
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError(null)
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content (simple message)
+  const manualPreviewContent = <ManualEntryPreview entityType="merchant" />
+
   const generatedContent = merchant ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {merchant._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{merchant._parseError}</p>
-        </div>
-      )}
+      {merchant._parseError && <ParseWarning message={merchant._parseError} />}
 
       {/* Header */}
       <div>
@@ -741,30 +1046,7 @@ export default function MerchantGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {merchant._raw && Object.keys(merchant._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(merchant._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(merchant._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {merchant._raw && <RawDataViewer data={merchant._raw} defaultExpanded={showRawResponse} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -783,41 +1065,23 @@ export default function MerchantGenerator() {
         icon="Package"
         formTitle="Shop Details"
         formIcon="Settings"
-        resultsTitle="Generated Merchant"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Merchant'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={generateMerchant}
         generateButtonText="Generate Merchant"
         error={error || undefined}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Merchant</h3>
-            <p className="text-text-muted mb-6">
-              Save "{merchant?.name}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveMerchant}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={saveMerchant}
+        entityName={merchant?.name || 'Merchant'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

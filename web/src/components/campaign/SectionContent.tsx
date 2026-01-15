@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Icon from '../common/Icon'
+import MarkdownToolbar from '../common/MarkdownToolbar'
 import { useCampaignStore, type CampaignContent } from '../../store/campaignStore'
 import type { Campaign } from '../../store/campaignStore'
 import type { IconName } from '../common/Icon'
 import { getApiUrl } from '@/config/api'
 import ImportCharacterModal from './ImportCharacterModal'
 import CharacterSheet from '../character/CharacterSheet'
+import NPCInventory from '../npcs/NPCInventory'
+import LocationTreasure from '../locations/LocationTreasure'
 import { logger } from '@/utils/logger'
 import { useAuthStore } from '../../store/authStore'
 import { authFetch } from '@/utils/authFetch'
@@ -54,6 +57,7 @@ export default function SectionContent({
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showImportCharacterModal, setShowImportCharacterModal] = useState(false)
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Load content when section/subsection changes
   useEffect(() => {
@@ -179,6 +183,8 @@ export default function SectionContent({
               type: (npc.ai_generated ? 'imported' : 'manual') as 'manual' | 'imported',
               created_at: npc.created_at,
               updated_at: npc.created_at,
+              // Store full NPC data for inventory display
+              npcData: npc,
             }
           })
         }
@@ -557,6 +563,8 @@ export default function SectionContent({
               type: (location.ai_generated ? 'imported' : 'manual') as 'manual' | 'imported',
               created_at: location.created_at,
               updated_at: location.created_at,
+              // Store full location data for treasure display
+              locationData: location,
             }
           })
         }
@@ -1902,10 +1910,16 @@ export default function SectionContent({
 
               <div>
                 <label className="block text-sm font-medium text-tavern-light mb-2">Content</label>
+                <MarkdownToolbar
+                  textareaRef={contentTextareaRef}
+                  value={content}
+                  onChange={setContent}
+                />
                 <textarea
+                  ref={contentTextareaRef}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-tavern-light focus:outline-none focus:border-primary h-96 resize-none font-mono text-sm"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-b-lg text-tavern-light focus:outline-none focus:border-primary h-96 resize-none font-mono text-sm"
                   placeholder="Enter your content here... (supports markdown)"
                 />
               </div>
@@ -2044,6 +2058,52 @@ export default function SectionContent({
                     )
                   }
                 })()}
+
+                {/* NPC Inventory Section */}
+                {entry.npcData && (
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Icon name="Package" className="w-4 h-4" />
+                      Inventory
+                    </h3>
+                    <NPCInventory
+                      inventory={(() => {
+                        try {
+                          const inv = entry.npcData.inventory
+                          if (!inv) return []
+                          return typeof inv === 'string' ? JSON.parse(inv) : inv
+                        } catch {
+                          return []
+                        }
+                      })()}
+                      onChange={() => {}}
+                      isEditing={false}
+                    />
+                  </div>
+                )}
+
+                {/* Location Treasure Section */}
+                {entry.locationData && (
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Icon name="Gem" className="w-4 h-4" />
+                      Treasure
+                    </h3>
+                    <LocationTreasure
+                      treasure={(() => {
+                        try {
+                          const tr = entry.locationData.treasure
+                          if (!tr) return []
+                          return typeof tr === 'string' ? JSON.parse(tr) : tr
+                        } catch {
+                          return []
+                        }
+                      })()}
+                      onChange={() => {}}
+                      isEditing={false}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )

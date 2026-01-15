@@ -7,6 +7,16 @@ import CampaignSelector from '../common/CampaignSelector'
 import { useCampaignStore } from '../../store/campaignStore'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualEncounterData,
+  defaultEncounterData,
+  encounterTypeOptions,
+  difficultyOptions,
+} from './shared/schemas/encounterSchema'
 import {
   generateEncounter as generateEncounterApi,
   saveEncounter as saveEncounterApi,
@@ -252,8 +262,13 @@ export default function EncounterBuilder() {
   const [error, setError] = useState('')
   const [encounter, setEncounter] = useState<EncounterData | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualEncounterData>(defaultEncounterData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
 
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
@@ -282,7 +297,6 @@ export default function EncounterBuilder() {
     setLoading(true)
     setError('')
     setEncounter(null)
-    setShowRawResponse(false)
     setIsSaved(false)
 
     try {
@@ -309,7 +323,6 @@ export default function EncounterBuilder() {
         if (!hasValidEncounterContent(normalized)) {
           normalized._parseError =
             'AI response missing essential encounter content. Showing raw response.'
-          setShowRawResponse(true)
         }
 
         setEncounter(normalized)
@@ -317,7 +330,6 @@ export default function EncounterBuilder() {
         // No encounter wrapper - try to normalize the raw response
         const normalized = normalizeEncounterResponse(data as unknown as Record<string, unknown>)
         normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
         setEncounter(normalized)
       }
     } catch (err) {
@@ -411,7 +423,63 @@ export default function EncounterBuilder() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('Encounter name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError('')
+
+    try {
+      await saveEncounterApi({
+        campaign_id: campaignId || undefined,
+        name: manualData.name.trim(),
+        party_level: typeof partyLevel === 'number' ? partyLevel : 5,
+        party_size: typeof partySize === 'number' ? partySize : 4,
+        difficulty: manualData.difficulty,
+        description: manualData.description.trim() || '',
+        environment: {
+          setting: manualData.environment.trim() || '',
+          features: manualData.terrain_features.filter((f) => f.trim()),
+          lighting: '',
+        },
+        creatures: manualData.creatures
+          .filter((c) => c.name.trim())
+          .map((c) => ({
+            name: c.name,
+            count: c.count || 1,
+            cr: 1,
+            role: '',
+            tactics: c.notes,
+          })),
+        treasure: {
+          coins: {},
+          items: manualData.treasure.filter((t) => t.trim()),
+        },
+        xp_total: 0,
+        xp_per_player: 0,
+        notes: [manualData.setup, ...manualData.tactics, ...manualData.complications]
+          .filter((n) => n.trim())
+          .join('\n'),
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultEncounterData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  // AI generation form content
+  const aiFormContent = (
     <>
       <AISettings generatorType="encounter" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -503,18 +571,264 @@ export default function EncounterBuilder() {
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Encounter Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., Ambush at the Bridge, The Goblin Camp"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label="Encounter Type">
+          <select
+            value={manualData.encounter_type}
+            onChange={(e) => setManualData({ ...manualData, encounter_type: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {encounterTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Difficulty">
+          <select
+            value={manualData.difficulty}
+            onChange={(e) => setManualData({ ...manualData, difficulty: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {difficultyOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Describe the encounter scenario..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={3}
+        />
+      </FormField>
+
+      <FormField label="Environment">
+        <input
+          type="text"
+          value={manualData.environment}
+          onChange={(e) => setManualData({ ...manualData, environment: e.target.value })}
+          placeholder="e.g., Forest clearing, Underground cavern"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      {/* Creatures */}
+      <CollapsibleSection title="Creatures" defaultExpanded>
+        <div className="space-y-3">
+          {manualData.creatures.map((creature, idx) => (
+            <div key={idx} className="bg-background p-3 rounded border border-border space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-text">Creature {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newCreatures = [...manualData.creatures]
+                    newCreatures.splice(idx, 1)
+                    setManualData({ ...manualData, creatures: newCreatures })
+                  }}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  value={creature.name}
+                  onChange={(e) => {
+                    const newCreatures = [...manualData.creatures]
+                    newCreatures[idx] = { ...creature, name: e.target.value }
+                    setManualData({ ...manualData, creatures: newCreatures })
+                  }}
+                  placeholder="Creature name"
+                  className="col-span-2 w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  value={creature.count}
+                  onChange={(e) => {
+                    const newCreatures = [...manualData.creatures]
+                    newCreatures[idx] = { ...creature, count: parseInt(e.target.value) || 1 }
+                    setManualData({ ...manualData, creatures: newCreatures })
+                  }}
+                  placeholder="#"
+                  className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <input
+                type="text"
+                value={creature.notes}
+                onChange={(e) => {
+                  const newCreatures = [...manualData.creatures]
+                  newCreatures[idx] = { ...creature, notes: e.target.value }
+                  setManualData({ ...manualData, creatures: newCreatures })
+                }}
+                placeholder="Notes (tactics, special abilities, etc.)"
+                className="w-full px-3 py-1.5 bg-background border border-border rounded text-text text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setManualData({
+                ...manualData,
+                creatures: [...manualData.creatures, { name: '', count: 1, notes: '' }],
+              })
+            }
+            className="w-full px-3 py-2 border border-dashed border-border text-text-muted hover:border-primary hover:text-primary rounded transition-colors text-sm"
+          >
+            + Add Creature
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      {/* Setup */}
+      <CollapsibleSection title="Setup & Initial Conditions" defaultExpanded={false}>
+        <FormField label="Setup">
+          <textarea
+            value={manualData.setup}
+            onChange={(e) => setManualData({ ...manualData, setup: e.target.value })}
+            placeholder="Initial positions, surprise, timing, etc."
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            rows={2}
+          />
+        </FormField>
+      </CollapsibleSection>
+
+      {/* Objectives */}
+      <CollapsibleSection title="Objectives" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Objectives"
+          values={manualData.objectives}
+          onChange={(objectives) => setManualData({ ...manualData, objectives })}
+          placeholder="Add an objective..."
+        />
+      </CollapsibleSection>
+
+      {/* Terrain Features */}
+      <CollapsibleSection title="Terrain Features" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Terrain Features"
+          values={manualData.terrain_features}
+          onChange={(terrain_features) => setManualData({ ...manualData, terrain_features })}
+          placeholder="Add a terrain feature..."
+        />
+      </CollapsibleSection>
+
+      {/* Tactics */}
+      <CollapsibleSection title="Tactics & Strategies" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Tactics"
+          values={manualData.tactics}
+          onChange={(tactics) => setManualData({ ...manualData, tactics })}
+          placeholder="Add a tactic..."
+        />
+      </CollapsibleSection>
+
+      {/* Complications */}
+      <CollapsibleSection title="Complications" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Complications"
+          values={manualData.complications}
+          onChange={(complications) => setManualData({ ...manualData, complications })}
+          placeholder="Add a complication..."
+        />
+      </CollapsibleSection>
+
+      {/* Treasure */}
+      <CollapsibleSection title="Treasure" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Treasure"
+          values={manualData.treasure}
+          onChange={(treasure) => setManualData({ ...manualData, treasure })}
+          placeholder="Add treasure..."
+        />
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full px-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Encounter
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <div className="text-center text-green-400 text-sm">
+          Encounter saved! You can find it in the Saved Content section.
+        </div>
+      )}
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError('')
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content (simple message)
+  const manualPreviewContent = <ManualEntryPreview entityType="encounter" />
+
   const generatedContent = encounter ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {encounter._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{encounter._parseError}</p>
-        </div>
-      )}
+      {encounter._parseError && <ParseWarning message={encounter._parseError} />}
 
       {/* Header - styled like Monster/NPC */}
       <div>
@@ -679,30 +993,7 @@ export default function EncounterBuilder() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {encounter._raw && Object.keys(encounter._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(encounter._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(encounter._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {encounter._raw && <RawDataViewer data={encounter._raw} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -721,42 +1012,24 @@ export default function EncounterBuilder() {
         icon="Swords"
         formTitle="Encounter Parameters"
         formIcon="Settings"
-        resultsTitle="Generated Encounter"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Encounter'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Encounter"
         error={error}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Encounter</h3>
-            <p className="text-text-muted mb-6">
-              Save "{encounter?.name}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSave}
+        entityName={encounter?.name || 'Encounter'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

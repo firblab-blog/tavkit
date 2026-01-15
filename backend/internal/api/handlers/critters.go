@@ -234,16 +234,25 @@ func (h *CritterHandler) ListCritters(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	critters, err := h.db.ListCrittersByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list critters", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list critters"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Critter, 0)
+		for _, cr := range critters {
+			if cr.CampaignID == nil {
+				filtered = append(filtered, cr)
+			}
+		}
+		critters = filtered
 	}
 
 	c.JSON(http.StatusOK, critters)
@@ -369,6 +378,19 @@ func (h *CritterHandler) DeleteCritter(c *gin.Context) {
 		h.db.GetCritterByID,
 		func(critter *db.Critter) string { return critter.UserID },
 		h.db.DeleteCritter,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns a critter to a campaign or Personal Library
+func (h *CritterHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"critter",
+		h.db.GetCritterByID,
+		func(cr *db.Critter) string { return cr.UserID },
+		func(cr *db.Critter, campaignID *string) { cr.CampaignID = campaignID },
+		h.db.UpdateCritter,
 		h.logger,
 	)
 }

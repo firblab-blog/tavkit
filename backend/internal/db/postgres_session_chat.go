@@ -2,115 +2,74 @@ package db
 
 import (
 	"context"
-	"time"
 )
 
+// sessionChatOps returns the unified SessionChatOperations for PostgreSQL.
+func (db *PostgresDB) sessionChatOps() *SessionChatOperations {
+	return NewSessionChatOperations(db.Executor(), db.QueryBuilder())
+}
+
 // =============================================================================
-// Session Chat Operations (PostgreSQL)
+// Session Chat Message Operations (PostgreSQL)
 // =============================================================================
 
-// CreateSessionChatMessage creates a new chat message
 func (db *PostgresDB) CreateSessionChatMessage(ctx context.Context, msg *SessionChatMessage) error {
-	msg.ID = generateUUID()
-	msg.CreatedAt = time.Now()
-
-	query := `
-		INSERT INTO session_chat_messages (id, campaign_id, user_id, role, content, rag_sources, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
-
-	var ragSources interface{}
-	if len(msg.RAGSources) > 0 {
-		ragSources = string(msg.RAGSources)
-	}
-
-	_, err := db.pool.Exec(ctx, query,
-		msg.ID, msg.CampaignID, msg.UserID, msg.Role, msg.Content, ragSources, msg.CreatedAt)
-	return err
+	return db.sessionChatOps().CreateSessionChatMessage(ctx, msg)
 }
 
-// GetSessionChatMessages retrieves chat messages for a campaign
 func (db *PostgresDB) GetSessionChatMessages(ctx context.Context, campaignID string, limit int) ([]*SessionChatMessage, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-
-	query := `
-		SELECT id, campaign_id, user_id, role, content, rag_sources, created_at
-		FROM session_chat_messages
-		WHERE campaign_id = $1
-		ORDER BY created_at ASC
-		LIMIT $2`
-
-	rows, err := db.pool.Query(ctx, query, campaignID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var messages []*SessionChatMessage
-	for rows.Next() {
-		msg := &SessionChatMessage{}
-		var ragSources *string
-		if err := rows.Scan(&msg.ID, &msg.CampaignID, &msg.UserID, &msg.Role, &msg.Content, &ragSources, &msg.CreatedAt); err != nil {
-			return nil, err
-		}
-		if ragSources != nil {
-			msg.RAGSources = []byte(*ragSources)
-		}
-		messages = append(messages, msg)
-	}
-
-	return messages, rows.Err()
+	return db.sessionChatOps().GetSessionChatMessages(ctx, campaignID, limit)
 }
 
-// ClearSessionChatMessages deletes all chat messages for a campaign
 func (db *PostgresDB) ClearSessionChatMessages(ctx context.Context, campaignID, userID string) error {
-	query := `DELETE FROM session_chat_messages WHERE campaign_id = $1 AND user_id = $2`
-	_, err := db.pool.Exec(ctx, query, campaignID, userID)
-	return err
+	return db.sessionChatOps().ClearSessionChatMessages(ctx, campaignID, userID)
 }
 
-// GetRecentSessionChatMessages retrieves the most recent N messages for context
 func (db *PostgresDB) GetRecentSessionChatMessages(ctx context.Context, campaignID string, limit int) ([]*SessionChatMessage, error) {
-	if limit <= 0 {
-		limit = 10
-	}
+	return db.sessionChatOps().GetRecentSessionChatMessages(ctx, campaignID, limit)
+}
 
-	// Get recent messages in reverse order, then reverse the result
-	query := `
-		SELECT id, campaign_id, user_id, role, content, rag_sources, created_at
-		FROM session_chat_messages
-		WHERE campaign_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2`
+func (db *PostgresDB) GetSessionChatMessagesByConversationID(ctx context.Context, conversationID string, limit int) ([]*SessionChatMessage, error) {
+	return db.sessionChatOps().GetSessionChatMessagesByConversationID(ctx, conversationID, limit)
+}
 
-	rows, err := db.pool.Query(ctx, query, campaignID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+func (db *PostgresDB) ClearSessionChatMessagesByConversationID(ctx context.Context, conversationID string) error {
+	return db.sessionChatOps().ClearSessionChatMessagesByConversationID(ctx, conversationID)
+}
 
-	var messages []*SessionChatMessage
-	for rows.Next() {
-		msg := &SessionChatMessage{}
-		var ragSources *string
-		if err := rows.Scan(&msg.ID, &msg.CampaignID, &msg.UserID, &msg.Role, &msg.Content, &ragSources, &msg.CreatedAt); err != nil {
-			return nil, err
-		}
-		if ragSources != nil {
-			msg.RAGSources = []byte(*ragSources)
-		}
-		messages = append(messages, msg)
-	}
+// =============================================================================
+// Chat Conversation Operations (PostgreSQL)
+// =============================================================================
 
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
+func (db *PostgresDB) CreateChatConversation(ctx context.Context, conv *ChatConversation) error {
+	return db.sessionChatOps().CreateChatConversation(ctx, conv)
+}
 
-	// Reverse to get chronological order
-	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
-		messages[i], messages[j] = messages[j], messages[i]
-	}
+func (db *PostgresDB) GetChatConversationByID(ctx context.Context, id string) (*ChatConversation, error) {
+	return db.sessionChatOps().GetChatConversationByID(ctx, id)
+}
 
-	return messages, nil
+func (db *PostgresDB) ListChatConversationsByCampaignID(ctx context.Context, campaignID, userID string) ([]*ChatConversation, error) {
+	return db.sessionChatOps().ListChatConversationsByCampaignID(ctx, campaignID, userID)
+}
+
+func (db *PostgresDB) UpdateChatConversation(ctx context.Context, conv *ChatConversation) error {
+	return db.sessionChatOps().UpdateChatConversation(ctx, conv)
+}
+
+func (db *PostgresDB) DeleteChatConversation(ctx context.Context, id string) error {
+	// PostgreSQL has proper CASCADE, just delete the conversation
+	return db.sessionChatOps().DeleteChatConversation(ctx, id)
+}
+
+// =============================================================================
+// Chat Source Preferences Operations (PostgreSQL)
+// =============================================================================
+
+func (db *PostgresDB) GetChatSourcePreferences(ctx context.Context, campaignID string) (*ChatSourcePreferences, error) {
+	return db.sessionChatOps().GetChatSourcePreferences(ctx, campaignID)
+}
+
+func (db *PostgresDB) UpsertChatSourcePreferences(ctx context.Context, prefs *ChatSourcePreferences) error {
+	return db.sessionChatOps().UpsertChatSourcePreferences(ctx, prefs)
 }

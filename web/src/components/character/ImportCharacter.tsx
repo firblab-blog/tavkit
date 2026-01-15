@@ -6,9 +6,10 @@ import { logger } from '@/utils/logger'
 interface ImportCharacterProps {
   onSuccess: () => void
   onCancel: () => void
+  campaignId?: string | null
 }
 
-export default function ImportCharacter({ onSuccess, onCancel }: ImportCharacterProps) {
+export default function ImportCharacter({ onSuccess, onCancel, campaignId }: ImportCharacterProps) {
   const [characterUrl, setCharacterUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -32,7 +33,11 @@ export default function ImportCharacter({ onSuccess, onCancel }: ImportCharacter
     setError('')
 
     try {
-      const response = await apiClient.post('/characters/import/dndbeyond', { url: characterUrl })
+      const payload: { url: string; campaign_id?: string } = { url: characterUrl }
+      if (campaignId) {
+        payload.campaign_id = campaignId
+      }
+      const response = await apiClient.post('/characters/import/dndbeyond', payload)
       logger.debug('Character imported successfully:', response.data)
       onSuccess()
     } catch (err: any) {

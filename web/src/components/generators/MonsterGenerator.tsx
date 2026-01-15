@@ -7,6 +7,18 @@ import Icon from '../common/Icon'
 import { useCampaignStore } from '../../store/campaignStore'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor, ObjectArrayEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualMonsterData,
+  defaultMonsterData,
+  creatureTypeOptions,
+  sizeOptions,
+  alignmentOptions,
+  challengeRatingOptions,
+} from './shared/schemas/monsterSchema'
 import {
   generateMonster as generateMonsterApi,
   saveMonster as saveMonsterApi,
@@ -168,6 +180,12 @@ export default function MonsterGenerator() {
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualMonsterData>(defaultMonsterData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
 
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
@@ -391,7 +409,70 @@ export default function MonsterGenerator() {
     return mod >= 0 ? `+${mod}` : `${mod}`
   }
 
-  const formContent = (
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('Monster name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError('')
+
+    try {
+      // Parse CR for numeric storage
+      const crValue = parseFloat(manualData.challenge_rating) || 1
+
+      await saveMonsterApi({
+        campaign_id: campaignId || undefined,
+        name: manualData.name.trim(),
+        cr: crValue,
+        stats: {
+          type: manualData.creature_type,
+          size: manualData.size,
+          alignment: manualData.alignment,
+          armor_class: manualData.stats.ac || 10,
+          hit_points: { average: manualData.stats.hp || 1, dice: '' },
+          speed: manualData.stats.speed
+            ? { walk: parseInt(manualData.stats.speed) || 30 }
+            : { walk: 30 },
+          abilities: {
+            STR: manualData.stats.str || 10,
+            DEX: manualData.stats.dex || 10,
+            CON: manualData.stats.con || 10,
+            INT: manualData.stats.int || 10,
+            WIS: manualData.stats.wis || 10,
+            CHA: manualData.stats.cha || 10,
+          },
+          damage_resistances: manualData.damage_resistances.filter((r) => r.trim()),
+          damage_immunities: manualData.damage_immunities.filter((i) => i.trim()),
+          condition_immunities: manualData.condition_immunities.filter((c) => c.trim()),
+          senses: {},
+          languages: manualData.languages.filter((l) => l.trim()),
+          challenge_rating: crValue,
+          xp: 0,
+          traits: manualData.traits.filter((t) => t.name.trim()),
+          actions: manualData.actions.filter((a) => a.name.trim()),
+          legendary_actions: manualData.legendary_actions.filter((a) => a.name.trim()),
+        },
+        lore: manualData.lore.trim() || '',
+        tactics: manualData.tactics.trim() || '',
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultMonsterData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  // AI generation form content
+  const aiFormContent = (
     <>
       {/* AI Settings */}
       <AISettings generatorType="monster" onSettingsChange={setAiSettings} />
@@ -490,18 +571,349 @@ export default function MonsterGenerator() {
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Monster Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., Shadow Serpent, Flame Horror"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label="Creature Type">
+          <select
+            value={manualData.creature_type}
+            onChange={(e) => setManualData({ ...manualData, creature_type: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {creatureTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Size">
+          <select
+            value={manualData.size}
+            onChange={(e) => setManualData({ ...manualData, size: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {sizeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label="Alignment">
+          <select
+            value={manualData.alignment}
+            onChange={(e) => setManualData({ ...manualData, alignment: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {alignmentOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Challenge Rating">
+          <select
+            value={manualData.challenge_rating}
+            onChange={(e) => setManualData({ ...manualData, challenge_rating: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {challengeRatingOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <FormField label="Description">
+        <textarea
+          value={manualData.description}
+          onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+          placeholder="Physical description of the creature..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={2}
+        />
+      </FormField>
+
+      {/* Core Stats */}
+      <CollapsibleSection title="Core Stats" defaultExpanded>
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <FormField label="AC">
+              <input
+                type="number"
+                min={1}
+                value={manualData.stats.ac || ''}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    stats: {
+                      ...manualData.stats,
+                      ac: e.target.value ? parseInt(e.target.value) : null,
+                    },
+                  })
+                }
+                placeholder="10"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+
+            <FormField label="HP">
+              <input
+                type="number"
+                min={1}
+                value={manualData.stats.hp || ''}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    stats: {
+                      ...manualData.stats,
+                      hp: e.target.value ? parseInt(e.target.value) : null,
+                    },
+                  })
+                }
+                placeholder="1"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+
+            <FormField label="Speed">
+              <input
+                type="text"
+                value={manualData.stats.speed}
+                onChange={(e) =>
+                  setManualData({
+                    ...manualData,
+                    stats: { ...manualData.stats, speed: e.target.value },
+                  })
+                }
+                placeholder="30 ft"
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-6 gap-2">
+            {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((stat) => (
+              <FormField key={stat} label={stat.toUpperCase()}>
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={manualData.stats[stat] || ''}
+                  onChange={(e) =>
+                    setManualData({
+                      ...manualData,
+                      stats: {
+                        ...manualData.stats,
+                        [stat]: e.target.value ? parseInt(e.target.value) : null,
+                      },
+                    })
+                  }
+                  placeholder="10"
+                  className="w-full px-2 py-2 bg-background border border-border rounded-lg text-text text-center focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </FormField>
+            ))}
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Resistances & Immunities */}
+      <CollapsibleSection title="Resistances & Immunities" defaultExpanded={false}>
+        <div className="space-y-3">
+          <ArrayFieldEditor
+            label="Damage Resistances"
+            values={manualData.damage_resistances}
+            onChange={(damage_resistances) => setManualData({ ...manualData, damage_resistances })}
+            placeholder="Add damage resistance..."
+          />
+
+          <ArrayFieldEditor
+            label="Damage Immunities"
+            values={manualData.damage_immunities}
+            onChange={(damage_immunities) => setManualData({ ...manualData, damage_immunities })}
+            placeholder="Add damage immunity..."
+          />
+
+          <ArrayFieldEditor
+            label="Condition Immunities"
+            values={manualData.condition_immunities}
+            onChange={(condition_immunities) =>
+              setManualData({ ...manualData, condition_immunities })
+            }
+            placeholder="Add condition immunity..."
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Senses & Languages */}
+      <CollapsibleSection title="Senses & Languages" defaultExpanded={false}>
+        <div className="space-y-3">
+          <ArrayFieldEditor
+            label="Senses"
+            values={manualData.senses}
+            onChange={(senses) => setManualData({ ...manualData, senses })}
+            placeholder="Add a sense (e.g., Darkvision 60 ft)..."
+          />
+
+          <ArrayFieldEditor
+            label="Languages"
+            values={manualData.languages}
+            onChange={(languages) => setManualData({ ...manualData, languages })}
+            placeholder="Add a language..."
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Traits */}
+      <CollapsibleSection title="Traits" defaultExpanded={false}>
+        <ObjectArrayEditor
+          label="Traits"
+          values={manualData.traits}
+          onChange={(traits) => setManualData({ ...manualData, traits })}
+          namePlaceholder="Trait name"
+          descriptionPlaceholder="Trait description"
+        />
+      </CollapsibleSection>
+
+      {/* Actions */}
+      <CollapsibleSection title="Actions" defaultExpanded={false}>
+        <ObjectArrayEditor
+          label="Actions"
+          values={manualData.actions}
+          onChange={(actions) => setManualData({ ...manualData, actions })}
+          namePlaceholder="Action name"
+          descriptionPlaceholder="Action description"
+        />
+      </CollapsibleSection>
+
+      {/* Reactions */}
+      <CollapsibleSection title="Reactions" defaultExpanded={false}>
+        <ObjectArrayEditor
+          label="Reactions"
+          values={manualData.reactions}
+          onChange={(reactions) => setManualData({ ...manualData, reactions })}
+          namePlaceholder="Reaction name"
+          descriptionPlaceholder="Reaction description"
+        />
+      </CollapsibleSection>
+
+      {/* Legendary Actions */}
+      <CollapsibleSection title="Legendary Actions" defaultExpanded={false}>
+        <ObjectArrayEditor
+          label="Legendary Actions"
+          values={manualData.legendary_actions}
+          onChange={(legendary_actions) => setManualData({ ...manualData, legendary_actions })}
+          namePlaceholder="Legendary action name"
+          descriptionPlaceholder="Legendary action description"
+        />
+      </CollapsibleSection>
+
+      {/* Tactics & Lore */}
+      <CollapsibleSection title="Tactics & Lore" defaultExpanded={false}>
+        <div className="space-y-3">
+          <FormField label="Tactics">
+            <textarea
+              value={manualData.tactics}
+              onChange={(e) => setManualData({ ...manualData, tactics: e.target.value })}
+              placeholder="How does this creature fight?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+
+          <FormField label="Lore">
+            <textarea
+              value={manualData.lore}
+              onChange={(e) => setManualData({ ...manualData, lore: e.target.value })}
+              placeholder="Background, habitat, behavior..."
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={3}
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full px-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Monster
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <div className="text-center text-green-400 text-sm">
+          Monster saved! You can find it in the Saved Content section.
+        </div>
+      )}
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError('')
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content (simple message)
+  const manualPreviewContent = <ManualEntryPreview entityType="monster" />
+
   const generatedContent = monster ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {monster._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{monster._parseError}</p>
-        </div>
-      )}
+      {monster._parseError && <ParseWarning message={monster._parseError} />}
 
       {/* Header */}
       <div>
@@ -741,30 +1153,7 @@ export default function MonsterGenerator() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {monster._raw && Object.keys(monster._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(monster._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(monster._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {monster._raw && <RawDataViewer data={monster._raw} defaultExpanded={showRawResponse} />}
 
       {/* Actions */}
       <ActionsBar
@@ -784,42 +1173,24 @@ export default function MonsterGenerator() {
         icon="Skull"
         formTitle="Monster Details"
         formIcon="Settings"
-        resultsTitle="Generated Monster"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Monster'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Monster"
         error={error}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Monster</h3>
-            <p className="text-text-muted mb-6">
-              Save "{monster?.name}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSave}
+        entityName={monster?.name || 'Monster'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

@@ -7,6 +7,16 @@ import Icon from '../common/Icon'
 import CampaignSelector from '../common/CampaignSelector'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualNPCData,
+  defaultNPCData,
+  raceOptions,
+  classOptions,
+} from './shared/schemas/npcSchema'
 import {
   generateNPC as generateNPCApi,
   saveNPC as saveNPCApi,
@@ -360,6 +370,12 @@ export default function NPCGenerator() {
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const { activeCampaignId } = useCampaignStore()
 
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualNPCData>(defaultNPCData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
+
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
 
@@ -503,13 +519,67 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
     navigator.clipboard.writeText(text)
   }
 
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.name.trim()) {
+      setError('NPC name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError(null)
+
+    try {
+      // Build personality text from manual fields
+      const personalityText = `Traits: ${manualData.traits.join(', ') || 'N/A'}\nIdeals: ${manualData.ideals || 'N/A'}\nBonds: ${manualData.bonds || 'N/A'}\nFlaws: ${manualData.flaws || 'N/A'}`
+
+      // Build backstory
+      const backstoryText = `${manualData.appearance || ''}\n\n${manualData.backstory || ''}\n\nMotivation: ${manualData.motivation || ''}`
+
+      await saveNPCApi({
+        campaign_id: campaignId || undefined,
+        name: manualData.name.trim(),
+        race: manualData.race,
+        class: manualData.class || 'commoner',
+        personality: personalityText,
+        backstory: backstoryText.trim(),
+        stats: {
+          level: manualData.level || 1,
+          alignment: '',
+          abilities: {
+            STR: manualData.stats.str || 10,
+            DEX: manualData.stats.dex || 10,
+            CON: manualData.stats.con || 10,
+            INT: manualData.stats.int || 10,
+            WIS: manualData.stats.wis || 10,
+            CHA: manualData.stats.cha || 10,
+          },
+          skills: manualData.skills.filter((s) => s.trim()),
+          equipment: manualData.equipment.filter((e) => e.trim()),
+          role: manualData.occupation.trim() || '',
+          plot_hooks: manualData.plot_hooks.filter((h) => h.trim()),
+        },
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultNPCData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   // Calculate ability modifier
   const getModifier = (score: number): string => {
     const mod = Math.floor((score - 10) / 2)
     return mod >= 0 ? `+${mod}` : `${mod}`
   }
 
-  const formContent = (
+  const aiFormContent = (
     <>
       <AISettings generatorType="npc" onSettingsChange={setAiSettings} />
       <CampaignSelector
@@ -628,18 +698,267 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
     </>
   )
 
+  // Manual entry form content
+  const manualFormContent = (
+    <>
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="NPC Name" required>
+        <input
+          type="text"
+          value={manualData.name}
+          onChange={(e) => setManualData({ ...manualData, name: e.target.value })}
+          placeholder="e.g., Theron Blackwood, Lady Mira"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <div className="grid grid-cols-3 gap-3">
+        <FormField label="Race">
+          <select
+            value={manualData.race}
+            onChange={(e) => setManualData({ ...manualData, race: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {raceOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Class">
+          <select
+            value={manualData.class}
+            onChange={(e) => setManualData({ ...manualData, class: e.target.value })}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {classOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Level">
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={manualData.level || ''}
+            onChange={(e) =>
+              setManualData({
+                ...manualData,
+                level: e.target.value ? parseInt(e.target.value) : null,
+              })
+            }
+            placeholder="1-20"
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </FormField>
+      </div>
+
+      <FormField label="Occupation/Role">
+        <input
+          type="text"
+          value={manualData.occupation}
+          onChange={(e) => setManualData({ ...manualData, occupation: e.target.value })}
+          placeholder="e.g., Blacksmith, Tavern owner, Merchant"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      {/* Appearance & Description */}
+      <CollapsibleSection title="Appearance & Description" defaultExpanded>
+        <div className="space-y-3">
+          <FormField label="Appearance">
+            <textarea
+              value={manualData.appearance}
+              onChange={(e) => setManualData({ ...manualData, appearance: e.target.value })}
+              placeholder="Physical description..."
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+
+          <FormField label="Personality Summary">
+            <textarea
+              value={manualData.personality}
+              onChange={(e) => setManualData({ ...manualData, personality: e.target.value })}
+              placeholder="Brief personality description..."
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+
+          <FormField label="Voice Notes">
+            <input
+              type="text"
+              value={manualData.voice_notes}
+              onChange={(e) => setManualData({ ...manualData, voice_notes: e.target.value })}
+              placeholder="e.g., Deep gravelly voice, Speaks quickly"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Personality Traits */}
+      <CollapsibleSection title="Personality Traits (D&D Style)" defaultExpanded={false}>
+        <div className="space-y-3">
+          <ArrayFieldEditor
+            label="Traits"
+            values={manualData.traits}
+            onChange={(traits) => setManualData({ ...manualData, traits })}
+            placeholder="Add a personality trait..."
+          />
+
+          <FormField label="Ideals">
+            <input
+              type="text"
+              value={manualData.ideals}
+              onChange={(e) => setManualData({ ...manualData, ideals: e.target.value })}
+              placeholder="What do they believe in?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Bonds">
+            <input
+              type="text"
+              value={manualData.bonds}
+              onChange={(e) => setManualData({ ...manualData, bonds: e.target.value })}
+              placeholder="What/who are they connected to?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="Flaws">
+            <input
+              type="text"
+              value={manualData.flaws}
+              onChange={(e) => setManualData({ ...manualData, flaws: e.target.value })}
+              placeholder="What are their weaknesses?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Background & Motivation */}
+      <CollapsibleSection title="Background & Motivation" defaultExpanded={false}>
+        <div className="space-y-3">
+          <FormField label="Backstory">
+            <textarea
+              value={manualData.backstory}
+              onChange={(e) => setManualData({ ...manualData, backstory: e.target.value })}
+              placeholder="Their history..."
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={3}
+            />
+          </FormField>
+
+          <FormField label="Motivation">
+            <textarea
+              value={manualData.motivation}
+              onChange={(e) => setManualData({ ...manualData, motivation: e.target.value })}
+              placeholder="What drives them?"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Skills & Equipment */}
+      <CollapsibleSection title="Skills & Equipment" defaultExpanded={false}>
+        <div className="space-y-3">
+          <ArrayFieldEditor
+            label="Skills"
+            values={manualData.skills}
+            onChange={(skills) => setManualData({ ...manualData, skills })}
+            placeholder="Add a skill..."
+          />
+
+          <ArrayFieldEditor
+            label="Equipment"
+            values={manualData.equipment}
+            onChange={(equipment) => setManualData({ ...manualData, equipment })}
+            placeholder="Add equipment..."
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Plot Hooks */}
+      <CollapsibleSection title="Plot Hooks" defaultExpanded={false}>
+        <ArrayFieldEditor
+          label="Plot Hooks"
+          values={manualData.plot_hooks}
+          onChange={(plot_hooks) => setManualData({ ...manualData, plot_hooks })}
+          placeholder="Add a plot hook..."
+        />
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.name.trim()}
+        className="w-full px-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save NPC
+          </>
+        )}
+      </button>
+
+      {manualSaved && (
+        <div className="text-center text-green-400 text-sm">
+          NPC saved! You can find it in the Saved Content section.
+        </div>
+      )}
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError(null)
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content (simple message)
+  const manualPreviewContent = <ManualEntryPreview entityType="NPC" />
+
   const generatedContent = npc ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {npc._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{npc._parseError}</p>
-        </div>
-      )}
+      {npc._parseError && <ParseWarning message={npc._parseError} />}
 
       {/* Header */}
       <div>
@@ -827,30 +1146,7 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {npc._raw && Object.keys(npc._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(npc._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(npc._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {npc._raw && <RawDataViewer data={npc._raw} defaultExpanded={showRawResponse} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -869,43 +1165,24 @@ ${npc.plot_hooks.length ? `\nPlot Hooks:\n${npc.plot_hooks.map((h) => `- ${h}`).
         icon="Users"
         formTitle="Character Details"
         formIcon="Settings"
-        resultsTitle="Generated NPC"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated NPC'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={generateNPC}
         generateButtonText="Generate NPC"
         error={error || undefined}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-background-panel rounded-lg border border-border p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-text mb-4">Save NPC</h3>
-            <p className="text-text-muted mb-6">
-              Save "{npc?.name}" to your collection?{' '}
-              {campaignId && 'It will be linked to your selected campaign.'}
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-text hover:bg-background-panel transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveNPC}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={saveNPC}
+        entityName={npc?.name || 'NPC'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

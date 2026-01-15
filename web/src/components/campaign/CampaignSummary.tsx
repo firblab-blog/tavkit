@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import Icon from '../common/Icon'
 import { authFetch } from '@/utils/authFetch'
 import SummaryContentSettings from './SummaryContentSettings'
+import { logger } from '@/utils/logger'
 
 interface SummaryJob {
   job_id: string
@@ -97,7 +98,7 @@ export default function CampaignSummary({
           }
         }
       } catch (err) {
-        console.error('Failed to poll job status:', err)
+        logger.error('Failed to poll job status:', err)
       }
     },
     [campaignId] // Removed onRegenerate - using ref instead
@@ -129,7 +130,7 @@ export default function CampaignSummary({
           }
         }
       } catch (err) {
-        console.error('Failed to check active job:', err)
+        logger.error('Failed to check active job:', err)
       }
     }
 
@@ -192,7 +193,7 @@ export default function CampaignSummary({
         onRegenerate()
       }
     } catch (err) {
-      console.error('Failed to start chunked generation:', err)
+      logger.error('Failed to start chunked generation:', err)
       setIsGenerating(false)
       // Fall back to legacy regeneration
       onRegenerate()

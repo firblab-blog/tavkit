@@ -81,7 +81,8 @@ func stripHTML(html string) string {
 
 // ImportCharacterRequest represents the request to import from D&D Beyond
 type ImportCharacterRequest struct {
-	URL string `json:"url" binding:"required"`
+	URL        string  `json:"url" binding:"required"`
+	CampaignID *string `json:"campaign_id,omitempty"`
 }
 
 // ImportCharacter imports a character from D&D Beyond
@@ -119,6 +120,11 @@ func (h *DnDBeyondHandler) ImportCharacter(c *gin.Context) {
 		h.logger.Error("Failed to convert D&D Beyond character", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to convert character data"})
 		return
+	}
+
+	// Associate with campaign if provided
+	if req.CampaignID != nil && *req.CampaignID != "" {
+		character.CampaignID = req.CampaignID
 	}
 
 	// Create character in database

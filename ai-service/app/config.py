@@ -37,13 +37,18 @@ class Settings(BaseSettings):
     AI_MAX_RETRIES: int = 3
 
     # Ollama Configuration
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    # Default assumes containerized Ollama. For host Ollama:
+    # - Windows/Mac: OLLAMA_BASE_URL=http://host.docker.internal:11434
+    # - Linux: OLLAMA_BASE_URL=http://172.17.0.1:11434
+    OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "llama3.2:7b"
     OLLAMA_TEMPERATURE: float = 0.7
     OLLAMA_MAX_TOKENS: int = 800  # Reduced for faster generation
     OLLAMA_TOP_P: float = 0.9
     OLLAMA_TOP_K: int = 40
     OLLAMA_NUM_CTX: int = 2048  # Context window
+    # Embedding model for Ollama (default: nomic-embed-text)
+    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
 
     # OpenAI Configuration
     OPENAI_API_KEY: str = ""
@@ -71,6 +76,12 @@ class Settings(BaseSettings):
 
     # Token estimation
     CHARS_PER_TOKEN: int = 4
+
+    # Embedding chunk configuration
+    # Override to manually set chunk size (0 = auto-calculate based on model)
+    EMBEDDING_CHUNK_SIZE_OVERRIDE: int = 0
+    # Safety margin for auto-calculated chunk sizes (percentage below context limit)
+    EMBEDDING_SAFETY_MARGIN: float = 0.15
 
     def get_batch_size(self) -> int:
         """Get batch size for the current provider."""

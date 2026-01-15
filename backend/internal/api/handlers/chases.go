@@ -249,17 +249,26 @@ func (h *ChaseHandler) ListChases(c *gin.Context) {
 		return
 	}
 
-	// Optional campaign filter
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Get optional campaign_id from query params
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	chases, err := h.db.ListChasesByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list chases", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list chases"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Chase, 0)
+		for _, ch := range chases {
+			if ch.CampaignID == nil {
+				filtered = append(filtered, ch)
+			}
+		}
+		chases = filtered
 	}
 
 	c.JSON(http.StatusOK, chases)
@@ -411,6 +420,19 @@ func (h *ChaseHandler) DeleteChase(c *gin.Context) {
 		h.db.GetChaseByID,
 		func(chase *db.Chase) string { return chase.UserID },
 		h.db.DeleteChase,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns a chase to a campaign or Personal Library
+func (h *ChaseHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"chase",
+		h.db.GetChaseByID,
+		func(ch *db.Chase) string { return ch.UserID },
+		func(ch *db.Chase, campaignID *string) { ch.CampaignID = campaignID },
+		h.db.UpdateChase,
 		h.logger,
 	)
 }

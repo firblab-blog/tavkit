@@ -234,16 +234,25 @@ func (h *TavernHandler) ListTaverns(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	taverns, err := h.db.ListTavernsByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list taverns", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list taverns"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Tavern, 0)
+		for _, t := range taverns {
+			if t.CampaignID == nil {
+				filtered = append(filtered, t)
+			}
+		}
+		taverns = filtered
 	}
 
 	c.JSON(http.StatusOK, taverns)
@@ -365,6 +374,19 @@ func (h *TavernHandler) DeleteTavern(c *gin.Context) {
 		h.db.GetTavernByID,
 		func(t *db.Tavern) string { return t.UserID },
 		h.db.DeleteTavern,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns a tavern to a campaign or Personal Library
+func (h *TavernHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"tavern",
+		h.db.GetTavernByID,
+		func(t *db.Tavern) string { return t.UserID },
+		func(t *db.Tavern, campaignID *string) { t.CampaignID = campaignID },
+		h.db.UpdateTavern,
 		h.logger,
 	)
 }

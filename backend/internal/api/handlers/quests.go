@@ -293,16 +293,25 @@ func (h *QuestHandler) ListQuests(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	quests, err := h.db.ListQuestsByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list quests", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list quests"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Quest, 0)
+		for _, q := range quests {
+			if q.CampaignID == nil {
+				filtered = append(filtered, q)
+			}
+		}
+		quests = filtered
 	}
 
 	c.JSON(http.StatusOK, quests)
@@ -415,6 +424,19 @@ func (h *QuestHandler) DeleteQuest(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "quest deleted"})
+}
+
+// AssignCampaign assigns a quest to a campaign or Personal Library
+func (h *QuestHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"quest",
+		h.db.GetQuestByID,
+		func(q *db.Quest) string { return q.UserID },
+		func(q *db.Quest, campaignID *string) { q.CampaignID = campaignID },
+		h.db.UpdateQuest,
+		h.logger,
+	)
 }
 
 // truncateString truncates a string to maxLen characters

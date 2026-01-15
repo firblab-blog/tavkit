@@ -1,83 +1,91 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams, useLocation } from 'react-router-dom'
 import Icon from '../common/Icon'
 import CharacterSheet from './CharacterSheet'
 import ImportCharacter from './ImportCharacter'
 import ManualCharacterForm from './ManualCharacterForm'
 import { useCharacterStore, Character } from '../../store/characterStore'
+import { useCampaignStore } from '../../store/campaignStore'
+import { useMobileSidebar } from '../../hooks/useMobileSidebar'
 import { apiClient } from '@/api/client'
 
 export default function AdventurersRoster() {
+  const [searchParams] = useSearchParams()
+  const location = useLocation()
   const { characters, loading, error, fetchCharacters, deleteCharacter } = useCharacterStore()
+  const { activeCampaignId, unlinkCharacterFromCampaign, getActiveCampaign } = useCampaignStore()
+  const activeCampaign = getActiveCampaign()
+
+  // Determine if we're in sandbox mode (no campaign context)
+  const isSandboxMode = location.pathname.includes('/sandbox')
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createMethod, setCreateMethod] = useState<'choose' | 'manual' | 'import'>('choose')
 
-  // Mobile drawer state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  // Use shared mobile sidebar hook
+  const { isMobile, isDrawerOpen, setIsDrawerOpen } = useMobileSidebar()
 
   useEffect(() => {
-    fetchCharacters()
-  }, [])
+    // Fetch characters filtered by campaign (unless in sandbox mode)
+    // Use activeCampaign?.id instead of activeCampaignId to handle stale IDs in localStorage
+    fetchCharacters(false, isSandboxMode ? undefined : (activeCampaign?.id ?? undefined))
+  }, [fetchCharacters, activeCampaign?.id, isSandboxMode])
 
-  // Detect mobile viewport
+  // Select character from URL query parameter
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  // Close drawer when switching to desktop
-  useEffect(() => {
-    if (!isMobile) {
-      setIsDrawerOpen(false)
-    }
-  }, [isMobile])
-
-  // Prevent body scroll when drawer open on mobile
-  useEffect(() => {
-    if (isMobile && isDrawerOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isMobile, isDrawerOpen])
-
-  // Handle Escape key to close drawer
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isDrawerOpen) {
-        setIsDrawerOpen(false)
+    const characterId = searchParams.get('character')
+    if (characterId && characters.length > 0) {
+      const char = characters.find((c) => c.id === characterId)
+      if (char) {
+        setSelectedCharacter(char)
       }
     }
-
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [isDrawerOpen])
+  }, [searchParams, characters])
 
   const handleDeleteCharacter = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this character?')) return
+    // Different behavior based on context
+    // Use activeCampaign (not just activeCampaignId) to handle stale IDs
+    if (isSandboxMode || !activeCampaign) {
+      // Sandbox mode or no valid campaign: permanently delete the character
+      if (
+        !confirm(
+          'Are you sure you want to permanently delete this character? This cannot be undone.'
+        )
+      )
+        return
 
-    try {
-      await apiClient.delete(`/characters/${id}`)
+      try {
+        await apiClient.delete(`/characters/${id}`)
+        deleteCharacter(id)
 
-      // Update the store to remove the character
-      deleteCharacter(id)
-
-      // Clear selection if the deleted character was selected
-      if (selectedCharacter?.id === id) {
-        setSelectedCharacter(null)
+        if (selectedCharacter?.id === id) {
+          setSelectedCharacter(null)
+        }
+      } catch (err: any) {
+        alert(err.response?.data?.error || err.message || 'Failed to delete character')
       }
-    } catch (err: any) {
-      alert(err.response?.data?.error || err.message || 'Failed to delete character')
+    } else {
+      // Campaign mode: unlink from campaign (character remains in personal library)
+      if (
+        !confirm(
+          'Remove this character from the campaign? The character will still be available in your personal library.'
+        )
+      )
+        return
+
+      try {
+        await unlinkCharacterFromCampaign(activeCampaign.id, id)
+        // Remove from local character list for this view
+        deleteCharacter(id)
+
+        if (selectedCharacter?.id === id) {
+          setSelectedCharacter(null)
+        }
+      } catch (err: any) {
+        alert(
+          err.response?.data?.error || err.message || 'Failed to remove character from campaign'
+        )
+      }
     }
   }
 
@@ -240,7 +248,9 @@ export default function AdventurersRoster() {
           {selectedCharacter ? (
             <CharacterSheet
               character={selectedCharacter}
-              onUpdate={() => fetchCharacters(true)}
+              onUpdate={() =>
+                fetchCharacters(true, isSandboxMode ? undefined : (activeCampaignId ?? undefined))
+              }
               onClose={() => setSelectedCharacter(null)}
             />
           ) : (
@@ -356,9 +366,13 @@ export default function AdventurersRoster() {
                   onSuccess={() => {
                     setShowCreateModal(false)
                     setCreateMethod('choose')
-                    fetchCharacters(true) // Force refresh to get the new character
+                    fetchCharacters(
+                      true,
+                      isSandboxMode ? undefined : (activeCampaignId ?? undefined)
+                    )
                   }}
                   onCancel={() => setCreateMethod('choose')}
+                  campaignId={isSandboxMode ? undefined : activeCampaignId}
                 />
               </>
             )}
@@ -389,9 +403,13 @@ export default function AdventurersRoster() {
                   onSuccess={() => {
                     setShowCreateModal(false)
                     setCreateMethod('choose')
-                    fetchCharacters(true) // Force refresh to get the new character
+                    fetchCharacters(
+                      true,
+                      isSandboxMode ? undefined : (activeCampaignId ?? undefined)
+                    )
                   }}
                   onCancel={() => setCreateMethod('choose')}
+                  campaignId={isSandboxMode ? undefined : activeCampaignId}
                 />
               </>
             )}

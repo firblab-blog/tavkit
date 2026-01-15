@@ -362,11 +362,9 @@ func (h *CharacterHandler) ListCharacters(c *gin.Context) {
 		return
 	}
 
-	// Check for campaign_id filter
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Get optional campaign_id from query params
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	characters, err := h.db.ListCharactersByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
@@ -377,6 +375,17 @@ func (h *CharacterHandler) ListCharacters(c *gin.Context) {
 
 	if characters == nil {
 		characters = []*db.Character{}
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Character, 0)
+		for _, ch := range characters {
+			if ch.CampaignID == nil {
+				filtered = append(filtered, ch)
+			}
+		}
+		characters = filtered
 	}
 
 	// Debug: Log what we're returning
@@ -542,13 +551,25 @@ func (h *CharacterHandler) UpdateCharacter(c *gin.Context) {
 
 // DeleteCharacter deletes a character
 func (h *CharacterHandler) DeleteCharacter(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	characterID := c.Param("id")
 
-	// Verify character exists
-	_, err := h.db.GetCharacterByID(c.Request.Context(), characterID)
+	// Verify character exists and belongs to the user
+	character, err := h.db.GetCharacterByID(c.Request.Context(), characterID)
 	if err != nil {
 		h.logger.Error("Failed to get character for deletion", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{"error": "character not found"})
+		return
+	}
+
+	// Check ownership
+	if character.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "you don't have permission to delete this character"})
 		return
 	}
 

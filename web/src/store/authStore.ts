@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { apiClient } from '../api/client'
 import { logger } from '../utils/logger'
+import { getRandomHonorific } from '../utils/honorifics'
 
 interface User {
   id: string
@@ -14,6 +15,7 @@ interface User {
 interface AuthState {
   user: User | null
   csrfToken: string | null
+  honorific: string | null
   isAuthenticated: boolean
   isValidating: boolean
   login: (email: string, password: string) => Promise<void>
@@ -29,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       csrfToken: null,
+      honorific: null,
       isAuthenticated: false,
       isValidating: false,
 
@@ -40,9 +43,10 @@ export const useAuthStore = create<AuthState>()(
           })
           const { user, csrf_token } = response.data
           // JWT is now stored in HttpOnly cookie automatically
-          // We only store user info and CSRF token in state
-          set({ user, csrfToken: csrf_token, isAuthenticated: true })
-          logger.debug('[authStore] Login successful, CSRF token received')
+          // We only store user info, CSRF token, and a fun honorific in state
+          const honorific = getRandomHonorific()
+          set({ user, csrfToken: csrf_token, honorific, isAuthenticated: true })
+          logger.debug('[authStore] Login successful, CSRF token received, honorific:', honorific)
         } catch (error) {
           logger.error('[authStore] Login failed:', error)
           throw new Error('Login failed')
@@ -58,8 +62,12 @@ export const useAuthStore = create<AuthState>()(
           })
           const { user, csrf_token } = response.data
           // JWT is now stored in HttpOnly cookie automatically
-          set({ user, csrfToken: csrf_token, isAuthenticated: true })
-          logger.debug('[authStore] Registration successful, CSRF token received')
+          const honorific = getRandomHonorific()
+          set({ user, csrfToken: csrf_token, honorific, isAuthenticated: true })
+          logger.debug(
+            '[authStore] Registration successful, CSRF token received, honorific:',
+            honorific
+          )
         } catch (error) {
           logger.error('[authStore] Registration failed:', error)
           throw new Error('Registration failed')
@@ -75,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
           // Continue with local cleanup even if API fails
         }
         // Clear local state
-        set({ user: null, csrfToken: null, isAuthenticated: false })
+        set({ user: null, csrfToken: null, honorific: null, isAuthenticated: false })
         logger.debug('[authStore] Logged out')
       },
 
@@ -126,15 +134,25 @@ export const useAuthStore = create<AuthState>()(
         }
 
         // Session is invalid, clear auth state
-        set({ user: null, csrfToken: null, isAuthenticated: false, isValidating: false })
+        set({
+          user: null,
+          csrfToken: null,
+          honorific: null,
+          isAuthenticated: false,
+          isValidating: false,
+        })
         logger.debug('[authStore] Session invalid, cleared auth state')
         return false
       },
     }),
     {
       name: 'auth-storage',
-      // Only persist user info, not CSRF token (comes from cookie)
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      // Persist user info and honorific, not CSRF token (comes from cookie)
+      partialize: (state) => ({
+        user: state.user,
+        honorific: state.honorific,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 )

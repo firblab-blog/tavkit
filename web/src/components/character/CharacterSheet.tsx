@@ -3,6 +3,9 @@ import DOMPurify from 'dompurify'
 import Icon from '../common/Icon'
 import CharacterEditForm from './CharacterEditForm'
 import { Character as StoreCharacter } from '@/store/characterStore'
+import { apiClient } from '@/api/client'
+import { getHPBreakdown } from '@/utils/characterStats'
+import { logger } from '@/utils/logger'
 
 // Skill data from D&D Beyond import
 interface SkillData {
@@ -139,6 +142,9 @@ export default function CharacterSheet({
 }: CharacterSheetProps) {
   const [editMode, setEditMode] = useState(false)
   const [selectedSpell, setSelectedSpell] = useState<any>(null)
+  const [deathSaveSuccesses, setDeathSaveSuccesses] = useState(character.death_save_successes || 0)
+  const [deathSaveFailures, setDeathSaveFailures] = useState(character.death_save_failures || 0)
+  const [savingDeathSaves, setSavingDeathSaves] = useState(false)
 
   // Calculate ability modifiers
   const getModifier = (score?: number): string => {
@@ -152,6 +158,49 @@ export default function CharacterSheet({
     setEditMode(false)
     if (onUpdate) {
       onUpdate()
+    }
+  }
+
+  // Handle death save toggle
+  const handleDeathSaveToggle = async (type: 'successes' | 'failures', index: number) => {
+    if (savingDeathSaves) return
+
+    const currentValue = type === 'successes' ? deathSaveSuccesses : deathSaveFailures
+    // If clicking on a filled circle at or before current value, unfill from that point
+    // If clicking on an unfilled circle, fill up to that point
+    const newValue = currentValue >= index ? index - 1 : index
+
+    // Optimistically update UI
+    if (type === 'successes') {
+      setDeathSaveSuccesses(newValue)
+    } else {
+      setDeathSaveFailures(newValue)
+    }
+
+    setSavingDeathSaves(true)
+    try {
+      await apiClient.put(`/characters/${character.id}`, {
+        name: character.name,
+        level: character.level,
+        race: character.race,
+        class_info: character.class_info,
+        death_save_successes: type === 'successes' ? newValue : deathSaveSuccesses,
+        death_save_failures: type === 'failures' ? newValue : deathSaveFailures,
+      })
+      // Notify parent to refresh if needed
+      if (onUpdate) {
+        onUpdate()
+      }
+    } catch (error) {
+      // Revert on error
+      if (type === 'successes') {
+        setDeathSaveSuccesses(currentValue)
+      } else {
+        setDeathSaveFailures(currentValue)
+      }
+      logger.error('Failed to update death saves:', error)
+    } finally {
+      setSavingDeathSaves(false)
     }
   }
 
@@ -341,7 +390,21 @@ export default function CharacterSheet({
               <div className="text-2xl sm:text-3xl font-bold text-primary">
                 {character.current_hp ?? character.max_hp ?? 0}
               </div>
-              <div className="text-xs text-text-muted">/ {character.max_hp || 0}</div>
+              <div className="text-xs text-text-muted">
+                /{' '}
+                {(() => {
+                  const hpBreakdown = getHPBreakdown(
+                    character.max_hp,
+                    character.level,
+                    character.constitution
+                  )
+                  return hpBreakdown.conBonus > 0
+                    ? `${hpBreakdown.base} +${hpBreakdown.conBonus}`
+                    : hpBreakdown.conBonus < 0
+                      ? `${hpBreakdown.base} ${hpBreakdown.conBonus}`
+                      : character.max_hp || 0
+                })()}
+              </div>
               {character.temp_hp !== undefined && character.temp_hp > 0 && (
                 <div className="text-xs text-primary mt-1">+{character.temp_hp} temp</div>
               )}
@@ -375,43 +438,46 @@ export default function CharacterSheet({
           )}
 
           {/* Death Saves */}
-          {(character.death_save_successes !== undefined ||
-            character.death_save_failures !== undefined) && (
-            <div className="mt-4 pt-4 border-t border-border">
-              <div className="flex items-center justify-center gap-8">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-text-muted">Successes:</span>
-                  <div className="flex gap-1">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={`success-${i}`}
-                        className={`w-4 h-4 rounded-full border-2 ${
-                          (character.death_save_successes || 0) >= i
-                            ? 'bg-green-500 border-green-500'
-                            : 'border-text-muted'
-                        }`}
-                      />
-                    ))}
-                  </div>
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-center justify-center gap-8">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-text-muted">Successes:</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3].map((i) => (
+                    <button
+                      key={`success-${i}`}
+                      onClick={() => handleDeathSaveToggle('successes', i)}
+                      disabled={savingDeathSaves}
+                      className={`w-4 h-4 rounded-full border-2 transition-colors cursor-pointer hover:border-green-400 disabled:cursor-wait ${
+                        deathSaveSuccesses >= i
+                          ? 'bg-green-500 border-green-500'
+                          : 'border-text-muted hover:bg-green-500/20'
+                      }`}
+                      title={`${deathSaveSuccesses >= i ? 'Remove' : 'Add'} success ${i}`}
+                    />
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-text-muted">Failures:</span>
-                  <div className="flex gap-1">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={`failure-${i}`}
-                        className={`w-4 h-4 rounded-full border-2 ${
-                          (character.death_save_failures || 0) >= i
-                            ? 'bg-red-500 border-red-500'
-                            : 'border-text-muted'
-                        }`}
-                      />
-                    ))}
-                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-text-muted">Failures:</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3].map((i) => (
+                    <button
+                      key={`failure-${i}`}
+                      onClick={() => handleDeathSaveToggle('failures', i)}
+                      disabled={savingDeathSaves}
+                      className={`w-4 h-4 rounded-full border-2 transition-colors cursor-pointer hover:border-red-400 disabled:cursor-wait ${
+                        deathSaveFailures >= i
+                          ? 'bg-red-500 border-red-500'
+                          : 'border-text-muted hover:bg-red-500/20'
+                      }`}
+                      title={`${deathSaveFailures >= i ? 'Remove' : 'Add'} failure ${i}`}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Ability Scores */}

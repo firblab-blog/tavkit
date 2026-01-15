@@ -1,10 +1,12 @@
 """
-Wiki Scraper - Async scraper for Fandom wikis.
+Wiki Scraper - Async scraper for Fandom and MediaWiki sites.
 
 Handles:
+- MediaWiki API access (preferred for Fandom wikis)
+- HTML fallback for non-API sites
 - Crawling wiki pages starting from an index page
 - Extracting clean text from wiki HTML
-- Respecting rate limits and robots.txt
+- Respecting rate limits
 - Extracting structured data from infoboxes
 """
 
@@ -17,23 +19,36 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 from bs4 import BeautifulSoup, NavigableString
 
+from .mediawiki_api import MediaWikiAPIClient
+
 logger = logging.getLogger(__name__)
 
 
 class WikiScraper:
-    """Async wiki scraper for Fandom and MediaWiki sites."""
+    """
+    Async wiki scraper for Fandom and MediaWiki sites.
+
+    Automatically uses MediaWiki API when available (preferred),
+    falls back to HTML scraping for sites without API access.
+    """
 
     def __init__(
         self,
         base_url: str,
         scrape_config: Optional[dict] = None,
         rate_limit: float = 1.0,  # Seconds between requests
+        max_retries: int = 3,
+        retry_delay: float = 2.0,
     ):
         self.base_url = base_url.rstrip("/")
         self.config = scrape_config or {}
         self.rate_limit = rate_limit
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
         self.session: Optional[aiohttp.ClientSession] = None
         self.visited_urls: set[str] = set()
+        self._api_client: Optional[MediaWikiAPIClient] = None
+        self._use_api: Optional[bool] = None  # Determined at runtime
 
         # Extract config options
         self.max_pages = self.config.get("max_pages", 100)
@@ -52,15 +67,32 @@ class WikiScraper:
         """Async context manager entry."""
         self.session = aiohttp.ClientSession(
             headers={
-                "User-Agent": "TavKit-WikiScraper/1.0 (D&D Campaign Tool; Educational Use)",
-                "Accept": "text/html,application/xhtml+xml",
+                "User-Agent": "TavKit/1.0 (D&D Campaign Tool; Educational Use; "
+                "https://github.com/firblab/tavkit)",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate",
+                "Connection": "keep-alive",
             },
-            timeout=aiohttp.ClientTimeout(total=30),
+            timeout=aiohttp.ClientTimeout(total=60),
         )
+
+        # Initialize API client
+        self._api_client = MediaWikiAPIClient(
+            self.base_url,
+            scrape_config=self.config,
+            rate_limit=self.rate_limit * 0.5,  # API can be faster
+            max_retries=self.max_retries,
+            retry_delay=self.retry_delay,
+        )
+        await self._api_client.__aenter__()
+
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
+        if self._api_client:
+            await self._api_client.__aexit__(exc_type, exc_val, exc_tb)
         if self.session:
             await self.session.close()
 
@@ -97,13 +129,18 @@ class WikiScraper:
 
     def _matches_pattern(self, path: str, pattern: str) -> bool:
         """Check if path matches a glob-like pattern."""
-        # Convert glob pattern to regex
         regex_pattern = pattern.replace("*", ".*").replace("?", ".")
         return bool(re.match(f"^{regex_pattern}$", path))
 
-    async def fetch_page(self, url: str) -> Optional[tuple[str, str]]:
+    async def _check_api_available(self) -> bool:
+        """Check if MediaWiki API is available for this wiki."""
+        if self._api_client:
+            return await self._api_client.check_api_available()
+        return False
+
+    async def fetch_page_with_retry(self, url: str) -> Optional[tuple[str, str]]:
         """
-        Fetch a single wiki page.
+        Fetch a single wiki page with retry logic.
 
         Returns:
             Tuple of (html_content, last_modified) or None if failed
@@ -111,22 +148,36 @@ class WikiScraper:
         if not self.session:
             raise RuntimeError("Scraper must be used as async context manager")
 
-        try:
-            async with self.session.get(url) as response:
-                if response.status != 200:
-                    logger.warning(f"Failed to fetch {url}: HTTP {response.status}")
-                    return None
+        for attempt in range(self.max_retries):
+            try:
+                async with self.session.get(url) as response:
+                    if response.status == 200:
+                        html = await response.text()
+                        last_modified = response.headers.get("Last-Modified", "")
+                        return html, last_modified
 
-                html = await response.text()
-                last_modified = response.headers.get("Last-Modified", "")
-                return html, last_modified
+                    logger.warning(
+                        f"Failed to fetch {url}: HTTP {response.status} "
+                        f"(attempt {attempt + 1}/{self.max_retries})"
+                    )
 
-        except asyncio.TimeoutError:
-            logger.warning(f"Timeout fetching {url}")
-            return None
-        except aiohttp.ClientError as e:
-            logger.warning(f"Error fetching {url}: {e}")
-            return None
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"Timeout fetching {url} (attempt {attempt + 1}/{self.max_retries})"
+                )
+            except aiohttp.ClientError as e:
+                logger.warning(
+                    f"Error fetching {url}: {e} "
+                    f"(attempt {attempt + 1}/{self.max_retries})"
+                )
+
+            # Exponential backoff
+            if attempt < self.max_retries - 1:
+                delay = self.retry_delay * (2**attempt)
+                logger.info(f"Retrying in {delay}s...")
+                await asyncio.sleep(delay)
+
+        return None
 
     def parse_page(self, html: str, url: str) -> dict:
         """
@@ -146,7 +197,6 @@ class WikiScraper:
         # Find main content area
         content_elem = None
         for selector in self.content_selectors:
-            # Parse CSS selector manually (simple version)
             if " " in selector:
                 parts = selector.split()
                 elem = soup
@@ -203,7 +253,6 @@ class WikiScraper:
     def _extract_text_with_sections(self, content_elem) -> str:
         """Extract text while preserving section structure."""
         lines = []
-        current_section = None
 
         for elem in content_elem.descendants:
             if isinstance(elem, NavigableString):
@@ -212,10 +261,8 @@ class WikiScraper:
                     lines.append(text)
             elif elem.name in ["h2", "h3", "h4"]:
                 section_text = elem.get_text(strip=True)
-                # Remove edit links from headers
                 section_text = re.sub(r"\[edit\].*$", "", section_text, flags=re.IGNORECASE)
                 if section_text:
-                    current_section = section_text
                     lines.append(f"\n## {section_text}\n")
             elif elem.name == "p":
                 text = elem.get_text(strip=True)
@@ -228,10 +275,8 @@ class WikiScraper:
 
         # Join and clean up
         text = " ".join(lines)
-        # Fix spacing around section headers
         text = re.sub(r"\s+##", "\n\n##", text)
         text = re.sub(r"##\s+", "## ", text)
-        # Remove excessive whitespace
         text = re.sub(r"\n{3,}", "\n\n", text)
         text = re.sub(r" {2,}", " ", text)
 
@@ -278,8 +323,10 @@ class WikiScraper:
         """
         Crawl wiki starting from a URL.
 
+        Automatically uses MediaWiki API if available, falls back to HTML scraping.
+
         Args:
-            start_url: URL to start crawling from
+            start_url: URL to start crawling from (used for HTML fallback)
             progress_callback: Optional async callback(pages_found, pages_scraped)
 
         Returns:
@@ -288,6 +335,34 @@ class WikiScraper:
         if not self.session:
             raise RuntimeError("Scraper must be used as async context manager")
 
+        # Check if API is available
+        if self._use_api is None:
+            self._use_api = await self._check_api_available()
+
+        if self._use_api and self._api_client:
+            print(f"[SCRAPER] Using MediaWiki API for {self.base_url}")
+            logger.info(f"Using MediaWiki API for {self.base_url}")
+            return await self._api_client.crawl(progress_callback=progress_callback)
+        else:
+            print(f"[SCRAPER] Using HTML scraping for {self.base_url} (API not available)")
+            logger.info(f"Using HTML scraping for {self.base_url} (API not available)")
+            return await self._crawl_html(start_url, progress_callback)
+
+    async def _crawl_html(
+        self,
+        start_url: str,
+        progress_callback=None,
+    ) -> list[dict]:
+        """
+        Crawl wiki using HTML scraping (fallback method).
+
+        Args:
+            start_url: URL to start crawling from
+            progress_callback: Optional async callback(pages_found, pages_scraped)
+
+        Returns:
+            List of parsed page dictionaries
+        """
         pages = []
         to_visit = []
 
@@ -309,8 +384,8 @@ class WikiScraper:
 
             self.visited_urls.add(url)
 
-            # Fetch and parse
-            result = await self.fetch_page(url)
+            # Fetch and parse with retry
+            result = await self.fetch_page_with_retry(url)
             if result:
                 html, last_modified = result
                 parsed = self.parse_page(html, url)

@@ -43,6 +43,30 @@ KNOWN_DIMENSIONS: dict[str, int] = {
     "bge-large": 1024,
 }
 
+# Known context limits for embedding models (max input sequence length in tokens)
+EMBEDDING_CONTEXT_LIMITS: dict[str, int] = {
+    # OpenAI models - 8191 tokens max
+    "text-embedding-3-small": 8191,
+    "text-embedding-3-large": 8191,
+    "text-embedding-ada-002": 8191,
+    # Ollama models - varies by model
+    "nomic-embed-text": 2048,
+    "nomic-embed-text:latest": 2048,
+    "mxbai-embed-large": 512,
+    "mxbai-embed-large:latest": 512,
+    "all-minilm": 512,
+    "all-minilm:latest": 512,
+    "snowflake-arctic-embed": 512,
+    "bge-m3": 8192,
+    "bge-large": 512,
+}
+
+# Default context limits per provider (fallback when model not in dictionary)
+DEFAULT_CONTEXT_LIMITS: dict[str, int] = {
+    "openai": 8191,
+    "ollama": 2048,  # Conservative default for unknown Ollama models
+}
+
 
 def get_embedding_provider() -> tuple[str, Optional[str]]:
     """
@@ -102,14 +126,26 @@ class EmbeddingGenerator:
         if provider == "openai":
             self.model = model or "text-embedding-3-small"
             self.dimensions = KNOWN_DIMENSIONS.get(self.model, 1536)
+            self.context_limit = EMBEDDING_CONTEXT_LIMITS.get(
+                self.model, DEFAULT_CONTEXT_LIMITS.get("openai", 8191)
+            )
             self.base_url = "https://api.openai.com/v1"
-            logger.info(f"Initialized OpenAI embeddings: {self.model} ({self.dimensions} dims)")
+            logger.info(
+                f"Initialized OpenAI embeddings: {self.model} "
+                f"({self.dimensions} dims, {self.context_limit} token limit)"
+            )
         elif provider == "ollama":
-            # Allow override via OLLAMA_EMBEDDING_MODEL env var
-            self.model = model or os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
+            # Use model from config (which supports env var override)
+            self.model = model or app_settings.OLLAMA_EMBEDDING_MODEL
             self.dimensions = KNOWN_DIMENSIONS.get(self.model, 768)
+            self.context_limit = EMBEDDING_CONTEXT_LIMITS.get(
+                self.model, DEFAULT_CONTEXT_LIMITS.get("ollama", 2048)
+            )
             self.base_url = base_url or app_settings.OLLAMA_BASE_URL
-            logger.info(f"Initialized Ollama embeddings: {self.model} ({self.dimensions} dims)")
+            logger.info(
+                f"Initialized Ollama embeddings: {self.model} "
+                f"({self.dimensions} dims, {self.context_limit} token limit)"
+            )
         else:
             raise ValueError(f"Unsupported embedding provider: {provider}")
 
@@ -236,10 +272,21 @@ class EmbeddingGenerator:
         # Ensure model is available before embedding
         await self._ensure_ollama_model()
 
+        # Safety: max chars based on context limit (~3 chars/token conservative estimate)
+        max_chars = int(self.context_limit * 3)
+
         embeddings = []
 
         async with aiohttp.ClientSession() as session:
             for text in texts:
+                # Truncate if exceeds safe character limit
+                if len(text) > max_chars:
+                    logger.warning(
+                        f"Truncating chunk from {len(text)} to {max_chars} chars "
+                        f"for {self.model} (context limit: {self.context_limit} tokens)"
+                    )
+                    text = text[:max_chars]
+
                 async with session.post(
                     f"{self.base_url}/api/embeddings",
                     json={
@@ -271,3 +318,31 @@ class EmbeddingGenerator:
     def get_dimensions(self) -> int:
         """Get the embedding dimensions for this provider/model."""
         return self.dimensions
+
+    def get_context_limit(self) -> int:
+        """Get the context limit (max input tokens) for this provider/model."""
+        return self.context_limit
+
+    def get_recommended_chunk_size(self, safety_margin: float | None = None) -> int:
+        """
+        Get recommended chunk size based on embedding model context limit.
+
+        Args:
+            safety_margin: Percentage buffer below context limit.
+                          If None, uses EMBEDDING_SAFETY_MARGIN from config.
+
+        Returns:
+            Recommended max tokens per chunk
+        """
+        # Check for manual override in config
+        if app_settings.EMBEDDING_CHUNK_SIZE_OVERRIDE > 0:
+            return app_settings.EMBEDDING_CHUNK_SIZE_OVERRIDE
+
+        # Use config safety margin if not explicitly provided
+        if safety_margin is None:
+            safety_margin = app_settings.EMBEDDING_SAFETY_MARGIN
+
+        # Apply safety margin
+        safe_size = int(self.context_limit * (1 - safety_margin))
+        # Cap at 500 tokens for retrieval quality (smaller chunks = better precision)
+        return min(safe_size, 500)

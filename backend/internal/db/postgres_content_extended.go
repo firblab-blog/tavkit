@@ -1222,3 +1222,168 @@ func (db *PostgresDB) DeleteCritter(ctx context.Context, id string) error {
 	_, err := db.pool.Exec(ctx, query, id)
 	return err
 }
+
+// =============================================================================
+// Campaign Item Linking Operations (many-to-many)
+// =============================================================================
+
+func (db *PostgresDB) LinkItemToCampaign(ctx context.Context, campaignID, itemID string, quantity int, notes *string) error {
+	id := generateUUID()
+	query := `INSERT INTO campaign_items (id, campaign_id, item_id, quantity, notes, added_at)
+		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+		ON CONFLICT(campaign_id, item_id) DO UPDATE SET quantity = $4, notes = $5`
+	_, err := db.pool.Exec(ctx, query, id, campaignID, itemID, quantity, notes)
+	return err
+}
+
+func (db *PostgresDB) UnlinkItemFromCampaign(ctx context.Context, campaignID, itemID string) error {
+	query := `DELETE FROM campaign_items WHERE campaign_id = $1 AND item_id = $2`
+	_, err := db.pool.Exec(ctx, query, campaignID, itemID)
+	return err
+}
+
+func (db *PostgresDB) UpdateCampaignItemLink(ctx context.Context, campaignID, itemID string, quantity int, notes *string) error {
+	query := `UPDATE campaign_items SET quantity = $1, notes = $2 WHERE campaign_id = $3 AND item_id = $4`
+	_, err := db.pool.Exec(ctx, query, quantity, notes, campaignID, itemID)
+	return err
+}
+
+func (db *PostgresDB) ListCampaignItems(ctx context.Context, campaignID string) ([]*ItemWithCampaignLink, error) {
+	query := `SELECT
+		i.id, i.user_id, i.campaign_id, i.name, i.type, i.rarity, i.description, i.properties,
+		i.origin, i.previous_owner, i.complication, i.value, i.weight, i.attunement,
+		i.location_found, i.ai_generated, i.ai_provider, i.created_at, i.updated_at,
+		ci.id as link_id, ci.quantity, ci.notes, ci.added_at
+	FROM items i
+	INNER JOIN campaign_items ci ON i.id = ci.item_id
+	WHERE ci.campaign_id = $1
+	ORDER BY ci.added_at DESC`
+
+	rows, err := db.pool.Query(ctx, query, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*ItemWithCampaignLink
+	for rows.Next() {
+		item := &ItemWithCampaignLink{}
+		var campaignIDNull, rarity, description, origin, previousOwner, complication, locationFound, aiProvider sql.NullString
+		var value sql.NullInt64
+		var weight sql.NullFloat64
+		var attunement sql.NullBool
+		var linkNotes sql.NullString
+		var addedAt time.Time
+
+		err := rows.Scan(
+			&item.ID, &item.UserID, &campaignIDNull, &item.Name, &item.Type, &rarity, &description, &item.Properties,
+			&origin, &previousOwner, &complication, &value, &weight, &attunement,
+			&locationFound, &item.AIGenerated, &aiProvider, &item.CreatedAt, &item.UpdatedAt,
+			&item.LinkID, &item.Quantity, &linkNotes, &addedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Assign nullable fields
+		if campaignIDNull.Valid {
+			item.CampaignID = &campaignIDNull.String
+		}
+		if rarity.Valid {
+			item.Rarity = &rarity.String
+		}
+		if description.Valid {
+			item.Description = &description.String
+		}
+		if origin.Valid {
+			item.Origin = &origin.String
+		}
+		if previousOwner.Valid {
+			item.PreviousOwner = &previousOwner.String
+		}
+		if complication.Valid {
+			item.Complication = &complication.String
+		}
+		if value.Valid {
+			v := int(value.Int64)
+			item.Value = &v
+		}
+		if weight.Valid {
+			item.Weight = &weight.Float64
+		}
+		if attunement.Valid {
+			item.Attunement = &attunement.Bool
+		}
+		if locationFound.Valid {
+			item.LocationFound = &locationFound.String
+		}
+		if aiProvider.Valid {
+			item.AIProvider = &aiProvider.String
+		}
+		if linkNotes.Valid {
+			item.Notes = &linkNotes.String
+		}
+		item.AddedAt = addedAt.Format(time.RFC3339)
+
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (db *PostgresDB) ListItemCampaigns(ctx context.Context, itemID string) ([]*Campaign, error) {
+	query := `SELECT
+		c.id, c.user_id, c.name, c.description, c.game_system, c.theme, c.tone, c.setting, c.factions,
+		c.history, c.magic_level, c.tech_level, c.notes, c.is_active, c.created_at, c.updated_at
+	FROM campaigns c
+	INNER JOIN campaign_items ci ON c.id = ci.campaign_id
+	WHERE ci.item_id = $1
+	ORDER BY c.name`
+
+	rows, err := db.pool.Query(ctx, query, itemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var campaigns []*Campaign
+	for rows.Next() {
+		campaign := &Campaign{}
+		var description, theme, tone, history, magicLevel, techLevel, notes sql.NullString
+
+		err := rows.Scan(
+			&campaign.ID, &campaign.UserID, &campaign.Name, &description, &campaign.GameSystem,
+			&theme, &tone, &campaign.Setting, &campaign.Factions, &history, &magicLevel, &techLevel,
+			&notes, &campaign.IsActive, &campaign.CreatedAt, &campaign.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if description.Valid {
+			campaign.Description = &description.String
+		}
+		if theme.Valid {
+			campaign.Theme = &theme.String
+		}
+		if tone.Valid {
+			campaign.Tone = &tone.String
+		}
+		if history.Valid {
+			campaign.History = &history.String
+		}
+		if magicLevel.Valid {
+			campaign.MagicLevel = &magicLevel.String
+		}
+		if techLevel.Valid {
+			campaign.TechLevel = &techLevel.String
+		}
+		if notes.Valid {
+			campaign.Notes = &notes.String
+		}
+
+		campaigns = append(campaigns, campaign)
+	}
+
+	return campaigns, rows.Err()
+}

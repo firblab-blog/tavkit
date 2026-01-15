@@ -188,16 +188,25 @@ func (h *MonsterHandler) ListMonsters(c *gin.Context) {
 	}
 
 	// Get optional campaign_id from query params
-	var campaignID *string
-	if cid := c.Query("campaign_id"); cid != "" {
-		campaignID = &cid
-	}
+	// Special value "null" means filter for Personal Library (campaign_id IS NULL)
+	filterType, campaignID := ParseCampaignFilter(c)
 
 	monsters, err := h.db.ListMonstersByUserID(c.Request.Context(), userID, campaignID)
 	if err != nil {
 		h.logger.Error("Failed to list monsters", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list monsters"})
 		return
+	}
+
+	// Filter for Personal Library (campaign_id IS NULL)
+	if filterType == FilterNullCampaign {
+		filtered := make([]*db.Monster, 0)
+		for _, m := range monsters {
+			if m.CampaignID == nil {
+				filtered = append(filtered, m)
+			}
+		}
+		monsters = filtered
 	}
 
 	c.JSON(http.StatusOK, gin.H{"monsters": monsters})
@@ -211,6 +220,19 @@ func (h *MonsterHandler) DeleteMonster(c *gin.Context) {
 		h.db.GetMonsterByID,
 		func(m *db.Monster) string { return m.UserID },
 		h.db.DeleteMonster,
+		h.logger,
+	)
+}
+
+// AssignCampaign assigns a monster to a campaign or Personal Library
+func (h *MonsterHandler) AssignCampaign(c *gin.Context) {
+	HandleAssignCampaign(
+		c,
+		"monster",
+		h.db.GetMonsterByID,
+		func(m *db.Monster) string { return m.UserID },
+		func(m *db.Monster, campaignID *string) { m.CampaignID = campaignID },
+		h.db.UpdateMonster,
 		h.logger,
 	)
 }

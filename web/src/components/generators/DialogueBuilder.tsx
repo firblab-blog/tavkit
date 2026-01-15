@@ -7,6 +7,17 @@ import CampaignSelector from '../common/CampaignSelector'
 import { useCampaignStore } from '../../store/campaignStore'
 import AISettings, { AIGenerationSettings, getMaxTokensFromSettings } from './AISettings'
 import { emitContentSaved } from '@/lib/contentEvents'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { EntryModeToggle, EntryMode } from './shared/EntryModeToggle'
+import { ArrayFieldEditor } from './shared/fields'
+import { SaveModal, ParseWarning, RawDataViewer, ManualEntryPreview } from './shared'
+import {
+  ManualDialogueData,
+  ManualSkillCheck,
+  defaultDialogueData,
+  moodOptions,
+  commonSkills,
+} from './shared/schemas/dialogueSchema'
 import {
   generateDialogue as generateDialogueApi,
   saveDialogue as saveDialogueApi,
@@ -159,8 +170,13 @@ export default function DialogueBuilder() {
   const [error, setError] = useState('')
   const [dialogue, setDialogue] = useState<DialogueData | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showRawResponse, setShowRawResponse] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+
+  // Manual entry mode state
+  const [entryMode, setEntryMode] = useState<EntryMode>('ai')
+  const [manualData, setManualData] = useState<ManualDialogueData>(defaultDialogueData)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualSaved, setManualSaved] = useState(false)
 
   // Track if user has made an explicit campaign selection
   const hasUserSelectedCampaign = useRef(false)
@@ -211,11 +227,54 @@ export default function DialogueBuilder() {
     }
   }
 
+  // Handle manual entry save
+  const handleManualSave = async () => {
+    if (!manualData.character_name.trim()) {
+      setError('Character name is required')
+      return
+    }
+
+    setManualSaving(true)
+    setError('')
+
+    try {
+      // Convert skill_checks to proper format (filter out empty ones and fix dc)
+      const skillChecks = manualData.skill_checks
+        .filter((sc) => sc.skill.trim())
+        .map((sc) => ({
+          skill: sc.skill,
+          dc: sc.dc ?? 10,
+          success: sc.success,
+          failure: sc.failure,
+        }))
+
+      await saveDialogueApi({
+        character_name: manualData.character_name.trim(),
+        scene_setting: manualData.scene_setting.trim() || undefined,
+        mood: manualData.mood || undefined,
+        dialogue_tree: manualData.dialogue_tree,
+        skill_checks: skillChecks.length > 0 ? skillChecks : undefined,
+        information: manualData.information_revealed.filter((i) => i.trim()),
+        potential_quests: manualData.potential_quests.filter((q) => q.trim()),
+        campaign_id: campaignId || undefined,
+        ai_generated: false,
+      })
+
+      setManualSaved(true)
+      emitContentSaved()
+      // Reset form after successful save
+      setManualData(defaultDialogueData)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   const handleGenerate = async () => {
     setLoading(true)
     setError('')
     setDialogue(null)
-    setShowRawResponse(false)
     setIsSaved(false)
 
     try {
@@ -243,7 +302,6 @@ export default function DialogueBuilder() {
         if (!hasValidDialogueTree(normalized.dialogue_tree)) {
           normalized._parseError =
             'AI response missing dialogue tree structure. Showing raw response.'
-          setShowRawResponse(true)
         }
 
         setDialogue(normalized)
@@ -251,7 +309,6 @@ export default function DialogueBuilder() {
         // No dialogue wrapper - try to normalize the raw response
         const normalized = normalizeDialogueResponse(data as unknown as Record<string, unknown>)
         normalized._parseError = 'Unexpected response format. Attempting to display.'
-        setShowRawResponse(true)
         setDialogue(normalized)
       }
     } catch (err) {
@@ -291,7 +348,51 @@ export default function DialogueBuilder() {
     navigator.clipboard.writeText(text)
   }
 
-  const formContent = (
+  // Helper to update a specific dialogue tree branch
+  const updateDialogueTreeBranch = (
+    branch: 'friendly' | 'neutral' | 'hostile',
+    field: 'player_option' | 'npc_response' | 'outcome',
+    value: string
+  ) => {
+    setManualData({
+      ...manualData,
+      dialogue_tree: {
+        ...manualData.dialogue_tree,
+        [branch]: {
+          ...manualData.dialogue_tree[branch],
+          [field]: value,
+        },
+      },
+    })
+  }
+
+  // Helper to update a skill check
+  const updateSkillCheck = (
+    index: number,
+    field: keyof ManualSkillCheck,
+    value: string | number | null
+  ) => {
+    const newChecks = [...manualData.skill_checks]
+    newChecks[index] = { ...newChecks[index], [field]: value }
+    setManualData({ ...manualData, skill_checks: newChecks })
+  }
+
+  // Helper to add a new skill check
+  const addSkillCheck = () => {
+    setManualData({
+      ...manualData,
+      skill_checks: [...manualData.skill_checks, { skill: '', dc: 10, success: '', failure: '' }],
+    })
+  }
+
+  // Helper to remove a skill check
+  const removeSkillCheck = (index: number) => {
+    const newChecks = manualData.skill_checks.filter((_, i) => i !== index)
+    setManualData({ ...manualData, skill_checks: newChecks })
+  }
+
+  // AI form content
+  const aiFormContent = (
     <>
       {/* AI Settings */}
       <AISettings generatorType="dialogue" onSettingsChange={setAiSettings} />
@@ -390,6 +491,270 @@ export default function DialogueBuilder() {
     </>
   )
 
+  // Render a dialogue option editor for manual entry
+  const renderDialogueOptionEditor = (
+    branch: 'friendly' | 'neutral' | 'hostile',
+    label: string,
+    colorClass: string
+  ) => (
+    <div
+      className={`bg-${colorClass}-500/10 border border-${colorClass}-500/30 rounded-lg p-4 space-y-3`}
+    >
+      <h4 className={`text-${colorClass}-400 font-semibold`}>{label}</h4>
+      <FormField label="Player Option">
+        <input
+          type="text"
+          value={manualData.dialogue_tree[branch].player_option}
+          onChange={(e) => updateDialogueTreeBranch(branch, 'player_option', e.target.value)}
+          placeholder="What the player might say..."
+          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+      <FormField label="NPC Response">
+        <textarea
+          value={manualData.dialogue_tree[branch].npc_response}
+          onChange={(e) => updateDialogueTreeBranch(branch, 'npc_response', e.target.value)}
+          placeholder="How the NPC responds..."
+          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={2}
+        />
+      </FormField>
+      <FormField label="Outcome">
+        <input
+          type="text"
+          value={manualData.dialogue_tree[branch].outcome}
+          onChange={(e) => updateDialogueTreeBranch(branch, 'outcome', e.target.value)}
+          placeholder="What happens as a result..."
+          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+    </div>
+  )
+
+  // Manual form content
+  const manualFormContent = (
+    <>
+      {/* Campaign Context */}
+      <CampaignSelector
+        selectedCampaignId={campaignId}
+        onSelect={(id) => {
+          hasUserSelectedCampaign.current = true
+          setCampaignId(id)
+        }}
+      />
+
+      {/* Basic Information */}
+      <FormField label="Character Name" required>
+        <input
+          type="text"
+          value={manualData.character_name}
+          onChange={(e) => setManualData({ ...manualData, character_name: e.target.value })}
+          placeholder="e.g., Grim the Merchant"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <FormField label="Scene Setting">
+        <input
+          type="text"
+          value={manualData.scene_setting}
+          onChange={(e) => setManualData({ ...manualData, scene_setting: e.target.value })}
+          placeholder="e.g., A dusty market stall at dawn"
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </FormField>
+
+      <FormField label="Mood">
+        <select
+          value={manualData.mood}
+          onChange={(e) => setManualData({ ...manualData, mood: e.target.value })}
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="">Select mood...</option>
+          {moodOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      <FormField label="Opening Line">
+        <textarea
+          value={manualData.opening_line}
+          onChange={(e) => setManualData({ ...manualData, opening_line: e.target.value })}
+          placeholder="The NPC's first words to the party..."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={2}
+        />
+      </FormField>
+
+      <FormField label="Body Language">
+        <textarea
+          value={manualData.body_language}
+          onChange={(e) => setManualData({ ...manualData, body_language: e.target.value })}
+          placeholder="How the NPC carries themselves, gestures, etc."
+          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows={2}
+        />
+      </FormField>
+
+      {/* Dialogue Options */}
+      <CollapsibleSection title="Dialogue Options" defaultExpanded={true}>
+        <div className="space-y-4">
+          {renderDialogueOptionEditor('friendly', 'Friendly Approach', 'green')}
+          {renderDialogueOptionEditor('neutral', 'Neutral Approach', 'blue')}
+          {renderDialogueOptionEditor('hostile', 'Hostile Approach', 'red')}
+        </div>
+      </CollapsibleSection>
+
+      {/* Skill Checks */}
+      <CollapsibleSection title="Skill Checks" defaultExpanded={false}>
+        <div className="space-y-4">
+          {manualData.skill_checks.map((check, index) => (
+            <div
+              key={index}
+              className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 space-y-3"
+            >
+              <div className="flex justify-between items-center">
+                <h4 className="text-amber-400 font-semibold">Skill Check {index + 1}</h4>
+                <button
+                  type="button"
+                  onClick={() => removeSkillCheck(index)}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  <Icon name="Trash2" className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Skill">
+                  <select
+                    value={check.skill}
+                    onChange={(e) => updateSkillCheck(index, 'skill', e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select skill...</option>
+                    {commonSkills.map((skill) => (
+                      <option key={skill} value={skill}>
+                        {skill}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="DC">
+                  <input
+                    type="number"
+                    value={check.dc ?? ''}
+                    onChange={(e) =>
+                      updateSkillCheck(
+                        index,
+                        'dc',
+                        e.target.value ? parseInt(e.target.value) : null
+                      )
+                    }
+                    placeholder="10"
+                    min={1}
+                    max={30}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </FormField>
+              </div>
+              <FormField label="Success">
+                <input
+                  type="text"
+                  value={check.success}
+                  onChange={(e) => updateSkillCheck(index, 'success', e.target.value)}
+                  placeholder="What happens on success..."
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </FormField>
+              <FormField label="Failure">
+                <input
+                  type="text"
+                  value={check.failure}
+                  onChange={(e) => updateSkillCheck(index, 'failure', e.target.value)}
+                  placeholder="What happens on failure..."
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </FormField>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addSkillCheck}
+            className="w-full py-2 border border-dashed border-border rounded-lg text-text-muted hover:text-text hover:border-primary transition-colors flex items-center justify-center gap-2"
+          >
+            <Icon name="Plus" className="w-4 h-4" />
+            Add Skill Check
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      {/* Additional Information */}
+      <CollapsibleSection title="Additional Information" defaultExpanded={false}>
+        <div className="space-y-4">
+          <ArrayFieldEditor
+            label="Information Revealed"
+            values={manualData.information_revealed}
+            onChange={(values) => setManualData({ ...manualData, information_revealed: values })}
+            placeholder="Add information the NPC might reveal..."
+          />
+
+          <ArrayFieldEditor
+            label="Potential Quests"
+            values={manualData.potential_quests}
+            onChange={(values) => setManualData({ ...manualData, potential_quests: values })}
+            placeholder="Add quest hooks from this dialogue..."
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Save Button */}
+      <button
+        type="button"
+        onClick={handleManualSave}
+        disabled={manualSaving || !manualData.character_name.trim()}
+        className="w-full mt-4 py-3 bg-primary hover:bg-primary-dark disabled:bg-primary/50 text-tavern-darkest font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+      >
+        {manualSaving ? (
+          <>
+            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
+            Saving...
+          </>
+        ) : manualSaved ? (
+          <>
+            <Icon name="Check" className="w-5 h-5" />
+            Saved!
+          </>
+        ) : (
+          <>
+            <Icon name="Save" className="w-5 h-5" />
+            Save Dialogue
+          </>
+        )}
+      </button>
+    </>
+  )
+
+  // Combined form content with mode toggle
+  const formContent = (
+    <>
+      <EntryModeToggle
+        mode={entryMode}
+        onChange={(mode) => {
+          setEntryMode(mode)
+          setManualSaved(false)
+          setError('')
+        }}
+        disabled={loading}
+      />
+      {entryMode === 'ai' ? aiFormContent : manualFormContent}
+    </>
+  )
+
+  // Manual mode preview content
+  const manualPreviewContent = <ManualEntryPreview entityType="dialogue" />
+
   // Render a dialogue option safely
   const renderDialogueOption = (
     option: { player_option: string; npc_response: string; outcome: string },
@@ -453,15 +818,7 @@ export default function DialogueBuilder() {
   const generatedContent = dialogue ? (
     <div className="space-y-6">
       {/* Parse warning */}
-      {dialogue._parseError && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
-            <Icon name="AlertCircle" className="w-5 h-5" />
-            Response Format Warning
-          </div>
-          <p className="text-text-muted text-sm">{dialogue._parseError}</p>
-        </div>
-      )}
+      {dialogue._parseError && <ParseWarning message={dialogue._parseError} />}
 
       {/* Header - styled like Monster/NPC */}
       <div>
@@ -587,30 +944,7 @@ export default function DialogueBuilder() {
       )}
 
       {/* Raw/unexpected fields - collapsible */}
-      {dialogue._raw && Object.keys(dialogue._raw).length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowRawResponse(!showRawResponse)}
-            className="w-full px-4 py-3 bg-background-panel flex items-center justify-between text-left hover:bg-tavern-dark transition-colors"
-          >
-            <span className="flex items-center gap-2 text-text-muted">
-              <Icon name="FileText" className="w-5 h-5" />
-              Additional AI Response Data ({Object.keys(dialogue._raw).length} fields)
-            </span>
-            <Icon
-              name={showRawResponse ? 'ChevronUp' : 'ChevronDown'}
-              className="w-5 h-5 text-text-muted"
-            />
-          </button>
-          {showRawResponse && (
-            <div className="p-4 bg-background border-t border-border">
-              <pre className="text-xs text-text-muted overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(dialogue._raw, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {dialogue._raw && <RawDataViewer data={dialogue._raw} />}
 
       <ActionsBar
         onCopy={handleCopy}
@@ -629,42 +963,24 @@ export default function DialogueBuilder() {
         icon="MessageCircle"
         formTitle="Dialogue Parameters"
         formIcon="Settings"
-        resultsTitle="Generated Dialogue"
+        resultsTitle={entryMode === 'manual' ? 'Manual Entry' : 'Generated Dialogue'}
         formContent={formContent}
-        generatedContent={generatedContent}
+        generatedContent={entryMode === 'manual' ? manualPreviewContent : generatedContent}
         isGenerating={loading}
         onGenerate={handleGenerate}
         generateButtonText="Generate Dialogue"
         error={error}
+        hideGenerateButton={entryMode === 'manual'}
       />
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-panel rounded-lg border border-border max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-text mb-4">Save Dialogue</h3>
-            <p className="text-text-muted mb-6">
-              Save dialogue for "{dialogue?.character_name}" to your campaign for future reference?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-tavern-dark text-text rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-dark text-tavern-darkest font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSave}
+        entityName={dialogue?.character_name || 'Dialogue'}
+        campaignId={campaignId}
+      />
     </>
   )
 }

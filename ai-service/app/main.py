@@ -1,15 +1,27 @@
 """
 Tavkit AI Service - FastAPI Application
-Handles AI-powered content generation for D&D sessions
+Minimal AI service for Campaign Summary, Wiki RAG, and Session Chat
 """
 
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from app.config import settings
-from app.api.routes import health, generate, models, summarize, rag, chat
+from app.api.routes import health, summarize, rag, chat
+
+# Configure logging for our modules
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+# Set log level for wiki_rag modules specifically
+for module in ["app.wiki_rag.scraper", "app.wiki_rag.mediawiki_api", "app.wiki_rag.rag_service"]:
+    logging.getLogger(module).setLevel(logging.INFO)
 
 
 @asynccontextmanager
@@ -27,7 +39,7 @@ async def lifespan(_app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title="Tavkit AI Service",
-    description="AI-powered content generation for D&D Game Masters",
+    description="Minimal AI service for Tavkit - Campaign Summary, Wiki RAG, and Session Chat",
     version=settings.VERSION,
     lifespan=lifespan,
 )
@@ -41,10 +53,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Include routers - only the essential routes
 app.include_router(health.router, prefix="/health", tags=["Health"])
-app.include_router(generate.router, prefix="/api/v1/generate", tags=["Generation"])
-app.include_router(models.router, prefix="/api/v1/models", tags=["Models"])
 app.include_router(summarize.router, prefix="/api/v1/summarize", tags=["Summarization"])
 app.include_router(rag.router, prefix="/api/v1", tags=["RAG"])  # Wiki RAG system
 app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])  # Session Chat

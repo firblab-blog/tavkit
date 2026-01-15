@@ -8,8 +8,6 @@
 -- Drop existing tables (for clean recreation)
 DROP TABLE IF EXISTS schema_version;
 DROP TABLE IF EXISTS settings;
-DROP TABLE IF EXISTS kits;
-DROP TABLE IF EXISTS containers;
 DROP TABLE IF EXISTS tools;
 DROP TABLE IF EXISTS users;
 
@@ -48,36 +46,6 @@ CREATE TABLE tools (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_tools_user_id ON tools(user_id);
-
--- Containers table (workspace tabs)
-CREATE TABLE containers (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    type TEXT NOT NULL,
-    tool TEXT NOT NULL,
-    title TEXT NOT NULL,
-    url TEXT,
-    position INTEGER NOT NULL DEFAULT 0,
-    is_active BOOLEAN NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE INDEX idx_containers_user_id ON containers(user_id);
-
--- Kits table (saved workspace configurations)
-CREATE TABLE kits (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT,
-    containers TEXT NOT NULL,
-    is_default BOOLEAN NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE INDEX idx_kits_user_id ON kits(user_id);
 
 -- Settings table (application-wide key-value settings)
 CREATE TABLE settings (

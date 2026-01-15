@@ -8,392 +8,105 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// SQL query fragments for PostgreSQL
-const (
-	pgAndCampaignIDEquals  = " AND campaign_id = $2"
-	pgOrderByCreatedAtDesc = " ORDER BY created_at DESC"
-)
+// contentOps returns a ContentOps instance for unified content operations
+func (db *PostgresDB) contentOps() *ContentOps {
+	return NewContentOps(db.Executor(), db.QueryBuilder())
+}
 
 // =============================================================================
-// NPC Operations (PostgreSQL)
+// NPC Operations (PostgreSQL) - delegates to ContentOps
 // =============================================================================
 
 func (db *PostgresDB) CreateNPC(ctx context.Context, npc *NPC) error {
-	if npc.ID == "" {
-		npc.ID = generateUUID()
-	}
-	npc.CreatedAt = time.Now()
-
-	query := `INSERT INTO npcs (id, user_id, campaign_id, name, race, class, personality, backstory, stats, ai_generated, ai_provider, created_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
-
-	_, err := db.pool.Exec(ctx, query,
-		npc.ID, npc.UserID, npc.CampaignID, npc.Name, npc.Race, npc.Class,
-		npc.Personality, npc.Backstory, npc.Stats, npc.AIGenerated, npc.AIProvider, npc.CreatedAt)
-	return err
+	return db.contentOps().CreateNPC(ctx, npc)
 }
 
 func (db *PostgresDB) GetNPCByID(ctx context.Context, id string) (*NPC, error) {
-	query := `SELECT id, user_id, campaign_id, name, race, class, personality, backstory, stats,
-              ai_generated, ai_provider, created_at
-              FROM npcs WHERE id = $1`
-
-	npc := &NPC{}
-	var stats sql.NullString
-	err := db.pool.QueryRow(ctx, query, id).Scan(
-		&npc.ID, &npc.UserID, &npc.CampaignID, &npc.Name, &npc.Race, &npc.Class,
-		&npc.Personality, &npc.Backstory, &stats, &npc.AIGenerated,
-		&npc.AIProvider, &npc.CreatedAt)
-
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, sql.ErrNoRows
-		}
-		return nil, err
-	}
-	if stats.Valid {
-		npc.Stats = []byte(stats.String)
-	}
-	return npc, nil
+	return db.contentOps().GetNPCByID(ctx, id)
 }
 
 func (db *PostgresDB) ListNPCsByUserID(ctx context.Context, userID string, campaignID *string) ([]*NPC, error) {
-	var query string
-	var args []interface{}
-
-	if campaignID != nil {
-		query = `SELECT id, user_id, campaign_id, name, race, class, personality, backstory, stats,
-                 ai_generated, ai_provider, created_at
-                 FROM npcs WHERE user_id = $1 AND campaign_id = $2 ORDER BY created_at DESC`
-		args = []interface{}{userID, *campaignID}
-	} else {
-		query = `SELECT id, user_id, campaign_id, name, race, class, personality, backstory, stats,
-                 ai_generated, ai_provider, created_at
-                 FROM npcs WHERE user_id = $1 ORDER BY created_at DESC`
-		args = []interface{}{userID}
-	}
-
-	rows, err := db.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var npcs []*NPC
-	for rows.Next() {
-		npc := &NPC{}
-		var stats sql.NullString
-		if err := rows.Scan(&npc.ID, &npc.UserID, &npc.CampaignID, &npc.Name, &npc.Race, &npc.Class,
-			&npc.Personality, &npc.Backstory, &stats, &npc.AIGenerated,
-			&npc.AIProvider, &npc.CreatedAt); err != nil {
-			return nil, err
-		}
-		if stats.Valid {
-			npc.Stats = []byte(stats.String)
-		}
-		npcs = append(npcs, npc)
-	}
-
-	return npcs, rows.Err()
+	return db.contentOps().ListNPCsByUserID(ctx, userID, campaignID)
 }
 
 func (db *PostgresDB) DeleteNPC(ctx context.Context, id string) error {
-	query := `DELETE FROM npcs WHERE id = $1`
-	_, err := db.pool.Exec(ctx, query, id)
-	return err
+	return db.contentOps().DeleteNPC(ctx, id)
+}
+
+func (db *PostgresDB) UpdateNPC(ctx context.Context, npc *NPC) error {
+	return db.contentOps().UpdateNPC(ctx, npc)
 }
 
 // =============================================================================
-// Monster Operations (PostgreSQL)
+// Monster Operations (PostgreSQL) - delegates to ContentOps
 // =============================================================================
 
 func (db *PostgresDB) CreateMonster(ctx context.Context, monster *Monster) error {
-	if monster.ID == "" {
-		monster.ID = generateUUID()
-	}
-	monster.CreatedAt = time.Now()
-
-	query := `INSERT INTO monsters (id, user_id, campaign_id, name, cr, stats, lore, tactics, ai_generated, created_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
-	_, err := db.pool.Exec(ctx, query,
-		monster.ID, monster.UserID, monster.CampaignID, monster.Name, monster.CR,
-		monster.Stats, monster.Lore, monster.Tactics, monster.AIGenerated, monster.CreatedAt)
-	return err
+	return db.contentOps().CreateMonster(ctx, monster)
 }
 
 func (db *PostgresDB) GetMonsterByID(ctx context.Context, id string) (*Monster, error) {
-	monster := &Monster{}
-	query := `SELECT id, user_id, campaign_id, name, cr, stats, lore, tactics, ai_generated, created_at
-              FROM monsters WHERE id = $1`
-	var stats sql.NullString
-	err := db.pool.QueryRow(ctx, query, id).Scan(
-		&monster.ID, &monster.UserID, &monster.CampaignID, &monster.Name, &monster.CR,
-		&stats, &monster.Lore, &monster.Tactics, &monster.AIGenerated, &monster.CreatedAt)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, sql.ErrNoRows
-		}
-		return nil, err
-	}
-	if stats.Valid {
-		monster.Stats = []byte(stats.String)
-	}
-	return monster, nil
+	return db.contentOps().GetMonsterByID(ctx, id)
 }
 
 func (db *PostgresDB) ListMonstersByUserID(ctx context.Context, userID string, campaignID *string) ([]*Monster, error) {
-	var query string
-	var args []interface{}
-
-	if campaignID != nil {
-		query = `SELECT id, user_id, campaign_id, name, cr, stats, lore, tactics, ai_generated, created_at
-                 FROM monsters WHERE user_id = $1 AND campaign_id = $2 ORDER BY created_at DESC`
-		args = []interface{}{userID, *campaignID}
-	} else {
-		query = `SELECT id, user_id, campaign_id, name, cr, stats, lore, tactics, ai_generated, created_at
-                 FROM monsters WHERE user_id = $1 ORDER BY created_at DESC`
-		args = []interface{}{userID}
-	}
-
-	rows, err := db.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var monsters []*Monster
-	for rows.Next() {
-		monster := &Monster{}
-		var stats sql.NullString
-		err := rows.Scan(
-			&monster.ID, &monster.UserID, &monster.CampaignID, &monster.Name, &monster.CR,
-			&stats, &monster.Lore, &monster.Tactics, &monster.AIGenerated, &monster.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if stats.Valid {
-			monster.Stats = []byte(stats.String)
-		}
-		monsters = append(monsters, monster)
-	}
-	return monsters, rows.Err()
+	return db.contentOps().ListMonstersByUserID(ctx, userID, campaignID)
 }
 
 func (db *PostgresDB) DeleteMonster(ctx context.Context, id string) error {
-	query := `DELETE FROM monsters WHERE id = $1`
-	_, err := db.pool.Exec(ctx, query, id)
-	return err
+	return db.contentOps().DeleteMonster(ctx, id)
+}
+
+func (db *PostgresDB) UpdateMonster(ctx context.Context, monster *Monster) error {
+	return db.contentOps().UpdateMonster(ctx, monster)
 }
 
 // =============================================================================
-// Encounter Operations (PostgreSQL)
+// Encounter Operations (PostgreSQL) - delegates to ContentOps
 // =============================================================================
 
 func (db *PostgresDB) CreateEncounter(ctx context.Context, encounter *Encounter) error {
-	if encounter.ID == "" {
-		encounter.ID = generateUUID()
-	}
-	encounter.CreatedAt = time.Now()
-
-	query := `INSERT INTO encounters (id, user_id, campaign_id, name, party_level, party_size, difficulty,
-              description, environment, creatures, treasure, xp_total, xp_per_player, notes,
-              ai_generated, created_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`
-	_, err := db.pool.Exec(ctx, query,
-		encounter.ID, encounter.UserID, encounter.CampaignID, encounter.Name, encounter.PartyLevel, encounter.PartySize,
-		encounter.Difficulty, encounter.Description, encounter.Environment, encounter.Creatures,
-		encounter.Treasure, encounter.XPTotal, encounter.XPPerPlayer, encounter.Notes, encounter.AIGenerated, encounter.CreatedAt)
-	return err
+	return db.contentOps().CreateEncounter(ctx, encounter)
 }
 
 func (db *PostgresDB) GetEncounterByID(ctx context.Context, id string) (*Encounter, error) {
-	encounter := &Encounter{}
-	query := `SELECT id, user_id, campaign_id, name, party_level, party_size, difficulty, description,
-              environment, creatures, treasure, xp_total, xp_per_player, notes, ai_generated, created_at
-              FROM encounters WHERE id = $1`
-	var environment, creatures, treasure sql.NullString
-	err := db.pool.QueryRow(ctx, query, id).Scan(
-		&encounter.ID, &encounter.UserID, &encounter.CampaignID, &encounter.Name, &encounter.PartyLevel, &encounter.PartySize,
-		&encounter.Difficulty, &encounter.Description, &environment, &creatures,
-		&treasure, &encounter.XPTotal, &encounter.XPPerPlayer, &encounter.Notes,
-		&encounter.AIGenerated, &encounter.CreatedAt)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, sql.ErrNoRows
-		}
-		return nil, err
-	}
-	if environment.Valid {
-		encounter.Environment = []byte(environment.String)
-	}
-	if creatures.Valid {
-		encounter.Creatures = []byte(creatures.String)
-	}
-	if treasure.Valid {
-		encounter.Treasure = []byte(treasure.String)
-	}
-	return encounter, nil
+	return db.contentOps().GetEncounterByID(ctx, id)
 }
 
 func (db *PostgresDB) ListEncountersByUserID(ctx context.Context, userID string, campaignID *string) ([]*Encounter, error) {
-	var query string
-	var args []interface{}
-
-	if campaignID != nil {
-		query = `SELECT id, user_id, campaign_id, name, party_level, party_size, difficulty, description,
-                 environment, creatures, treasure, xp_total, xp_per_player, notes, ai_generated, created_at
-                 FROM encounters WHERE user_id = $1 AND campaign_id = $2 ORDER BY created_at DESC`
-		args = []interface{}{userID, *campaignID}
-	} else {
-		query = `SELECT id, user_id, campaign_id, name, party_level, party_size, difficulty, description,
-                 environment, creatures, treasure, xp_total, xp_per_player, notes, ai_generated, created_at
-                 FROM encounters WHERE user_id = $1 ORDER BY created_at DESC`
-		args = []interface{}{userID}
-	}
-
-	rows, err := db.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var encounters []*Encounter
-	for rows.Next() {
-		encounter := &Encounter{}
-		var environment, creatures, treasure sql.NullString
-		err := rows.Scan(
-			&encounter.ID, &encounter.UserID, &encounter.CampaignID, &encounter.Name, &encounter.PartyLevel, &encounter.PartySize,
-			&encounter.Difficulty, &encounter.Description, &environment, &creatures,
-			&treasure, &encounter.XPTotal, &encounter.XPPerPlayer, &encounter.Notes,
-			&encounter.AIGenerated, &encounter.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if environment.Valid {
-			encounter.Environment = []byte(environment.String)
-		}
-		if creatures.Valid {
-			encounter.Creatures = []byte(creatures.String)
-		}
-		if treasure.Valid {
-			encounter.Treasure = []byte(treasure.String)
-		}
-		encounters = append(encounters, encounter)
-	}
-	return encounters, rows.Err()
+	return db.contentOps().ListEncountersByUserID(ctx, userID, campaignID)
 }
 
 func (db *PostgresDB) DeleteEncounter(ctx context.Context, id string) error {
-	query := `DELETE FROM encounters WHERE id = $1`
-	_, err := db.pool.Exec(ctx, query, id)
-	return err
+	return db.contentOps().DeleteEncounter(ctx, id)
+}
+
+func (db *PostgresDB) UpdateEncounter(ctx context.Context, encounter *Encounter) error {
+	return db.contentOps().UpdateEncounter(ctx, encounter)
 }
 
 // =============================================================================
-// Dialogue Operations (PostgreSQL)
+// Dialogue Operations (PostgreSQL) - delegates to ContentOps
 // =============================================================================
 
 func (db *PostgresDB) CreateDialogue(ctx context.Context, dialogue *Dialogue) error {
-	if dialogue.ID == "" {
-		dialogue.ID = generateUUID()
-	}
-	dialogue.CreatedAt = time.Now()
-
-	query := `INSERT INTO dialogues (id, user_id, campaign_id, character_name, scene_setting, mood,
-              dialogue_tree, skill_checks, information, potential_quests, ai_generated, created_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
-	_, err := db.pool.Exec(ctx, query,
-		dialogue.ID, dialogue.UserID, dialogue.CampaignID, dialogue.CharacterName, dialogue.SceneSetting, dialogue.Mood,
-		dialogue.DialogueTree, dialogue.SkillChecks, dialogue.Information, dialogue.PotentialQuests,
-		dialogue.AIGenerated, dialogue.CreatedAt)
-	return err
+	return db.contentOps().CreateDialogue(ctx, dialogue)
 }
 
 func (db *PostgresDB) GetDialogueByID(ctx context.Context, id string) (*Dialogue, error) {
-	dialogue := &Dialogue{}
-	query := `SELECT id, user_id, campaign_id, character_name, scene_setting, mood, dialogue_tree,
-              skill_checks, information, potential_quests, ai_generated, created_at
-              FROM dialogues WHERE id = $1`
-	var dialogueTree, skillChecks, information, potentialQuests sql.NullString
-	err := db.pool.QueryRow(ctx, query, id).Scan(
-		&dialogue.ID, &dialogue.UserID, &dialogue.CampaignID, &dialogue.CharacterName, &dialogue.SceneSetting, &dialogue.Mood,
-		&dialogueTree, &skillChecks, &information, &potentialQuests,
-		&dialogue.AIGenerated, &dialogue.CreatedAt)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, sql.ErrNoRows
-		}
-		return nil, err
-	}
-	if dialogueTree.Valid {
-		dialogue.DialogueTree = []byte(dialogueTree.String)
-	}
-	if skillChecks.Valid {
-		dialogue.SkillChecks = []byte(skillChecks.String)
-	}
-	if information.Valid {
-		dialogue.Information = []byte(information.String)
-	}
-	if potentialQuests.Valid {
-		dialogue.PotentialQuests = []byte(potentialQuests.String)
-	}
-	return dialogue, nil
+	return db.contentOps().GetDialogueByID(ctx, id)
 }
 
 func (db *PostgresDB) ListDialoguesByUserID(ctx context.Context, userID string, campaignID *string) ([]*Dialogue, error) {
-	var query string
-	var args []interface{}
-
-	if campaignID != nil {
-		query = `SELECT id, user_id, campaign_id, character_name, scene_setting, mood, dialogue_tree,
-                 skill_checks, information, potential_quests, ai_generated, created_at
-                 FROM dialogues WHERE user_id = $1 AND campaign_id = $2 ORDER BY created_at DESC`
-		args = []interface{}{userID, *campaignID}
-	} else {
-		query = `SELECT id, user_id, campaign_id, character_name, scene_setting, mood, dialogue_tree,
-                 skill_checks, information, potential_quests, ai_generated, created_at
-                 FROM dialogues WHERE user_id = $1 ORDER BY created_at DESC`
-		args = []interface{}{userID}
-	}
-
-	rows, err := db.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var dialogues []*Dialogue
-	for rows.Next() {
-		dialogue := &Dialogue{}
-		var dialogueTree, skillChecks, information, potentialQuests sql.NullString
-		err := rows.Scan(
-			&dialogue.ID, &dialogue.UserID, &dialogue.CampaignID, &dialogue.CharacterName, &dialogue.SceneSetting, &dialogue.Mood,
-			&dialogueTree, &skillChecks, &information, &potentialQuests,
-			&dialogue.AIGenerated, &dialogue.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if dialogueTree.Valid {
-			dialogue.DialogueTree = []byte(dialogueTree.String)
-		}
-		if skillChecks.Valid {
-			dialogue.SkillChecks = []byte(skillChecks.String)
-		}
-		if information.Valid {
-			dialogue.Information = []byte(information.String)
-		}
-		if potentialQuests.Valid {
-			dialogue.PotentialQuests = []byte(potentialQuests.String)
-		}
-		dialogues = append(dialogues, dialogue)
-	}
-	return dialogues, rows.Err()
+	return db.contentOps().ListDialoguesByUserID(ctx, userID, campaignID)
 }
 
 func (db *PostgresDB) DeleteDialogue(ctx context.Context, id string) error {
-	query := `DELETE FROM dialogues WHERE id = $1`
-	_, err := db.pool.Exec(ctx, query, id)
-	return err
+	return db.contentOps().DeleteDialogue(ctx, id)
+}
+
+func (db *PostgresDB) UpdateDialogue(ctx context.Context, dialogue *Dialogue) error {
+	return db.contentOps().UpdateDialogue(ctx, dialogue)
 }
 
 // =============================================================================

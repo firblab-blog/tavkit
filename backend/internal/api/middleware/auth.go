@@ -97,3 +97,62 @@ func GetUsername(c *gin.Context) (string, bool) {
 	name, ok := username.(string)
 	return name, ok
 }
+
+// WebSocketAuthMiddleware validates JWT tokens for WebSocket connections
+// WebSocket connections can't easily use cookies or Authorization headers during upgrade,
+// so the token is passed as a query parameter: /ws/combat/123?token=xxx
+func WebSocketAuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
+	logger, _ := zap.NewProduction()
+
+	return func(c *gin.Context) {
+		logger.Debug("WebSocketAuthMiddleware called",
+			zap.String("path", c.Request.URL.Path))
+
+		var token string
+
+		// For WebSocket, try query parameter first
+		token = c.Query("token")
+
+		// Also try cookie as fallback
+		if token == "" {
+			cookieToken, err := c.Cookie("auth_token")
+			if err == nil && cookieToken != "" {
+				token = cookieToken
+			}
+		}
+
+		// No token found
+		if token == "" {
+			logger.Warn("No authentication token found for WebSocket",
+				zap.String("path", c.Request.URL.Path))
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+			c.Abort()
+			return
+		}
+
+		// Validate token
+		claims, err := jwtManager.ValidateToken(token)
+		if err != nil {
+			logger.Warn("WebSocket token validation failed",
+				zap.Error(err),
+				zap.String("path", c.Request.URL.Path))
+			if err == auth.ErrExpiredToken {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "token expired"})
+			} else {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			}
+			c.Abort()
+			return
+		}
+
+		logger.Debug("WebSocket token validated successfully",
+			zap.String("path", c.Request.URL.Path),
+			zap.String("user_id", claims.UserID))
+
+		// Store claims in context
+		c.Set("user_id", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("is_admin", claims.IsAdmin)
+		c.Next()
+	}
+}

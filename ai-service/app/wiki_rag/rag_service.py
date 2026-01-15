@@ -43,11 +43,32 @@ class RAGService:
         Args:
             db: RAGDatabase instance
             embedder: EmbeddingGenerator instance (created if not provided)
-            chunker: TextChunker instance (created if not provided)
+            chunker: TextChunker instance (created if not provided).
+                    If not provided, creates one with settings optimized
+                    for the embedding model's context limit.
         """
         self.db = db
         self.embedder = embedder or EmbeddingGenerator()
-        self.chunker = chunker or TextChunker()
+
+        # Create chunker with settings based on embedding model if not provided
+        if chunker is None:
+            chunk_size = self.embedder.get_recommended_chunk_size()
+            # Scale overlap proportionally (10% of chunk size, minimum 30)
+            overlap = max(30, int(chunk_size * 0.1))
+            self.chunker = TextChunker(
+                max_tokens=chunk_size,
+                overlap_tokens=overlap,
+            )
+            logger.info(
+                f"Created embedder-aware chunker: max_tokens={chunk_size}, overlap={overlap} "
+                f"(based on {self.embedder.model} context limit: {self.embedder.context_limit})"
+            )
+        else:
+            self.chunker = chunker
+
+        # Track running tasks for cancellation
+        self._running_tasks: dict[UUID, asyncio.Task] = {}
+        self._cancelled_jobs: set[UUID] = set()
 
     async def start_scrape_job(self, setting_slug: str) -> UUID:
         """
@@ -59,25 +80,46 @@ class RAGService:
         Returns:
             Job ID for tracking progress
         """
+        print(f"[RAG SERVICE] start_scrape_job called for: {setting_slug}")
+
         # Get setting pack
         pack = await self.db.get_setting_pack(setting_slug)
         if not pack:
             raise ValueError(f"Setting pack not found: {setting_slug}")
+
+        print(f"[RAG SERVICE] Found pack: {pack.name}, wiki_index_url: {pack.wiki_index_url}")
 
         if not pack.wiki_index_url:
             raise ValueError(f"No wiki URL configured for: {setting_slug}")
 
         # Create job
         job_id = await self.db.create_scrape_job(pack.id)
+        print(f"[RAG SERVICE] Created job: {job_id}")
 
         # Start scraping in background
-        asyncio.create_task(self._run_scrape_job(job_id, pack))
+        print(f"[RAG SERVICE] Creating background task...")
+        task = asyncio.create_task(self._run_scrape_job(job_id, pack))
+        self._running_tasks[job_id] = task
+        print(f"[RAG SERVICE] Background task created")
 
         return job_id
+
+    def _is_cancelled(self, job_id: UUID) -> bool:
+        """Check if a job has been cancelled."""
+        return job_id in self._cancelled_jobs
+
+    def _cleanup_job(self, job_id: UUID):
+        """Clean up tracking data for a completed/cancelled job."""
+        self._running_tasks.pop(job_id, None)
+        self._cancelled_jobs.discard(job_id)
 
     async def _run_scrape_job(self, job_id: UUID, pack):
         """Run the full scrape job (scraping → chunking → embedding)."""
         try:
+            print(f"[RAG] Starting scrape job {job_id} for {pack.slug}")
+            print(f"[RAG] Wiki base URL: {pack.wiki_base_url}")
+            print(f"[RAG] Wiki index URL: {pack.wiki_index_url}")
+
             # Phase 1: Scraping
             await self.db.update_scrape_job(
                 job_id,
@@ -110,8 +152,17 @@ class RAGService:
                     progress_callback=progress_callback,
                 )
 
+            # Check for cancellation after scraping
+            if self._is_cancelled(job_id):
+                logger.info(f"Job {job_id} cancelled after scraping phase")
+                return
+
             # Save pages to database
             for page_data in pages:
+                if self._is_cancelled(job_id):
+                    logger.info(f"Job {job_id} cancelled during page save")
+                    return
+
                 try:
                     await self.db.upsert_wiki_page(
                         setting_pack_id=pack.id,
@@ -134,6 +185,11 @@ class RAGService:
                 progress_percent=40,
             )
 
+            # Check for cancellation before chunking
+            if self._is_cancelled(job_id):
+                logger.info(f"Job {job_id} cancelled before chunking phase")
+                return
+
             # Phase 2: Chunking
             await self.db.update_scrape_job(
                 job_id,
@@ -144,6 +200,11 @@ class RAGService:
             total_chunks = 0
 
             for i, page in enumerate(unprocessed_pages):
+                # Check for cancellation in chunking loop
+                if self._is_cancelled(job_id):
+                    logger.info(f"Job {job_id} cancelled during chunking phase")
+                    return
+
                 chunks = self.chunker.chunk_text(page.clean_text, page.title)
 
                 for chunk in chunks:
@@ -168,6 +229,11 @@ class RAGService:
                     progress_percent=progress,
                 )
 
+            # Check for cancellation before embedding
+            if self._is_cancelled(job_id):
+                logger.info(f"Job {job_id} cancelled before embedding phase")
+                return
+
             # Phase 3: Embedding
             await self.db.update_scrape_job(
                 job_id,
@@ -180,6 +246,11 @@ class RAGService:
             batch_size = 50
 
             while True:
+                # Check for cancellation in embedding loop
+                if self._is_cancelled(job_id):
+                    logger.info(f"Job {job_id} cancelled during embedding phase")
+                    return
+
                 chunks_to_embed = await self.db.get_chunks_without_embeddings(
                     pack.id, limit=batch_size
                 )
@@ -233,6 +304,10 @@ class RAGService:
                 f"{len(pages)} pages, {total_chunks} chunks, {chunks_embedded} embedded"
             )
 
+        except asyncio.CancelledError:
+            logger.info(f"Job {job_id} task was cancelled")
+            # Database status already updated by cancel_job
+            raise
         except Exception as e:
             logger.exception(f"Scrape job failed: {e}")
             await self.db.update_scrape_job(
@@ -240,10 +315,32 @@ class RAGService:
                 status="failed",
                 error_message=str(e),
             )
+        finally:
+            self._cleanup_job(job_id)
 
     async def get_job_status(self, job_id: UUID) -> Optional[ScrapeJobStatus]:
         """Get the status of a scrape job."""
         return await self.db.get_scrape_job(job_id)
+
+    async def get_active_jobs(self) -> list[dict]:
+        """Get all currently active (in-progress) scrape jobs."""
+        return await self.db.get_active_scrape_jobs()
+
+    async def cancel_job(self, job_id: UUID) -> bool:
+        """Cancel an active scrape job."""
+        # Mark job as cancelled in database
+        db_result = await self.db.cancel_scrape_job(job_id)
+
+        # Add to cancelled set so the job checks and stops
+        self._cancelled_jobs.add(job_id)
+
+        # Try to cancel the running task if it exists
+        task = self._running_tasks.get(job_id)
+        if task and not task.done():
+            task.cancel()
+            logger.info(f"Cancelled task for job {job_id}")
+
+        return db_result
 
     async def get_rag_context(
         self,

@@ -49,8 +49,12 @@ async def get_rag_service() -> RAGService:
         # (OpenAI if OPENAI_API_KEY set, otherwise Ollama)
         embedder = EmbeddingGenerator()
         logger.info(
-            f"RAG service initialized with {embedder.provider} embeddings "
-            f"({embedder.model}, {embedder.dimensions} dims)"
+            f"RAG service initialized:\n"
+            f"  Embedding provider: {embedder.provider}\n"
+            f"  Embedding model: {embedder.model}\n"
+            f"  Embedding dimensions: {embedder.dimensions}\n"
+            f"  Context limit: {embedder.context_limit} tokens\n"
+            f"  Recommended chunk size: {embedder.get_recommended_chunk_size()} tokens"
         )
 
         _rag_service = RAGService(db=_rag_db, embedder=embedder)
@@ -226,8 +230,11 @@ async def start_scrape_job(request: StartScrapeRequest, background_tasks: Backgr
     The job runs in the background. Use GET /rag/scrape/job/{job_id} to check progress.
     """
     try:
+        print(f"[API ROUTE] Starting scrape for: {request.setting_slug}")
         service = await get_rag_service()
+        print(f"[API ROUTE] Got RAG service, calling start_scrape_job...")
         job_id = await service.start_scrape_job(request.setting_slug)
+        print(f"[API ROUTE] Job created: {job_id}")
 
         # Get initial job status
         job = await service.get_job_status(job_id)
@@ -281,6 +288,66 @@ async def get_scrape_job_status(job_id: UUID):
         raise
     except Exception as e:
         logger.exception(f"Failed to get job status: {job_id}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ActiveScrapeJobResponse(BaseModel):
+    """Response model for active scrape job with setting info."""
+
+    job_id: str
+    setting_pack_id: str
+    setting_slug: str
+    setting_name: str
+    status: str
+    current_phase: Optional[str]
+    pages_found: int
+    pages_scraped: int
+    pages_failed: int
+    chunks_created: int
+    chunks_embedded: int
+    progress_percent: int
+    error_message: Optional[str]
+    started_at: Optional[str]
+    completed_at: Optional[str]
+
+
+@router.get("/scrape/jobs/active", response_model=list[ActiveScrapeJobResponse])
+async def get_active_scrape_jobs():
+    """
+    Get all currently active (in-progress) scrape jobs.
+
+    Returns jobs with status 'pending', 'scraping', or 'embedding'.
+    Useful for recovering UI state after page refresh.
+    """
+    try:
+        service = await get_rag_service()
+        jobs = await service.get_active_jobs()
+        return [ActiveScrapeJobResponse(**job) for job in jobs]
+    except Exception as e:
+        logger.exception("Failed to get active scrape jobs")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scrape/job/{job_id}/cancel")
+async def cancel_scrape_job(job_id: str):
+    """
+    Cancel an active scrape job.
+
+    Marks the job as failed with 'Cancelled by user' message.
+    """
+    try:
+        service = await get_rag_service()
+        success = await service.cancel_job(UUID(job_id))
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail="Job not found or already completed",
+            )
+        return {"success": True, "message": "Job cancelled"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to cancel job: {job_id}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

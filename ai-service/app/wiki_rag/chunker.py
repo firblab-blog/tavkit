@@ -64,6 +64,9 @@ class TextChunker:
     2. Within sections, split by paragraphs
     3. If paragraphs too long, split by sentences
     4. Add overlap between chunks for context
+
+    Note: max_tokens should be set based on the embedding model's context limit.
+    Use EmbeddingGenerator.get_recommended_chunk_size() to get the appropriate value.
     """
 
     def __init__(
@@ -76,13 +79,20 @@ class TextChunker:
         Initialize chunker.
 
         Args:
-            max_tokens: Maximum tokens per chunk (default 500 for embedding models)
+            max_tokens: Maximum tokens per chunk. Should be set based on the
+                       embedding model's context limit. Use
+                       EmbeddingGenerator.get_recommended_chunk_size() to get
+                       the appropriate value. Default 500 is a conservative fallback.
             min_tokens: Minimum tokens per chunk (avoid tiny chunks)
             overlap_tokens: Overlap between consecutive chunks
         """
         self.max_tokens = max_tokens
         self.min_tokens = min_tokens
         self.overlap_tokens = overlap_tokens
+        logger.info(
+            f"TextChunker initialized: max_tokens={max_tokens}, "
+            f"min_tokens={min_tokens}, overlap_tokens={overlap_tokens}"
+        )
 
     def chunk_text(self, text: str, page_title: str = "") -> list[TextChunk]:
         """
@@ -277,3 +287,27 @@ class TextChunker:
             start_char=start_char,
             end_char=start_char + len(text),
         )
+
+    def truncate_to_limit(self, text: str, max_chars: int) -> str:
+        """
+        Truncate text to character limit, trying to break at sentence boundary.
+
+        Used as a safety net for unexpectedly long text that wasn't properly
+        chunked (e.g., very long sentences).
+
+        Args:
+            text: Text to truncate
+            max_chars: Maximum character limit
+
+        Returns:
+            Truncated text, preferably at a sentence boundary
+        """
+        if len(text) <= max_chars:
+            return text
+
+        # Try to break at last sentence within limit
+        truncated = text[:max_chars]
+        last_period = truncated.rfind(". ")
+        if last_period > max_chars * 0.7:  # Only if we keep >70% of content
+            return truncated[: last_period + 1]
+        return truncated
