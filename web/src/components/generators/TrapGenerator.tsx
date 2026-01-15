@@ -194,7 +194,7 @@ function normalizeTrapResponse(raw: Record<string, unknown>): TrapData {
           parsedTrap,
         );
         processedRaw = parsedTrap;
-      } catch (e) {
+      } catch {
         logger.warn("[TrapGenerator] Failed to parse description as JSON:", e);
       }
     }

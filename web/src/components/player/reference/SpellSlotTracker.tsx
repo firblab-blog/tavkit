@@ -40,14 +40,14 @@ const SPELL_SLOT_TEMPLATES: Record<string, SpellSlotConfig[]> = {
 export default function SpellSlotTracker({
   characterId,
 }: SpellSlotTrackerProps) {
+  const store = useAbilityTrackingStore();
   const {
     spellSlots,
     loading,
     fetchSpellSlots,
-    useSpellSlot,
     restoreSpellSlot,
     setSpellSlots,
-  } = useAbilityTrackingStore();
+  } = store;
 
   const [showSetup, setShowSetup] = useState(false);
   const [customSlots, setCustomSlots] = useState<SpellSlotConfig[]>([]);
@@ -66,7 +66,7 @@ export default function SpellSlotTracker({
 
   const handleUseSlot = (level: number) => {
     if (characterId) {
-      useSpellSlot(characterId, level);
+      store.useSpellSlot(characterId, level);
     }
   };
 

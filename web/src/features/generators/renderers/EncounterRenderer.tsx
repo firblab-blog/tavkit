@@ -225,6 +225,7 @@ export function EncounterRenderer({
 }
 
 // Format encounter for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatEncounterForClipboard(
   encounter: GeneratedEncounterData,
 ): string {

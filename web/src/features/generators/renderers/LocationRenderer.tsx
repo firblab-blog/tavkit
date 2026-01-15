@@ -168,6 +168,7 @@ export function LocationRenderer({
 }
 
 // Helper to format Location for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatLocationForClipboard(
   location: GeneratedLocationData,
 ): string {

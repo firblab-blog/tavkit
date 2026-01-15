@@ -201,6 +201,7 @@ export function QuestRenderer({
 }
 
 // Helper to format Quest for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatQuestForClipboard(quest: GeneratedQuestData): string {
   let text = `${quest.title}\n${quest.type}`;
   if (quest.category) text += ` • ${quest.category}`;

@@ -292,7 +292,7 @@ function normalizeChaseResponse(
           parsedChase,
         );
         processedRaw = parsedChase;
-      } catch (e) {
+      } catch {
         logger.warn("[ChaseGenerator] Failed to parse description as JSON:", e);
       }
     }

@@ -72,6 +72,7 @@ export interface CombatCondition {
 }
 
 // Standard D&D 5e conditions
+// eslint-disable-next-line react-refresh/only-export-components
 export const DND_CONDITIONS = [
   "Blinded",
   "Charmed",

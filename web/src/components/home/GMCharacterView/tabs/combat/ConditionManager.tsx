@@ -26,6 +26,7 @@ export interface ActiveCondition {
   notes?: string;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const CONDITION_INFO: Record<
   ConditionType,
   { name: string; icon: string; color: string }

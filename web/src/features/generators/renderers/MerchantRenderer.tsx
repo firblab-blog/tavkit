@@ -234,6 +234,7 @@ export function MerchantRenderer({
 }
 
 // Helper to format Merchant for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatMerchantForClipboard(
   merchant: GeneratedMerchantData,
 ): string {

@@ -207,7 +207,7 @@ function normalizeMerchantResponse(raw: Record<string, unknown>): MerchantData {
           parsedMerchant,
         );
         processedRaw = parsedMerchant;
-      } catch (e) {
+      } catch {
         logger.warn(
           "[MerchantGenerator] Failed to parse description as JSON:",
           e,

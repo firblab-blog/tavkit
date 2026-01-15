@@ -290,7 +290,7 @@ export function normalizeNPCResponse(
           parsedNPC,
         );
         processedRaw = parsedNPC;
-      } catch (e) {
+      } catch {
         logger.warn("[normalizeNPC] Failed to parse background as JSON:", e);
       }
     }

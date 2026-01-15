@@ -250,6 +250,7 @@ export function DialogueRenderer({
 }
 
 // Format dialogue for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatDialogueForClipboard(
   dialogue: GeneratedDialogueData,
 ): string {

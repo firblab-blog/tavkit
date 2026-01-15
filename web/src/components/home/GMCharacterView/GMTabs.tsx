@@ -16,6 +16,7 @@ export interface GMTabConfig {
   shortLabel?: string;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const GM_TABS: GMTabConfig[] = [
   { id: "overview", label: "Overview", icon: "Zap", shortLabel: "Home" },
   {

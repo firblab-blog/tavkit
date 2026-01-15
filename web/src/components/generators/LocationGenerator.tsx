@@ -95,7 +95,7 @@ function normalizeLocationResponse(raw: Record<string, unknown>): LocationData {
         );
         // Use parsed values - they're the REAL data, not the fallbacks
         processedRaw = parsedLocation;
-      } catch (e) {
+      } catch {
         logger.warn(
           "[LocationGenerator] Failed to parse description as JSON:",
           e,

@@ -15,6 +15,7 @@ export interface TabConfig {
   shortLabel?: string; // For mobile
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const PLAYER_TABS: TabConfig[] = [
   { id: "overview", label: "Overview", icon: "Zap", shortLabel: "Home" },
   { id: "journal", label: "Journal", icon: "BookOpen", shortLabel: "Journal" },

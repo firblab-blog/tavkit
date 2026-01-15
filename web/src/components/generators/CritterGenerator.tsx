@@ -152,7 +152,7 @@ function normalizeCritterResponse(raw: Record<string, unknown>): CritterData {
       try {
         const parsedCritter = JSON.parse(descStr);
         processedRaw = parsedCritter;
-      } catch (e) {
+      } catch {
         logger.warn(
           "[CritterGenerator] Failed to parse description as JSON:",
           e,

@@ -75,7 +75,7 @@ function normalizeQuestResponse(raw: Record<string, unknown>): QuestData {
         );
         // Use parsed values - they're the REAL data, not the fallbacks
         processedRaw = parsedQuest;
-      } catch (e) {
+      } catch {
         logger.warn("[QuestGenerator] Failed to parse description as JSON:", e);
       }
     }

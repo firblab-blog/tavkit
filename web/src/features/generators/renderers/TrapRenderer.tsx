@@ -265,6 +265,7 @@ export function TrapRenderer({
 /**
  * Format trap data for clipboard
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatTrapForClipboard(trap: GeneratedTrapData): string {
   let text = `${trap.name}\n${trap.trap_type} • ${trap.difficulty}${trap.environment ? ` • ${trap.environment}` : ""}\n\n${trap.description}`;
 

@@ -9,7 +9,7 @@ import { useAuthStore } from "../store/authStore";
 import { logger } from "@/utils/logger";
 import { authFetch } from "@/utils/authFetch";
 
-interface AIProvider {
+interface AIProviderConfig {
   type: string;
   name: string;
   available: boolean;
@@ -19,7 +19,7 @@ interface AIProvider {
 interface AIContextType {
   enabled: boolean;
   currentProvider: string | null;
-  availableProviders: AIProvider[];
+  availableProviders: AIProviderConfig[];
   models: string[];
   loading: boolean;
   error: string | null;
@@ -37,7 +37,7 @@ export const AIProvider: React.FC<AIProviderProps> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [enabled, setEnabled] = useState(false);
   const [currentProvider, setCurrentProvider] = useState<string | null>(null);
-  const [availableProviders, setAvailableProviders] = useState<AIProvider[]>(
+  const [availableProviders, setAvailableProviders] = useState<AIProviderConfig[]>(
     [],
   );
   const [models, setModels] = useState<string[]>([]);
@@ -135,6 +135,7 @@ export const AIProvider: React.FC<AIProviderProps> = ({ children }) => {
   return <AIContext.Provider value={value}>{children}</AIContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAI = (): AIContextType => {
   const context = useContext(AIContext);
   if (!context) {

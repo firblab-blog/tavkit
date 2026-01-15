@@ -60,8 +60,8 @@ export default function AISettings({
         const settings = JSON.parse(stored) as AIGenerationSettings;
         setDetailLevel(settings.detailLevel);
         setTimeoutValue(settings.timeout);
-      } catch (e) {
-        logger.error("Failed to load AI settings:", e);
+      } catch (error) {
+        logger.error("Failed to load AI settings:", error);
       }
     }
   }, [generatorType]);
@@ -188,6 +188,7 @@ export default function AISettings({
 }
 
 // Export utility function to get token count from settings
+// eslint-disable-next-line react-refresh/only-export-components
 export function getMaxTokensFromSettings(
   settings: AIGenerationSettings,
 ): number {

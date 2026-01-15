@@ -170,6 +170,7 @@ export function RumorRenderer({
 /**
  * Format rumors for clipboard
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatRumorsForClipboard(rumors: GeneratedRumorsData): string {
   let text = "Generated Rumors:\n\n";
   rumors.rumors.forEach((rumor, index) => {

@@ -280,6 +280,7 @@ export function useSectionContent({
         } else {
           fileContent = await file.text();
           // Remove null bytes
+          // eslint-disable-next-line no-control-regex
           fileContent = fileContent.replace(/\x00/g, "");
         }
 

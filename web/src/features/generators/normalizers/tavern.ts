@@ -190,7 +190,7 @@ export function normalizeTavernResponse(
           parsedTavern,
         );
         processedRaw = parsedTavern;
-      } catch (e) {
+      } catch {
         logger.warn(
           "[normalizeTavern] Failed to parse description as JSON:",
           e,

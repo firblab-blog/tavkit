@@ -235,7 +235,7 @@ function normalizeTavernResponse(raw: Record<string, unknown>): TavernData {
           parsedTavern,
         );
         processedRaw = parsedTavern;
-      } catch (e) {
+      } catch {
         logger.warn(
           "[TavernGenerator] Failed to parse description as JSON:",
           e,

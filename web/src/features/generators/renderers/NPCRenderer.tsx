@@ -244,6 +244,7 @@ export function NPCRenderer({
 }
 
 // Helper to format NPC for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatNPCForClipboard(npc: GeneratedNPCData): string {
   const traits = npc.personality.traits.join(", ") || "N/A";
   const abilities = Object.entries(npc.abilities)

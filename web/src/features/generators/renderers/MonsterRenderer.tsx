@@ -312,6 +312,7 @@ export function MonsterRenderer({
 }
 
 // Helper to format Monster for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatMonsterForClipboard(
   monster: GeneratedMonsterData,
 ): string {

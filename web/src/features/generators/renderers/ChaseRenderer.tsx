@@ -322,6 +322,7 @@ export function ChaseRenderer({
 // Clipboard Formatter
 // ============================================================================
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatChaseForClipboard(chase: GeneratedChaseData): string {
   const chaseTypeLabel = chase.chase_type
     ? chase.chase_type.replace(/_/g, " ")

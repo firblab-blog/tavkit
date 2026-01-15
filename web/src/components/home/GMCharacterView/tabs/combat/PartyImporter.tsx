@@ -178,7 +178,7 @@ export default function PartyImporter({
     try {
       await onImport(participants);
       onClose();
-    } catch (err) {
+    } catch {
       setError("Failed to import party members");
     } finally {
       setImporting(false);

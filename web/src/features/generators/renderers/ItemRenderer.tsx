@@ -180,6 +180,7 @@ export function ItemRenderer({
 }
 
 // Helper to format Item for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatItemForClipboard(item: GeneratedItemData): string {
   let text = `${item.name}\n${item.rarity} • ${item.type}\n\nDescription:\n${item.description}`;
 

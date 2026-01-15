@@ -171,7 +171,7 @@ export function normalizeEncounterResponse(
           parsedEncounter,
         );
         processedRaw = parsedEncounter;
-      } catch (e) {
+      } catch {
         logger.warn(
           "[EncounterNormalizer] Failed to parse description as JSON:",
           e,

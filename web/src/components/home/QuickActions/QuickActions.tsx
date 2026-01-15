@@ -53,7 +53,7 @@ const getFaviconUrl = (url: string): string => {
     const urlObj = new URL(url);
     const domain = urlObj.hostname;
     return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-  } catch (e) {
+  } catch {
     return "";
   }
 };

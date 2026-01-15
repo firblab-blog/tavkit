@@ -170,7 +170,7 @@ export function normalizeMerchantResponse(
           parsedMerchant,
         );
         processedRaw = parsedMerchant;
-      } catch (e) {
+      } catch {
         logger.warn(
           "[normalizeMerchant] Failed to parse description as JSON:",
           e,

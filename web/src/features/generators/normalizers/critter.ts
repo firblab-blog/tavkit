@@ -120,7 +120,7 @@ export function normalizeCritterResponse(
       try {
         const parsedCritter = JSON.parse(descStr);
         processedRaw = parsedCritter;
-      } catch (e) {
+      } catch {
         logger.warn(
           "[CritterNormalizer] Failed to parse description as JSON:",
           e,

@@ -167,7 +167,7 @@ export default function SectionContent({
                 if (stats.plot_hooks && stats.plot_hooks.length > 0) {
                   statsDisplay += `\n\n**Plot Hooks:**\n${stats.plot_hooks.map((h: string) => `- ${h}`).join("\n")}`;
                 }
-              } catch (e) {
+              } catch {
                 statsDisplay = `\n\n**Stats:**\n${npc.stats}`;
               }
             }
@@ -236,7 +236,7 @@ export default function SectionContent({
                 } else {
                   propsDisplay = String(props);
                 }
-              } catch (e) {
+              } catch {
                 propsDisplay = String(item.properties);
               }
             }
@@ -334,7 +334,7 @@ export default function SectionContent({
                       },
                     );
                   }
-                } catch (e) {
+                } catch {
                   statsDisplay = `\n\n**Stats:**\n${monster.stats}`;
                 }
               }
@@ -391,7 +391,7 @@ export default function SectionContent({
                 } else {
                   creaturesDisplay = JSON.stringify(creatures, null, 2);
                 }
-              } catch (e) {
+              } catch {
                 creaturesDisplay = String(encounter.creatures);
               }
             }
@@ -416,7 +416,7 @@ export default function SectionContent({
                   envLines.push(`- **Lighting:** ${env.lighting}`);
                 environmentDisplay =
                   envLines.length > 0 ? envLines.join("\n") : "";
-              } catch (e) {
+              } catch {
                 environmentDisplay = String(encounter.environment);
               }
             }
@@ -444,7 +444,7 @@ export default function SectionContent({
                   treasureParts.push(`_Items:_ ${treasure.items.join(", ")}`);
                 }
                 treasureDisplay = treasureParts.join(" | ");
-              } catch (e) {
+              } catch {
                 treasureDisplay = String(encounter.treasure);
               }
             }
@@ -494,7 +494,7 @@ export default function SectionContent({
                     return `**${opt.charAt(0).toUpperCase() + opt.slice(1)}:**\n- *Player:* ${option.player_option || "N/A"}\n- *NPC Response:* ${option.npc_response || "N/A"}\n- *Outcome:* ${option.outcome || "N/A"}`;
                   });
                 treeDisplay = optionLines.join("\n\n");
-              } catch (e) {
+              } catch {
                 treeDisplay = String(dialogue.dialogue_tree);
               }
             }
@@ -517,7 +517,7 @@ export default function SectionContent({
                 } else {
                   checksDisplay = String(checks);
                 }
-              } catch (e) {
+              } catch {
                 checksDisplay = String(dialogue.skill_checks);
               }
             }
@@ -537,7 +537,7 @@ export default function SectionContent({
                 } else {
                   infoDisplay = String(info);
                 }
-              } catch (e) {
+              } catch {
                 infoDisplay = String(dialogue.information);
               }
             }
@@ -603,7 +603,7 @@ export default function SectionContent({
                   return parsed.map((item: string) => `- ${item}`).join("\n");
                 }
                 return String(parsed);
-              } catch (e) {
+              } catch {
                 return String(field);
               }
             };
@@ -621,7 +621,7 @@ export default function SectionContent({
                     .join("\n");
                 }
                 return String(parsed);
-              } catch (e) {
+              } catch {
                 return String(field);
               }
             };
@@ -676,7 +676,7 @@ export default function SectionContent({
                     .join("\n");
                 }
                 return String(parsed);
-              } catch (e) {
+              } catch {
                 return String(field);
               }
             };
@@ -721,7 +721,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 menuFoodDisplay = String(tavern.menu_food);
               }
             }
@@ -742,7 +742,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 menuDrinksDisplay = String(tavern.menu_drinks);
               }
             }
@@ -763,7 +763,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 accommodationsDisplay = String(tavern.rooms);
               }
             }
@@ -788,7 +788,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 patronsDisplay = String(tavern.patrons);
               }
             }
@@ -809,7 +809,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 eventsDisplay = String(tavern.events);
               }
             }
@@ -830,7 +830,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 rumorsDisplay = String(tavern.rumors);
               }
             }
@@ -891,7 +891,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 inventoryDisplay = String(merchant.inventory);
               }
             }
@@ -912,7 +912,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 servicesDisplay = String(merchant.services);
               }
             }
@@ -933,7 +933,7 @@ export default function SectionContent({
                     })
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 specialItemsDisplay = String(merchant.special_items);
               }
             }
@@ -954,7 +954,7 @@ export default function SectionContent({
                     )
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 rumorsDisplay = String(merchant.rumors);
               }
             }
@@ -975,7 +975,7 @@ export default function SectionContent({
                     )
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 recentlySoldDisplay = String(merchant.recently_sold);
               }
             }
@@ -1026,7 +1026,7 @@ export default function SectionContent({
                     detectionDisplay += `**Clues:**\n${detection.clues.map((clue: string) => `- ${clue}`).join("\n")}`;
                   }
                 }
-              } catch (e) {
+              } catch {
                 detectionDisplay = "";
               }
             }
@@ -1047,7 +1047,7 @@ export default function SectionContent({
                     )
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 solutionPathsDisplay = "";
               }
             }
@@ -1065,7 +1065,7 @@ export default function SectionContent({
                     .map((comp: string) => `- ${comp}`)
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 complicationsDisplay = "";
               }
             }
@@ -1083,7 +1083,7 @@ export default function SectionContent({
                     .map((reward: string) => `- ${reward}`)
                     .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 rewardsDisplay = "";
               }
             }
@@ -1099,7 +1099,7 @@ export default function SectionContent({
                 if (scaling.easier || scaling.harder) {
                   scalingDisplay = `\n\n**Scaling:**${scaling.easier ? `\n- Easier: ${scaling.easier}` : ""}${scaling.harder ? `\n- Harder: ${scaling.harder}` : ""}`;
                 }
-              } catch (e) {
+              } catch {
                 scalingDisplay = "";
               }
             }
@@ -1157,7 +1157,7 @@ export default function SectionContent({
                 if (abilities.length > 0) {
                   statsDisplay += `\n${abilities.join(" | ")}`;
                 }
-              } catch (e) {
+              } catch {
                 statsDisplay = "";
               }
             }
@@ -1180,7 +1180,7 @@ export default function SectionContent({
                       )
                       .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 abilitiesDisplay = "";
               }
             }
@@ -1198,7 +1198,7 @@ export default function SectionContent({
                     "\n\n**Potential Uses:**\n" +
                     uses.map((use: string) => `- ${use}`).join("\n");
                 }
-              } catch (e) {
+              } catch {
                 usesDisplay = "";
               }
             }
@@ -1216,7 +1216,7 @@ export default function SectionContent({
                     "\n\n**Interesting Facts:**\n" +
                     facts.map((fact: string) => `- ${fact}`).join("\n");
                 }
-              } catch (e) {
+              } catch {
                 factsDisplay = "";
               }
             }
@@ -1263,7 +1263,7 @@ export default function SectionContent({
                       )
                       .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 obstaclesDisplay = "";
               }
             }
@@ -1282,7 +1282,7 @@ export default function SectionContent({
                 if (participants.pursuers) {
                   participantsDisplay += `\n**Pursuers:** ${participants.pursuers}`;
                 }
-              } catch (e) {
+              } catch {
                 participantsDisplay = "";
               }
             }
@@ -1305,7 +1305,7 @@ export default function SectionContent({
                       )
                       .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 shortcutsDisplay = "";
               }
             }
@@ -1328,7 +1328,7 @@ export default function SectionContent({
                       )
                       .join("\n");
                 }
-              } catch (e) {
+              } catch {
                 phasesDisplay = "";
               }
             }
@@ -1346,7 +1346,7 @@ export default function SectionContent({
                     "\n\n**Environmental Factors:**\n" +
                     factors.map((f: string) => `- ${f}`).join("\n");
                 }
-              } catch (e) {
+              } catch {
                 environmentalDisplay = "";
               }
             }
@@ -1364,7 +1364,7 @@ export default function SectionContent({
                     "\n\n**Complications:**\n" +
                     complications.map((c: string) => `- ${c}`).join("\n");
                 }
-              } catch (e) {
+              } catch {
                 complicationsDisplay = "";
               }
             }
@@ -1386,7 +1386,7 @@ export default function SectionContent({
                   if (ending.alternative)
                     endingDisplay += `\n- **Alternative:** ${ending.alternative}`;
                 }
-              } catch (e) {
+              } catch {
                 endingDisplay = "";
               }
             }
@@ -1408,7 +1408,7 @@ export default function SectionContent({
                   if (rewards.failure)
                     rewardsDisplay += `\n- **Failure:** ${rewards.failure}`;
                 }
-              } catch (e) {
+              } catch {
                 rewardsDisplay = "";
               }
             }

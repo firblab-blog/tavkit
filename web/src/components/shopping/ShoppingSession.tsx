@@ -53,6 +53,7 @@ export interface HagglingSession {
   created_at: string;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const RELATIONSHIP_LEVELS: {
   value: string;
   label: string;
@@ -91,6 +92,7 @@ export const RELATIONSHIP_LEVELS: {
   },
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const HAGGLING_SKILLS: {
   value: string;
   label: string;

@@ -44,6 +44,7 @@ export interface SocialCheck {
   created_at: string;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SOCIAL_SKILLS = [
   "Persuasion",
   "Deception",
@@ -52,6 +53,7 @@ export const SOCIAL_SKILLS = [
   "Performance",
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const ENCOUNTER_TYPES: {
   value: string;
   label: string;

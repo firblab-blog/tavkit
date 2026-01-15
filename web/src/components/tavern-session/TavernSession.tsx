@@ -56,6 +56,7 @@ export interface TavernTab {
   notes?: string;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const TIME_OF_DAY: { value: string; label: string; icon: IconName }[] = [
   { value: "morning", label: "Morning", icon: "Sun" },
   { value: "afternoon", label: "Afternoon", icon: "Sun" },
@@ -63,6 +64,7 @@ export const TIME_OF_DAY: { value: string; label: string; icon: IconName }[] = [
   { value: "night", label: "Night", icon: "Moon" },
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const CROWD_SIZE: { value: string; label: string }[] = [
   { value: "empty", label: "Empty" },
   { value: "sparse", label: "Sparse" },
@@ -71,6 +73,7 @@ export const CROWD_SIZE: { value: string; label: string }[] = [
   { value: "packed", label: "Packed" },
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const ATMOSPHERE: { value: string; label: string; icon: IconName }[] = [
   { value: "quiet", label: "Quiet", icon: "Meh" },
   { value: "tense", label: "Tense", icon: "AlertCircle" },

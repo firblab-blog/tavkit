@@ -97,13 +97,14 @@ export default function QuickPanel() {
           e.preventDefault();
           selectPrevious();
           break;
-        case "Enter":
+        case "Enter": {
           e.preventDefault();
           const selected = getSelectedResult();
           if (selected) {
             navigateToResult(selected);
           }
           break;
+        }
         case "Escape":
           e.preventDefault();
           close();

@@ -168,7 +168,7 @@ export function normalizeItemResponse(
           parsedItem,
         );
         processedRaw = parsedItem;
-      } catch (e) {
+      } catch {
         logger.warn("[normalizeItem] Failed to parse description as JSON:", e);
       }
     }

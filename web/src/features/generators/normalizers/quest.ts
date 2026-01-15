@@ -48,7 +48,7 @@ export function normalizeQuestResponse(
           parsedQuest,
         );
         processedRaw = parsedQuest;
-      } catch (e) {
+      } catch {
         logger.warn("[normalizeQuest] Failed to parse description as JSON:", e);
       }
     }

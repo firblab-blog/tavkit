@@ -257,6 +257,7 @@ export function TavernRenderer({
 }
 
 // Helper to format Tavern for clipboard
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatTavernForClipboard(tavern: GeneratedTavernData): string {
   let text = `${tavern.name}\n${tavern.type}\n\n${tavern.atmosphere}\n${tavern.description}\n\nKeeper: ${tavern.keeper_name}\n${tavern.keeper_personality}\n${tavern.keeper_description || ""}`;
 

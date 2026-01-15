@@ -29,6 +29,7 @@ const RECHARGE_COLORS: Record<RechargeType, string> = {
 };
 
 export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
+  const store = useAbilityTrackingStore();
   const {
     abilities,
     loading,
@@ -36,11 +37,10 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
     fetchAbilities,
     createAbility,
     deleteAbility,
-    useAbility,
     resetAbility,
     shortRest,
     longRest,
-  } = useAbilityTrackingStore();
+  } = store;
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAbility, setNewAbility] = useState<CreateAbilityRequest>({
@@ -59,7 +59,7 @@ export default function AbilityTracker({ characterId }: AbilityTrackerProps) {
 
   const handleUse = (abilityId: string) => {
     if (characterId) {
-      useAbility(characterId, abilityId);
+      store.useAbility(characterId, abilityId);
     }
   };
 
