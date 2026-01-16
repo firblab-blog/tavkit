@@ -23,8 +23,12 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
   const navigate = useNavigate();
   const { completeOnboarding, updateContextSync, persistContext, userContext } =
     useContextStore();
-  const { addCampaign, setActiveCampaignSync, persistActiveCampaign, joinCampaign } =
-    useCampaignStore();
+  const {
+    addCampaign,
+    setActiveCampaignSync,
+    persistActiveCampaign,
+    joinCampaign,
+  } = useCampaignStore();
 
   const [path, setPath] = useState<OnboardingPath>("select");
 

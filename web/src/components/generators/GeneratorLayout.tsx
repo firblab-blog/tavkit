@@ -95,7 +95,9 @@ export const GeneratorLayout = ({
         <div className="flex-shrink-0 border-b border-border bg-background-panel px-6 py-4">
           <div className="flex items-center gap-3 mb-2">
             <Icon name={icon} className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl lg:text-3xl font-bold text-text">{title}</h1>
+            <h1 className="text-2xl lg:text-3xl font-bold text-text">
+              {title}
+            </h1>
           </div>
           <p className="text-sm text-text-muted">{description}</p>
         </div>

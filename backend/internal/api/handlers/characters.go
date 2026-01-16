@@ -231,8 +231,8 @@ func (h *CharacterHandler) CreateCharacter(c *gin.Context) {
 	// Note: We don't set CampaignID directly on the character anymore.
 	// Instead, we'll link the character to the campaign via the junction table after creation.
 	character := &db.Character{
-		UserID:    userID,
-		Name:      req.Name,
+		UserID:               userID,
+		Name:                 req.Name,
 		Level:                req.Level,
 		Race:                 req.Race,
 		Subrace:              req.Subrace,
