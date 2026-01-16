@@ -8,6 +8,7 @@
 import { useNavigate } from "react-router-dom";
 import { useCampaignStore, Campaign } from "../../store/campaignStore";
 import { useContextStore, ContextType } from "../../store/contextStore";
+import { storeEvents, CAMPAIGN_CHANGED } from "../../lib/storeEvents";
 import CampaignModal from "../campaign/CampaignModal";
 import GeneratorModal from "../generators/GeneratorModal";
 import { logger } from "../../utils/logger";
@@ -26,7 +27,7 @@ export default function GlobalModals() {
     persistActiveCampaign,
   } = useCampaignStore();
 
-  const { updateContext } = useContextStore();
+  const { updateContextSync, persistContext, userContext } = useContextStore();
 
   // Get the campaign being edited (if any)
   const editingCampaign = editingCampaignId
@@ -66,23 +67,41 @@ export default function GlobalModals() {
 
       // Activate the new campaign, update context, and navigate
       if (newCampaign) {
-        // Use sync version to immediately update state before navigation
-        setActiveCampaignSync(newCampaign.id);
-
         const contextType: ContextType =
           role === "player" ? "player_campaign" : "gm_campaign";
+        const previousCampaignId = userContext?.last_campaign_id ?? null;
+        const previousContextType = userContext?.last_context_type ?? null;
 
-        // Navigate first for instant feedback
+        // 1. Update BOTH stores synchronously BEFORE navigation
+        // contextStore is the source of truth (useActiveCampaign reads from it)
+        // campaignStore is kept in sync for backwards compatibility
+        updateContextSync({
+          last_context_type: contextType,
+          last_campaign_id: newCampaign.id,
+          last_character_id: null, // Clear character for new campaign
+        });
+        setActiveCampaignSync(newCampaign.id);
+
+        // 2. Emit CAMPAIGN_CHANGED event for cache invalidation
+        storeEvents.emit(CAMPAIGN_CHANGED, {
+          campaignId: newCampaign.id,
+          previousCampaignId,
+          contextType,
+          previousContextType,
+        });
+
+        // 3. Navigate to the correct dashboard
         navigate(role === "player" ? "/dashboard/player" : "/dashboard/gm");
 
-        // Persist activation and context in background (non-blocking)
+        // 4. Persist to backend in background (fire-and-forget)
         persistActiveCampaign(newCampaign.id).catch((err) =>
           logger.error("Failed to persist campaign activation:", err),
         );
-        updateContext({
+        persistContext({
           last_context_type: contextType,
           last_campaign_id: newCampaign.id,
-        }).catch((err) => logger.error("Failed to update context:", err));
+          last_character_id: null,
+        }).catch((err) => logger.error("Failed to persist context:", err));
       }
     }
 

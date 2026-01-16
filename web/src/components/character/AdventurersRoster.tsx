@@ -17,8 +17,10 @@ export default function AdventurersRoster() {
   const { unlinkCharacterFromCampaign, getActiveCampaign } = useCampaignStore();
   const activeCampaign = getActiveCampaign();
 
-  // Determine if we're in sandbox mode (no campaign context)
-  const isSandboxMode = location.pathname.includes("/sandbox");
+  // Determine if we're in sandbox/library mode (no campaign context)
+  // This includes explicit /sandbox routes OR when no campaign is selected
+  const isSandboxMode =
+    location.pathname.includes("/sandbox") || !activeCampaign;
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
     null,
   );
@@ -29,6 +31,9 @@ export default function AdventurersRoster() {
 
   // Use shared mobile sidebar hook
   const { isMobile, isDrawerOpen, setIsDrawerOpen } = useMobileSidebar();
+
+  // Note: Campaigns are loaded by AppDataProvider at the app root level.
+  // No need to call fetchCampaigns() here - it's already done.
 
   useEffect(() => {
     // Fetch characters filtered by campaign (unless in sandbox mode)

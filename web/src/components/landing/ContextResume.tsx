@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "../common/Icon";
 import { useAuthStore } from "../../store/authStore";
@@ -19,27 +19,19 @@ export default function ContextResume() {
   const navigate = useNavigate();
   const { user, honorific } = useAuthStore();
   const { userContext } = useContextStore();
-  const { campaigns, loading, lastFetchTime, fetchCampaigns } =
-    useCampaignStore();
+  const { campaigns, loading } = useCampaignStore();
   const { activateCampaignWithNavigation, switchToLibrary } =
     useCampaignNavigation();
-  const [hasFetched, setHasFetched] = useState(false);
   const [showPlayerOnboarding, setShowPlayerOnboarding] = useState(false);
   const [showAllCampaigns, setShowAllCampaigns] = useState(false);
 
   const displayName = user?.display_name || user?.username || "Adventurer";
 
-  // Fetch campaigns on mount
-  useEffect(() => {
-    const loadCampaigns = async () => {
-      await fetchCampaigns();
-      setHasFetched(true);
-    };
-    loadCampaigns();
-  }, [fetchCampaigns]);
+  // Note: Campaigns are loaded by AppDataProvider at the app root level.
+  // No need to call fetchCampaigns() here - it's already done.
 
-  // Show loading while campaigns are being fetched for the first time
-  if (loading || (!hasFetched && !lastFetchTime)) {
+  // Show loading only if campaigns are actively loading
+  if (loading) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-background">
         <Icon

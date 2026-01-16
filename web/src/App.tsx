@@ -3,6 +3,7 @@ import { type ReactNode, lazy, Suspense } from "react";
 import { useAuthStore } from "./store/authStore";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AIProvider } from "./contexts/AIContext";
+import { AppDataProvider } from "./providers/AppDataProvider";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { ToastContainer } from "./components/common/Toast";
 import GlobalModals from "./components/common/GlobalModals";
@@ -41,7 +42,9 @@ function App() {
                   path="/dashboard/*"
                   element={
                     <ProtectedRoute>
-                      <Dashboard />
+                      <AppDataProvider>
+                        <Dashboard />
+                      </AppDataProvider>
                     </ProtectedRoute>
                   }
                 />

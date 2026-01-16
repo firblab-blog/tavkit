@@ -311,13 +311,11 @@ export default function SavedContent() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  const { campaigns, fetchCampaigns } = useCampaignStore();
+  const { campaigns } = useCampaignStore();
   const librarySettings = useUISettingsStore((state) => state.librarySettings);
 
-  // Fetch campaigns on mount
-  useEffect(() => {
-    fetchCampaigns();
-  }, []);
+  // Note: Campaigns are loaded by AppDataProvider at the app root level.
+  // No need to call fetchCampaigns() here - it's already done.
 
   // Detect mobile viewport
   useEffect(() => {

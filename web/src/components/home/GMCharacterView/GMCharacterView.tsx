@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCampaignStore } from "../../../store/campaignStore";
 import { useUISettingsStore } from "../../../store/uiSettingsStore";
@@ -48,8 +48,8 @@ const VALID_GM_TABS: GMTabId[] = [
 ];
 
 export default function GMCharacterView() {
-  const { loading, lastFetchTime, fetchCampaigns } = useCampaignStore();
-  const { activeCampaignId, activeCampaign } = useActiveCampaign(); // Single source of truth
+  const { loading, lastFetchTime } = useCampaignStore();
+  const { activeCampaign } = useActiveCampaign(); // Single source of truth
   const enabledGenerators = useUISettingsStore(
     (state) => state.enabledGenerators,
   );
@@ -77,23 +77,14 @@ export default function GMCharacterView() {
 
   const [openModal, setOpenModal] = useState<ModalType>(null);
 
-  // Track the previous campaign ID to detect changes and force refresh
-  const prevCampaignIdRef = useRef<string | null>(null);
-
   // Memoized modal handlers
   const openCampaignModal = useCallback(() => setOpenModal("campaign"), []);
   const openCreateModal = useCallback(() => setOpenModal("create"), []);
   const openPlayModal = useCallback(() => setOpenModal("play"), []);
   const closeModal = useCallback(() => setOpenModal(null), []);
 
-  useEffect(() => {
-    // Force refresh when campaign changes to ensure we get fresh data
-    const campaignChanged =
-      prevCampaignIdRef.current !== null &&
-      prevCampaignIdRef.current !== activeCampaignId;
-    prevCampaignIdRef.current = activeCampaignId;
-    fetchCampaigns(campaignChanged);
-  }, [fetchCampaigns, activeCampaignId]);
+  // Note: Campaigns are loaded by AppDataProvider at the app root level.
+  // No need to call fetchCampaigns() here - it's already done.
 
   // Track loading timeout for better UX when loading takes too long
   const isCurrentlyLoading = loading || !lastFetchTime;
@@ -320,18 +311,28 @@ export default function GMCharacterView() {
     }
   };
 
+  // Track if hero should be visible (only on overview tab)
+  const showHero = activeTab === "overview";
+
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6">
-        {/* Campaign Hero Card - Only show on Overview tab */}
-        {activeTab === "overview" && (
-          <CampaignHeroCard campaign={activeCampaign} />
-        )}
+        {/* Campaign Hero Section - Animated collapse when switching tabs */}
+        <div
+          className={`transition-[max-height,opacity,margin] duration-300 ease-out overflow-hidden ${
+            showHero
+              ? "max-h-[500px] opacity-100"
+              : "max-h-0 opacity-0 -mb-4 sm:-mb-6"
+          }`}
+        >
+          <div className="space-y-4 sm:space-y-6">
+            {/* Campaign Hero Card */}
+            <CampaignHeroCard campaign={activeCampaign} />
 
-        {/* DMPC Card - Only show on Overview tab */}
-        {activeTab === "overview" && (
-          <DMPCCard campaignId={activeCampaign.id} />
-        )}
+            {/* DMPC Card */}
+            <DMPCCard campaignId={activeCampaign.id} />
+          </div>
+        </div>
 
         {/* Tabs */}
         <GMTabs activeTab={activeTab} onTabChange={setActiveTab} />

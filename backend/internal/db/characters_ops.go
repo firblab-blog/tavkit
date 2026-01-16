@@ -332,26 +332,47 @@ func (ops *CharactersOperations) GetCharacterByID(ctx context.Context, id string
 }
 
 // ListCharactersByUserID lists characters for a user, optionally filtered by campaign.
+// When campaignID is provided, returns characters linked to that campaign via the campaign_characters
+// junction table. When campaignID is nil, returns ALL user's characters (personal library/sandbox mode).
 func (ops *CharactersOperations) ListCharactersByUserID(ctx context.Context, userID string, campaignID *string) ([]*Character, error) {
-	query := `SELECT
-		id, user_id, campaign_id, name, level, race, class_info, background, alignment, experience_points,
-		strength, dexterity, constitution, intelligence, wisdom, charisma,
-		armor_class, initiative, speed, max_hit_points, current_hit_points, temp_hit_points,
-		hit_dice, proficiency_bonus, passive_perception,
-		skills, saving_throws, proficiencies, languages, senses,
-		spellcasting_ability, spell_save_dc, spell_attack_bonus, spell_slots, prepared_spells,
-		currency, weapons, armor, equipment,
-		features, racial_traits,
-		personality_traits, ideals, bonds, flaws, appearance, backstory, notes,
-		avatar, ai_generated, created_at, updated_at
-	FROM characters WHERE user_id = ` + ops.qb.Placeholder(1)
+	var query string
+	var args []interface{}
 
-	args := []interface{}{userID}
 	if campaignID != nil {
-		query += ` AND campaign_id = ` + ops.qb.Placeholder(2)
-		args = append(args, *campaignID)
+		// When campaign specified: get characters linked to that campaign via junction table
+		query = `SELECT
+			c.id, c.user_id, c.campaign_id, c.name, c.level, c.race, c.class_info, c.background, c.alignment, c.experience_points,
+			c.strength, c.dexterity, c.constitution, c.intelligence, c.wisdom, c.charisma,
+			c.armor_class, c.initiative, c.speed, c.max_hit_points, c.current_hit_points, c.temp_hit_points,
+			c.hit_dice, c.proficiency_bonus, c.passive_perception,
+			c.skills, c.saving_throws, c.proficiencies, c.languages, c.senses,
+			c.spellcasting_ability, c.spell_save_dc, c.spell_attack_bonus, c.spell_slots, c.prepared_spells,
+			c.currency, c.weapons, c.armor, c.equipment,
+			c.features, c.racial_traits,
+			c.personality_traits, c.ideals, c.bonds, c.flaws, c.appearance, c.backstory, c.notes,
+			c.avatar, c.ai_generated, c.created_at, c.updated_at
+		FROM characters c
+		INNER JOIN campaign_characters cc ON c.id = cc.character_id
+		WHERE c.user_id = ` + ops.qb.Placeholder(1) + ` AND cc.campaign_id = ` + ops.qb.Placeholder(2) + `
+		ORDER BY cc.added_at DESC`
+		args = []interface{}{userID, *campaignID}
+	} else {
+		// No campaign: get ALL user's characters (sandbox mode / personal library)
+		query = `SELECT
+			id, user_id, campaign_id, name, level, race, class_info, background, alignment, experience_points,
+			strength, dexterity, constitution, intelligence, wisdom, charisma,
+			armor_class, initiative, speed, max_hit_points, current_hit_points, temp_hit_points,
+			hit_dice, proficiency_bonus, passive_perception,
+			skills, saving_throws, proficiencies, languages, senses,
+			spellcasting_ability, spell_save_dc, spell_attack_bonus, spell_slots, prepared_spells,
+			currency, weapons, armor, equipment,
+			features, racial_traits,
+			personality_traits, ideals, bonds, flaws, appearance, backstory, notes,
+			avatar, ai_generated, created_at, updated_at
+		FROM characters WHERE user_id = ` + ops.qb.Placeholder(1) + `
+		ORDER BY created_at DESC`
+		args = []interface{}{userID}
 	}
-	query += ` ORDER BY created_at DESC`
 
 	rows, err := ops.exec.Query(ctx, query, args...)
 	if err != nil {

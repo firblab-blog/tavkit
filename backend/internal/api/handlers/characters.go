@@ -228,10 +228,11 @@ func (h *CharacterHandler) CreateCharacter(c *gin.Context) {
 	racialTraitsJSON, _ := json.Marshal(req.RacialTraits)     //nolint:errcheck
 	featsJSON, _ := json.Marshal(req.Feats)                   //nolint:errcheck
 
+	// Note: We don't set CampaignID directly on the character anymore.
+	// Instead, we'll link the character to the campaign via the junction table after creation.
 	character := &db.Character{
-		UserID:               userID,
-		CampaignID:           req.CampaignID,
-		Name:                 req.Name,
+		UserID:    userID,
+		Name:      req.Name,
 		Level:                req.Level,
 		Race:                 req.Race,
 		Subrace:              req.Subrace,
@@ -315,6 +316,17 @@ func (h *CharacterHandler) CreateCharacter(c *gin.Context) {
 		h.logger.Error("Failed to create character", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create character"})
 		return
+	}
+
+	// If campaign_id was provided, link the character to that campaign via the junction table
+	if req.CampaignID != nil && *req.CampaignID != "" {
+		if err := h.db.LinkCharacterToCampaign(c.Request.Context(), *req.CampaignID, character.ID); err != nil {
+			// Log but don't fail - character was created successfully
+			h.logger.Warn("Failed to auto-link character to campaign",
+				zap.String("character_id", character.ID),
+				zap.String("campaign_id", *req.CampaignID),
+				zap.Error(err))
+		}
 	}
 
 	c.JSON(http.StatusCreated, character)

@@ -185,13 +185,18 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     const state = get();
     const now = Date.now();
 
+    // If campaign context changed, immediately clear stale data to prevent wrong characters showing
+    const campaignChanged = campaignId !== state.lastCampaignId;
+    if (campaignChanged) {
+      // Synchronously clear data before anything else - this prevents race conditions
+      // where old campaign's characters flash briefly before new ones load
+      set({ characters: [], lastCampaignId: campaignId ?? null });
+    }
+
     // Prevent concurrent fetches
     if (state.loading) {
       return;
     }
-
-    // If campaign context changed, force refresh
-    const campaignChanged = campaignId !== state.lastCampaignId;
 
     // Skip fetch if data was fetched recently (within cache duration) unless force refresh or campaign changed
     if (

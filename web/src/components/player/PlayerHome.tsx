@@ -4,7 +4,6 @@ import Icon, { IconName } from "../common/Icon";
 import { useCharacterStore, Character } from "../../store/characterStore";
 import { useContextStore } from "../../store/contextStore";
 import { useUISettingsStore } from "../../store/uiSettingsStore";
-import { useCampaignStore } from "../../store/campaignStore";
 import { useActiveCampaign } from "../../hooks/useActiveCampaign";
 import { useLoadingTimeout } from "../../hooks/useLoadingTimeout";
 import CharacterSwitcher from "./CharacterSwitcher";
@@ -111,7 +110,6 @@ export default function PlayerHome({
     fetchContext,
     loading: contextLoading,
   } = useContextStore();
-  const { fetchCampaigns } = useCampaignStore();
   const { activeCampaignId } = useActiveCampaign(); // Single source of truth
   const enabledGenerators = useUISettingsStore(
     (state) => state.enabledGenerators,
@@ -162,16 +160,6 @@ export default function PlayerHome({
     loading ||
     (lastFetched === null && userContext !== null && !error);
 
-  console.log("[PlayerHome] Loading state check", {
-    isCurrentlyLoading,
-    contextLoading,
-    loading,
-    lastFetched,
-    hasUserContext: !!userContext,
-    charactersCount: characters.length,
-    error,
-  });
-
   const { isTimedOut, elapsedSeconds } = useLoadingTimeout({
     isLoading: Boolean(isCurrentlyLoading),
     timeoutMs: 10000, // Show timeout message after 10 seconds
@@ -189,25 +177,16 @@ export default function PlayerHome({
     }
   }, [activeCampaignId, characterCampaignId]);
 
-  // Fetch context and campaigns on mount
+  // Fetch context on mount (campaigns are loaded by AppDataProvider)
   useEffect(() => {
     fetchContext();
-    fetchCampaigns();
-  }, [fetchContext, fetchCampaigns]);
+  }, [fetchContext]);
 
   // Fetch characters only after context is loaded (so we have the correct campaign ID)
   // Filter characters by active campaign to only show characters assigned to this campaign
   useEffect(() => {
-    console.log("[PlayerHome] fetchCharacters effect triggered", {
-      contextLoading,
-      hasUserContext: !!userContext,
-      activeCampaignId,
-      prevCampaignId: prevCampaignIdRef.current,
-    });
-
     // Wait for context to be loaded before fetching characters
     if (contextLoading || !userContext) {
-      console.log("[PlayerHome] Waiting for context to load");
       return;
     }
 
@@ -217,18 +196,8 @@ export default function PlayerHome({
       prevCampaignIdRef.current !== activeCampaignId;
     prevCampaignIdRef.current = activeCampaignId;
 
-    console.log("[PlayerHome] Calling fetchCharacters", {
-      campaignChanged,
-      activeCampaignId,
-    });
     fetchCharacters(campaignChanged, activeCampaignId ?? undefined);
-  }, [
-    fetchCharacters,
-    activeCampaignId,
-    contextLoading,
-    userContext,
-    lastFetched,
-  ]);
+  }, [fetchCharacters, activeCampaignId, contextLoading, userContext]);
 
   // Set active character from context or first available
   // Only update when characters array changes (after fetch completes)

@@ -294,12 +294,9 @@ export default function LocationGenerator() {
     timeout: 120,
   });
 
-  const { fetchCampaigns, activeCampaignId } = useCampaignStore();
-
-  // Fetch campaigns on mount
-  useEffect(() => {
-    fetchCampaigns();
-  }, [fetchCampaigns]);
+  // Note: Campaigns are loaded by AppDataProvider at the app root level.
+  // No need to fetch campaigns here.
+  const { activeCampaignId } = useCampaignStore();
 
   // Auto-select active campaign ONLY on initial mount (not after user interaction)
   useEffect(() => {

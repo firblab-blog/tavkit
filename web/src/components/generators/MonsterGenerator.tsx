@@ -215,12 +215,9 @@ export default function MonsterGenerator() {
     timeout: 120,
   });
 
-  const { fetchCampaigns, activeCampaignId } = useCampaignStore();
+  const { activeCampaignId } = useCampaignStore();
 
-  // Fetch campaigns on mount
-  useEffect(() => {
-    fetchCampaigns();
-  }, [fetchCampaigns]);
+  // Note: Campaigns are loaded by AppDataProvider at the app root level.
 
   // Auto-select active campaign ONLY on initial mount (not after user interaction)
   useEffect(() => {

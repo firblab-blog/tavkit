@@ -4,12 +4,20 @@
  * This component allows generators to be opened as modals from anywhere in the app
  * (Library tab, CategoryModal, etc.) without requiring navigation.
  */
-import { useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 import {
   useGeneratorModalStore,
   GeneratorType,
 } from "../../store/generatorModalStore";
 import Icon, { IconName } from "../common/Icon";
+
+/**
+ * Context to tell generator components they're inside a modal.
+ * When true, GeneratorLayout will hide its header since the modal provides one.
+ */
+const GeneratorModalContext = createContext(false);
+
+export const useIsInGeneratorModal = () => useContext(GeneratorModalContext);
 
 // Lazy import generators to avoid circular dependencies
 import NPCGenerator from "./NPCGenerator";
@@ -145,7 +153,9 @@ export default function GeneratorModal() {
 
         {/* Generator Content */}
         <div className="flex-1 overflow-hidden">
-          <GeneratorComponent />
+          <GeneratorModalContext.Provider value={true}>
+            <GeneratorComponent />
+          </GeneratorModalContext.Provider>
         </div>
       </div>
     </div>

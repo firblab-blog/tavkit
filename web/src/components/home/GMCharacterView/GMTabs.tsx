@@ -25,7 +25,7 @@ export const GM_TABS: GMTabConfig[] = [
     icon: "BookOpen",
     shortLabel: "Campaign",
   },
-  { id: "session", label: "Session", icon: "Play", shortLabel: "Session" },
+  { id: "session", label: "Tools", icon: "Wrench", shortLabel: "Tools" },
   { id: "combat", label: "Combat", icon: "Swords", shortLabel: "Combat" },
   {
     id: "library",

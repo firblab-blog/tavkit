@@ -134,6 +134,22 @@ func (h *DnDBeyondHandler) ImportCharacter(c *gin.Context) {
 		return
 	}
 
+	// If campaign_id was provided, link character to campaign via junction table
+	// This is required because ListCharactersByUserID uses the junction table for filtering
+	if req.CampaignID != nil && *req.CampaignID != "" {
+		if err := h.db.LinkCharacterToCampaign(c.Request.Context(), *req.CampaignID, character.ID); err != nil {
+			// Log but don't fail - character was created successfully
+			h.logger.Warn("Failed to auto-link imported character to campaign",
+				zap.Error(err),
+				zap.String("characterID", character.ID),
+				zap.String("campaignID", *req.CampaignID))
+		} else {
+			h.logger.Info("Character linked to campaign",
+				zap.String("characterID", character.ID),
+				zap.String("campaignID", *req.CampaignID))
+		}
+	}
+
 	// Debug: Log what we're about to return
 	h.logger.Info("Character created, about to return",
 		zap.String("languages", string(character.Languages)),

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { ResultsSkeleton } from "@/components/ui/SkeletonLoader";
 import Icon, { type IconName } from "../common/Icon";
+import { useIsInGeneratorModal } from "./GeneratorModal";
 
 interface GeneratorLayoutProps {
   title: string;
@@ -20,6 +21,8 @@ interface GeneratorLayoutProps {
   className?: string;
   showActionsInResults?: boolean;
   hideGenerateButton?: boolean;
+  /** Hide the header (used when rendered inside GeneratorModal which provides its own header) */
+  hideHeader?: boolean;
 }
 
 export const GeneratorLayout = ({
@@ -38,11 +41,16 @@ export const GeneratorLayout = ({
   error,
   className = "",
   hideGenerateButton = false,
+  hideHeader = false,
 }: GeneratorLayoutProps) => {
+  const isInModal = useIsInGeneratorModal();
   const [isMobile, setIsMobile] = useState(false);
   const [formExpanded, setFormExpanded] = useState(true);
   const [resultsExpanded, setResultsExpanded] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Hide header if explicitly set OR if inside a modal
+  const shouldHideHeader = hideHeader || isInModal;
 
   // Detect mobile viewport
   useEffect(() => {
@@ -82,14 +90,16 @@ export const GeneratorLayout = ({
 
   return (
     <div className={`h-full flex flex-col bg-background ${className}`}>
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-border bg-background-panel px-6 py-4">
-        <div className="flex items-center gap-3 mb-2">
-          <Icon name={icon} className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl lg:text-3xl font-bold text-text">{title}</h1>
+      {/* Header - hidden when rendered inside GeneratorModal */}
+      {!shouldHideHeader && (
+        <div className="flex-shrink-0 border-b border-border bg-background-panel px-6 py-4">
+          <div className="flex items-center gap-3 mb-2">
+            <Icon name={icon} className="w-8 h-8 text-primary" />
+            <h1 className="text-2xl lg:text-3xl font-bold text-text">{title}</h1>
+          </div>
+          <p className="text-sm text-text-muted">{description}</p>
         </div>
-        <p className="text-sm text-text-muted">{description}</p>
-      </div>
+      )}
 
       {/* Content - Two Column on Desktop, Stacked on Mobile */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6">

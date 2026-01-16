@@ -15,6 +15,13 @@ interface SessionTool {
 
 const SESSION_TOOLS: SessionTool[] = [
   {
+    label: "Guild Roster",
+    description: "Manage party characters",
+    icon: "Users",
+    path: "/dashboard/gm/characters",
+    color: "purple",
+  },
+  {
     label: "Combat Tracker",
     description: "Run combat encounters with initiative tracking",
     icon: "Swords",
@@ -38,9 +45,9 @@ const SESSION_TOOLS: SessionTool[] = [
   {
     label: "Social Encounter",
     description: "Run social scenes and interactions",
-    icon: "Users",
+    icon: "Smile",
     path: "/dashboard/gm/social",
-    color: "purple",
+    color: "pink",
   },
   {
     label: "Tavern Session",
@@ -98,6 +105,12 @@ const colorClasses: Record<
     border: "border-emerald-500/30",
     hover: "hover:border-emerald-500/50",
   },
+  pink: {
+    bg: "bg-pink-500/10",
+    text: "text-pink-400",
+    border: "border-pink-500/30",
+    hover: "hover:border-pink-500/50",
+  },
 };
 
 /**
@@ -117,9 +130,9 @@ export default function SessionTab({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-text mb-2">Session Tools</h3>
+        <h3 className="text-lg font-semibold text-text mb-2">GM Tools</h3>
         <p className="text-text-muted text-sm">
-          Tools for running your live game session. Click any tool to open it.
+          Tools for running your game. Click any tool to open it.
         </p>
       </div>
 

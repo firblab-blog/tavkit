@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Icon from "../common/Icon";
 import { useContextStore } from "../../store/contextStore";
 import { useCampaignStore } from "../../store/campaignStore";
+import { storeEvents, CAMPAIGN_CHANGED } from "../../lib/storeEvents";
 import { GAME_SYSTEMS } from "../../constants/gameSystems";
 
 interface PlayerOnboardingProps {
@@ -20,8 +21,10 @@ type OnboardingPath = "select" | "join" | "track";
  */
 export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
   const navigate = useNavigate();
-  const { completeOnboarding, updateContext } = useContextStore();
-  const { addCampaign, setActiveCampaign, joinCampaign } = useCampaignStore();
+  const { completeOnboarding, updateContextSync, persistContext, userContext } =
+    useContextStore();
+  const { addCampaign, setActiveCampaignSync, persistActiveCampaign, joinCampaign } =
+    useCampaignStore();
 
   const [path, setPath] = useState<OnboardingPath>("select");
 
@@ -49,23 +52,41 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
     setJoinError(null);
 
     try {
+      const previousCampaignId = userContext?.last_campaign_id ?? null;
+      const previousContextType = userContext?.last_context_type ?? null;
+
       // Join the campaign via invite code
       const campaign = await joinCampaign(inviteCode.trim());
 
-      // Set as active campaign
-      await setActiveCampaign(campaign.id);
+      // Complete onboarding (fire and forget - non-blocking)
+      completeOnboarding().catch(() => {});
 
-      // Complete onboarding
-      await completeOnboarding();
-
-      // Update context to player campaign
-      await updateContext({
+      // 1. Update BOTH stores synchronously BEFORE navigation
+      updateContextSync({
         last_context_type: "player_campaign",
         last_campaign_id: campaign.id,
+        last_character_id: null,
+      });
+      setActiveCampaignSync(campaign.id);
+
+      // 2. Emit CAMPAIGN_CHANGED event for cache invalidation
+      storeEvents.emit(CAMPAIGN_CHANGED, {
+        campaignId: campaign.id,
+        previousCampaignId,
+        contextType: "player_campaign",
+        previousContextType,
       });
 
-      // Navigate to player home
+      // 3. Navigate to player home
       navigate("/dashboard/player");
+
+      // 4. Persist to backend in background
+      persistActiveCampaign(campaign.id).catch(() => {});
+      persistContext({
+        last_context_type: "player_campaign",
+        last_campaign_id: campaign.id,
+        last_character_id: null,
+      }).catch(() => {});
     } catch (err) {
       setJoinError(
         err instanceof Error ? err.message : "Failed to join campaign",
@@ -88,6 +109,9 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
     setCreateError(null);
 
     try {
+      const previousCampaignId = userContext?.last_campaign_id ?? null;
+      const previousContextType = userContext?.last_context_type ?? null;
+
       // Create the campaign with player role
       const campaign = await addCampaign({
         name: campaignName.trim(),
@@ -96,22 +120,37 @@ export default function PlayerOnboarding({ onBack }: PlayerOnboardingProps) {
         is_active: true,
       });
 
-      // Set as active campaign
-      await setActiveCampaign(campaign.id);
+      // Complete onboarding (fire and forget - non-blocking)
+      completeOnboarding().catch(() => {});
 
-      // Complete onboarding
-      await completeOnboarding();
-
-      // Update context to player campaign
-      await updateContext({
+      // 1. Update BOTH stores synchronously BEFORE navigation
+      updateContextSync({
         last_context_type: "player_campaign",
         last_campaign_id: campaign.id,
+        last_character_id: null,
+      });
+      setActiveCampaignSync(campaign.id);
+
+      // 2. Emit CAMPAIGN_CHANGED event for cache invalidation
+      storeEvents.emit(CAMPAIGN_CHANGED, {
+        campaignId: campaign.id,
+        previousCampaignId,
+        contextType: "player_campaign",
+        previousContextType,
       });
 
-      // Navigate to player home - character creation will happen there
+      // 3. Navigate to player home - character creation will happen there
       navigate("/dashboard/player", {
         state: { createCharacter: characterName.trim() },
       });
+
+      // 4. Persist to backend in background
+      persistActiveCampaign(campaign.id).catch(() => {});
+      persistContext({
+        last_context_type: "player_campaign",
+        last_campaign_id: campaign.id,
+        last_character_id: null,
+      }).catch(() => {});
     } catch (err) {
       setCreateError(
         err instanceof Error ? err.message : "Failed to create campaign",

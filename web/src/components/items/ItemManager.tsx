@@ -8,7 +8,7 @@ import { Item, ITEM_TYPES, ITEM_RARITIES } from "../../api/items";
 
 export default function ItemManager() {
   const { items, loading, error, fetchItems } = useItemStore();
-  const { campaigns, fetchCampaigns } = useCampaignStore();
+  const { campaigns } = useCampaignStore();
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -23,10 +23,10 @@ export default function ItemManager() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Fetch items on mount (campaigns are loaded by AppDataProvider)
   useEffect(() => {
     fetchItems();
-    fetchCampaigns();
-  }, [fetchItems, fetchCampaigns]);
+  }, [fetchItems]);
 
   // Detect mobile viewport
   useEffect(() => {

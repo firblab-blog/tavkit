@@ -110,17 +110,6 @@ export default function LibraryContentTab({
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-text flex items-center gap-2">
-          <Icon name="Library" className="w-5 h-5 text-primary" />
-          Content Library
-        </h2>
-        <p className="text-sm text-text-muted mt-1">
-          Browse all your saved NPCs, monsters, locations, and more.
-        </p>
-      </div>
-
       {/* Sub-tabs Navigation */}
       <div className="flex gap-1 border-b border-border pb-1 overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {SUB_TABS.map((tab) => (

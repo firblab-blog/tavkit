@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -112,10 +113,35 @@ func (tb *tokenBucket) allow() bool {
 	return false
 }
 
+// getRealClientIP gets the real client IP, checking proxy headers first
+func getRealClientIP(c *gin.Context) string {
+	// Cloudflare provides the real IP in CF-Connecting-IP
+	if ip := c.GetHeader("CF-Connecting-IP"); ip != "" {
+		return ip
+	}
+
+	// Check X-Real-IP (commonly set by nginx)
+	if ip := c.GetHeader("X-Real-IP"); ip != "" {
+		return ip
+	}
+
+	// X-Forwarded-For may contain multiple IPs, take the first one
+	if forwarded := c.GetHeader("X-Forwarded-For"); forwarded != "" {
+		// The first IP is the original client
+		if idx := strings.Index(forwarded, ","); idx != -1 {
+			return strings.TrimSpace(forwarded[:idx])
+		}
+		return strings.TrimSpace(forwarded)
+	}
+
+	// Fall back to Gin's ClientIP which handles some of these
+	return c.ClientIP()
+}
+
 // RateLimitMiddleware implements rate limiting
 func RateLimitMiddleware(limiter *RateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ip := c.ClientIP()
+		ip := getRealClientIP(c)
 		visitor := limiter.getVisitor(ip)
 
 		if !visitor.limiter.allow() {

@@ -361,9 +361,9 @@ export default function CampaignToolkit() {
     }
   }, [sectionContextMenu]);
 
-  useEffect(() => {
-    fetchCampaigns();
-  }, [fetchCampaigns]);
+  // Note: Campaigns are loaded by AppDataProvider at the app root level.
+  // No need to call fetchCampaigns() here for initial load.
+  // fetchCampaigns is still used after subsection reorder to refresh data.
 
   // Check if we should open the create modal (triggered from topbar CampaignSwitcher)
   useEffect(() => {
