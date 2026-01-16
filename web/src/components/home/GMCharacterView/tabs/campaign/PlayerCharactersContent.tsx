@@ -1,11 +1,23 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import Icon from "../../../../common/Icon";
-import { useCampaignStore } from "../../../../../store/campaignStore";
-import { type Character } from "../../../../../store/characterStore";
+import {
+  useCampaignStore,
+  type CampaignContent,
+} from "../../../../../store/campaignStore";
+import {
+  useCharacterStore,
+  type Character,
+} from "../../../../../store/characterStore";
 import { logger } from "../../../../../utils/logger";
 import { authFetch } from "../../../../../utils/authFetch";
 import { getApiUrl } from "../../../../../config/api";
+import {
+  updateCampaignContent,
+  UpdateCampaignContentRequest,
+} from "../../../../../api/campaignContent";
+import CampaignContentEditorModal from "../../../../campaign/CampaignContentEditorModal";
 
 interface PlayerCharactersContentProps {
   campaignId: string;
@@ -21,28 +33,46 @@ export default function PlayerCharactersContent({
   const {
     fetchCampaignCharacters,
     unlinkCharacterFromCampaign,
+    linkCharacterToCampaign,
     createCampaignContent,
+    fetchCampaignContent,
+    deleteCampaignContent,
   } = useCampaignStore();
+  const { characters: allUserCharacters, fetchCharacters: fetchAllCharacters } =
+    useCharacterStore();
 
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [importedContent, setImportedContent] = useState<CampaignContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingCharacter, setViewingCharacter] = useState<Character | null>(
     null,
   );
+  const [viewingContent, setViewingContent] = useState<CampaignContent | null>(
+    null,
+  );
+  const [editingContent, setEditingContent] = useState<CampaignContent | null>(
+    null,
+  );
+  const [showEditorModal, setShowEditorModal] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
 
   useEffect(() => {
-    const loadCharacters = async () => {
+    const loadData = async () => {
       setLoading(true);
       setError(null);
       try {
-        // API returns full Character objects, cast from the store's type
-        const chars = (await fetchCampaignCharacters(
-          campaignId,
-        )) as unknown as Character[];
+        // Fetch both linked characters and imported content in parallel
+        const [chars, content] = await Promise.all([
+          fetchCampaignCharacters(campaignId) as unknown as Promise<
+            Character[]
+          >,
+          fetchCampaignContent(campaignId, "pcs"),
+        ]);
         setCharacters(chars || []);
+        setImportedContent(content || []);
       } catch (err) {
         setError("Failed to load characters");
         logger.error("Failed to load characters:", err);
@@ -50,8 +80,8 @@ export default function PlayerCharactersContent({
         setLoading(false);
       }
     };
-    loadCharacters();
-  }, [campaignId, fetchCampaignCharacters]);
+    loadData();
+  }, [campaignId, fetchCampaignCharacters, fetchCampaignContent]);
 
   const filteredCharacters = useMemo(() => {
     if (!searchQuery) return characters;
@@ -62,6 +92,16 @@ export default function PlayerCharactersContent({
         char.class_info?.toLowerCase().includes(query),
     );
   }, [characters, searchQuery]);
+
+  const filteredContent = useMemo(() => {
+    if (!searchQuery) return importedContent;
+    const query = searchQuery.toLowerCase();
+    return importedContent.filter(
+      (item) =>
+        item.title.toLowerCase().includes(query) ||
+        item.content?.toLowerCase().includes(query),
+    );
+  }, [importedContent, searchQuery]);
 
   const handleUnlink = async (character: Character) => {
     if (window.confirm(`Remove "${character.name}" from this campaign?`)) {
@@ -77,16 +117,60 @@ export default function PlayerCharactersContent({
     }
   };
 
-  const refreshCharacters = async () => {
-    try {
-      const chars = (await fetchCampaignCharacters(
-        campaignId,
-      )) as unknown as Character[];
-      setCharacters(chars || []);
-    } catch (err) {
-      logger.error("Failed to refresh characters:", err);
+  const handleDeleteContent = async (item: CampaignContent) => {
+    if (window.confirm(`Delete "${item.title}"? This cannot be undone.`)) {
+      try {
+        await deleteCampaignContent(campaignId, item.id);
+        setImportedContent((prev) => prev.filter((c) => c.id !== item.id));
+        if (viewingContent?.id === item.id) {
+          setViewingContent(null);
+        }
+      } catch (err) {
+        logger.error("Failed to delete content:", err);
+      }
     }
   };
+
+  const handleSaveContent = async (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => {
+    try {
+      await updateCampaignContent(campaignId, contentId, updates);
+      await refreshData();
+      setEditingContent(null);
+      setViewingContent(null);
+    } catch (err) {
+      logger.error("Failed to update content:", err);
+      throw err;
+    }
+  };
+
+  const refreshData = useCallback(async () => {
+    try {
+      const [chars, content] = await Promise.all([
+        fetchCampaignCharacters(campaignId) as unknown as Promise<Character[]>,
+        fetchCampaignContent(campaignId, "pcs"),
+      ]);
+      setCharacters(chars || []);
+      setImportedContent(content || []);
+    } catch (err) {
+      logger.error("Failed to refresh data:", err);
+    }
+  }, [campaignId, fetchCampaignCharacters, fetchCampaignContent]);
+
+  const handleLinkCharacter = useCallback(
+    async (characterId: string) => {
+      try {
+        await linkCharacterToCampaign(campaignId, characterId);
+        await refreshData();
+      } catch (err) {
+        logger.error("Failed to link character:", err);
+        throw err;
+      }
+    },
+    [campaignId, linkCharacterToCampaign, refreshData],
+  );
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -213,7 +297,7 @@ export default function PlayerCharactersContent({
         }
       }
 
-      await refreshCharacters();
+      await refreshData();
     } catch (error) {
       logger.error("File upload failed:", error);
       alert("Failed to import file");
@@ -241,6 +325,13 @@ export default function PlayerCharactersContent({
           />
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowLinkModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors text-sm"
+          >
+            <Icon name="Link" className="w-4 h-4" />
+            Link from Roster
+          </button>
           <input
             type="file"
             id="pcs-file-upload"
@@ -254,7 +345,7 @@ export default function PlayerCharactersContent({
             className="flex items-center gap-2 px-4 py-2 bg-background-panel hover:bg-background border border-border text-text font-medium rounded-lg transition-colors text-sm cursor-pointer"
           >
             <Icon name="Upload" className="w-4 h-4" />
-            {uploading ? "Importing..." : "Import Character"}
+            {uploading ? "Importing..." : "Import File"}
           </label>
         </div>
       </div>
@@ -273,26 +364,43 @@ export default function PlayerCharactersContent({
         </div>
       )}
 
-      {/* Empty State */}
-      {!loading && filteredCharacters.length === 0 && (
-        <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
-          <Icon
-            name="User"
-            className="w-10 h-10 text-text-muted mx-auto mb-3"
-          />
-          <h3 className="text-text font-medium mb-1">
-            {searchQuery
-              ? "No matching characters"
-              : "No player characters yet"}
-          </h3>
-          <p className="text-text-muted text-sm mb-4">
-            {searchQuery
-              ? "Try adjusting your search."
-              : "Link characters from your Guild Roster to this campaign."}
-          </p>
-          {/* Empty state CTA removed - will be re-added with proper functionality */}
-        </div>
-      )}
+      {/* Empty State - only show when BOTH characters and content are empty */}
+      {!loading &&
+        filteredCharacters.length === 0 &&
+        filteredContent.length === 0 && (
+          <div className="text-center py-8 bg-background-panel border border-border rounded-xl">
+            <Icon
+              name="User"
+              className="w-10 h-10 text-text-muted mx-auto mb-3"
+            />
+            <h3 className="text-text font-medium mb-1">
+              {searchQuery
+                ? "No matching characters"
+                : "No player characters yet"}
+            </h3>
+            <p className="text-text-muted text-sm mb-4">
+              {searchQuery
+                ? "Try adjusting your search."
+                : "Link characters from your Guild Roster or import character notes."}
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setShowLinkModal(true)}
+                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors text-sm inline-flex items-center gap-2"
+              >
+                <Icon name="Link" className="w-4 h-4" />
+                Link Characters
+              </button>
+              <button
+                onClick={() => setShowEditorModal(true)}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors text-sm inline-flex items-center gap-2"
+              >
+                <Icon name="Plus" className="w-4 h-4" />
+                Add Note
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* Character Grid */}
       {!loading && filteredCharacters.length > 0 && (
@@ -341,7 +449,60 @@ export default function PlayerCharactersContent({
         </div>
       )}
 
-      {/* View Modal */}
+      {/* Imported Content Section */}
+      {!loading && filteredContent.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wider">
+              Character Notes & Files
+            </h3>
+            <button
+              onClick={() => setShowEditorModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors text-sm"
+            >
+              <Icon name="Plus" className="w-4 h-4" />
+              Add Note
+            </button>
+          </div>
+          {filteredContent.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => setViewingContent(item)}
+              className="bg-background-panel border border-emerald-500/30 rounded-xl p-4 hover:border-emerald-500/50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                    <Icon
+                      name="FileText"
+                      className="w-5 h-5 text-emerald-400"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-text font-medium">{item.title}</h4>
+                    {item.content && (
+                      <p className="text-text-muted text-sm mt-1 line-clamp-2">
+                        {item.content.substring(0, 150)}...
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteContent(item);
+                  }}
+                  className="p-1.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-400 flex-shrink-0"
+                >
+                  <Icon name="Trash2" className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* View Character Modal */}
       {viewingCharacter && (
         <CharacterDetailModal
           character={viewingCharacter}
@@ -352,6 +513,48 @@ export default function PlayerCharactersContent({
               `/dashboard/gm/characters?character=${viewingCharacter.id}`,
             )
           }
+        />
+      )}
+
+      {/* View Content Modal */}
+      {viewingContent && !editingContent && (
+        <ContentDetailModal
+          item={viewingContent}
+          onClose={() => setViewingContent(null)}
+          onDelete={() => handleDeleteContent(viewingContent)}
+          onEdit={() => setEditingContent(viewingContent)}
+        />
+      )}
+
+      {/* Edit Content Modal */}
+      {editingContent && (
+        <EditContentModal
+          item={editingContent}
+          onClose={() => {
+            setEditingContent(null);
+            setViewingContent(null);
+          }}
+          onSave={handleSaveContent}
+        />
+      )}
+
+      {/* Create Content Modal */}
+      <CampaignContentEditorModal
+        isOpen={showEditorModal}
+        onClose={() => setShowEditorModal(false)}
+        campaignId={campaignId}
+        section="pcs"
+        onSaved={refreshData}
+      />
+
+      {/* Link from Roster Modal */}
+      {showLinkModal && (
+        <LinkFromRosterModal
+          linkedCharacterIds={characters.map((c) => c.id)}
+          allUserCharacters={allUserCharacters}
+          fetchAllCharacters={fetchAllCharacters}
+          onLink={handleLinkCharacter}
+          onClose={() => setShowLinkModal(false)}
         />
       )}
     </div>
@@ -624,6 +827,401 @@ function CharacterDetailModal({
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Link from Roster Modal
+interface LinkFromRosterModalProps {
+  linkedCharacterIds: string[];
+  allUserCharacters: Character[];
+  fetchAllCharacters: (forceRefresh?: boolean) => Promise<void>;
+  onLink: (characterId: string) => Promise<void>;
+  onClose: () => void;
+}
+
+function LinkFromRosterModal({
+  linkedCharacterIds,
+  allUserCharacters,
+  fetchAllCharacters,
+  onLink,
+  onClose,
+}: LinkFromRosterModalProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [linking, setLinking] = useState<string | null>(null);
+  const [loadingRoster, setLoadingRoster] = useState(false);
+
+  // Fetch all user characters when modal opens (without campaign filter)
+  useEffect(() => {
+    const loadRoster = async () => {
+      setLoadingRoster(true);
+      try {
+        // Fetch all characters (no campaign filter) to show the full roster
+        await fetchAllCharacters(true);
+      } catch (err) {
+        logger.error("Failed to fetch roster:", err);
+      } finally {
+        setLoadingRoster(false);
+      }
+    };
+    loadRoster();
+  }, [fetchAllCharacters]);
+
+  // Filter out already-linked characters and apply search
+  const availableCharacters = useMemo(() => {
+    const unlinked = allUserCharacters.filter(
+      (char) => !linkedCharacterIds.includes(char.id),
+    );
+    if (!searchQuery) return unlinked;
+    const query = searchQuery.toLowerCase();
+    return unlinked.filter(
+      (char) =>
+        char.name?.toLowerCase().includes(query) ||
+        char.class_info?.toLowerCase().includes(query) ||
+        char.race?.toLowerCase().includes(query),
+    );
+  }, [allUserCharacters, linkedCharacterIds, searchQuery]);
+
+  const handleLink = async (characterId: string) => {
+    setLinking(characterId);
+    try {
+      await onLink(characterId);
+    } catch (err) {
+      alert("Failed to link character. Please try again.");
+    } finally {
+      setLinking(null);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-background-panel border border-border rounded-xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div>
+            <h3 className="text-lg font-semibold text-text">
+              Link Characters from Roster
+            </h3>
+            <p className="text-sm text-text-muted">
+              Select characters to add to this campaign
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text"
+          >
+            <Icon name="X" className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-6 py-3 border-b border-border">
+          <div className="relative">
+            <Icon
+              name="Search"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted"
+            />
+            <input
+              type="text"
+              placeholder="Search your characters..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-text placeholder-text-muted focus:outline-none focus:border-primary text-sm"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        {/* Character List */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {loadingRoster ? (
+            <div className="flex items-center justify-center py-8">
+              <Icon
+                name="Loader2"
+                className="w-6 h-6 text-primary animate-spin"
+              />
+            </div>
+          ) : availableCharacters.length === 0 ? (
+            <div className="text-center py-8">
+              <Icon
+                name="Users"
+                className="w-10 h-10 text-text-muted mx-auto mb-3"
+              />
+              <p className="text-text-muted">
+                {searchQuery
+                  ? "No matching characters found"
+                  : allUserCharacters.length === 0
+                    ? "No characters in your roster yet. Create some in the Guild Roster first."
+                    : "All your characters are already linked to this campaign."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {availableCharacters.map((character) => (
+                <div
+                  key={character.id}
+                  className="flex items-center justify-between p-3 bg-background border border-border rounded-lg hover:border-primary/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name="User" className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-text font-medium truncate">
+                        {character.name || "Unknown"}
+                      </h4>
+                      <p className="text-text-muted text-sm truncate">
+                        Level {character.level || 1}
+                        {character.race && ` • ${character.race}`}
+                        {character.class_info && ` • ${character.class_info}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleLink(character.id)}
+                    disabled={linking === character.id}
+                    className="px-3 py-1.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                  >
+                    {linking === character.id ? (
+                      <Icon name="Loader2" className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Icon name="Plus" className="w-4 h-4" />
+                    )}
+                    Link
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-border px-6 py-4 flex justify-end flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-background hover:bg-background-panel border border-border text-text font-medium rounded-lg transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Content Detail Modal
+interface ContentDetailModalProps {
+  item: CampaignContent;
+  onClose: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
+}
+
+function ContentDetailModal({
+  item,
+  onClose,
+  onDelete,
+  onEdit,
+}: ContentDetailModalProps) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-background-panel border border-border rounded-xl w-full max-w-5xl h-[95vh] sm:h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <Icon name="FileText" className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                {item.title}
+              </h3>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text"
+          >
+            <Icon name="X" className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          {item.content ? (
+            <div className="prose prose-invert prose-tavern max-w-none">
+              <ReactMarkdown>
+                {item.content.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <p className="text-text-muted italic">No content</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-border px-4 sm:px-6 py-4 flex justify-between flex-shrink-0">
+          <button
+            onClick={onDelete}
+            className="px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-sm flex items-center gap-2"
+          >
+            <Icon name="Trash2" className="w-4 h-4" />
+            Delete
+          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onEdit}
+              className="px-4 py-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors text-sm flex items-center gap-2"
+            >
+              <Icon name="Edit" className="w-4 h-4" />
+              Edit
+            </button>
+            <button
+              onClick={onClose}
+              className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Edit Content Modal
+interface EditContentModalProps {
+  item: CampaignContent;
+  onClose: () => void;
+  onSave: (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => Promise<void>;
+}
+
+function EditContentModal({ item, onClose, onSave }: EditContentModalProps) {
+  const [formData, setFormData] = useState({
+    title: item.title,
+    content: item.content || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateCampaignContentRequest = {
+        title: formData.title,
+        content: formData.content || undefined,
+      };
+
+      await onSave(item.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save content");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-background-panel border border-border rounded-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <Icon name="FileText" className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                Edit Character Note
+              </h3>
+              <p className="text-sm text-text-muted">{item.title}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text"
+          >
+            <Icon name="X" className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4"
+        >
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Title *
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Content
+            </label>
+            <textarea
+              value={formData.content}
+              onChange={(e) =>
+                setFormData({ ...formData, content: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary font-mono text-sm"
+              rows={20}
+              placeholder="Character notes, backstory, use Markdown formatting..."
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Supports Markdown formatting
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import { updateQuest, UpdateQuestRequest } from "../../../../../api/quests";
 
 interface Quest {
   id: string;
@@ -53,6 +54,7 @@ export default function QuestsContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingItem, setEditingItem] = useState<Quest | null>(null);
 
   const {
     filteredItems,
@@ -80,6 +82,18 @@ export default function QuestsContent({
       } catch (err) {
         logger.error("Failed to delete quest:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateQuestRequest) => {
+    try {
+      await updateQuest(id, updates);
+      await refresh();
+      setEditingItem(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update quest:", err);
+      throw err;
     }
   };
 
@@ -154,11 +168,24 @@ export default function QuestsContent({
         </div>
       </ContentListLayout>
 
-      {viewingItem && (
+      {viewingItem && !editingItem && (
         <QuestDetailModal
           quest={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingItem(viewingItem)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <EditQuestModal
+          quest={editingItem}
+          onClose={() => {
+            setEditingItem(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -181,12 +208,20 @@ interface QuestDetailModalProps {
   quest: Quest;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
-function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
+function QuestDetailModal({
+  quest,
+  onClose,
+  onDelete,
+  onEdit,
+}: QuestDetailModalProps) {
   let objectives: any[] = [];
   let rewards: any = null;
   let complications: any[] = [];
+  let npcsInvolved: any[] = [];
+  let locationsInvolved: any[] = [];
 
   try {
     objectives = quest.objectives
@@ -204,6 +239,16 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
         ? JSON.parse(quest.complications)
         : quest.complications
       : [];
+    npcsInvolved = quest.npcs_involved
+      ? typeof quest.npcs_involved === "string"
+        ? JSON.parse(quest.npcs_involved)
+        : quest.npcs_involved
+      : [];
+    locationsInvolved = quest.locations_involved
+      ? typeof quest.locations_involved === "string"
+        ? JSON.parse(quest.locations_involved)
+        : quest.locations_involved
+      : [];
   } catch (err) {
     logger.error("Failed to parse quest data:", err);
   }
@@ -219,6 +264,7 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
       title={quest.title}
       subtitle={quest.type}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         {/* Status and Info Row */}
@@ -321,6 +367,53 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
           </div>
         )}
 
+        {npcsInvolved.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              NPCs Involved
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {npcsInvolved.map((npc: any, i: number) => (
+                <span
+                  key={i}
+                  className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-sm"
+                >
+                  {typeof npc === "string" ? npc : npc.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {locationsInvolved.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Locations Involved
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {locationsInvolved.map((loc: any, i: number) => (
+                <span
+                  key={i}
+                  className="px-3 py-1 bg-cyan-500/10 text-cyan-400 rounded-full text-sm"
+                >
+                  {typeof loc === "string" ? loc : loc.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {quest.faction_alignment && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Faction Alignment
+            </h4>
+            <p className="text-text leading-relaxed">
+              {quest.faction_alignment}
+            </p>
+          </div>
+        )}
+
         {quest.time_limit && (
           <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/30">
             <p className="text-red-400 font-medium">
@@ -328,7 +421,149 @@ function QuestDetailModal({ quest, onClose, onDelete }: QuestDetailModalProps) {
             </p>
           </div>
         )}
+
+        {quest.moral_ambiguity && (
+          <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/30">
+            <p className="text-amber-400">
+              ⚠️ Contains morally complex choices
+            </p>
+          </div>
+        )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditQuestModalProps {
+  quest: Quest;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateQuestRequest) => Promise<void>;
+}
+
+function EditQuestModal({ quest, onClose, onSave }: EditQuestModalProps) {
+  const [formData, setFormData] = useState({
+    title: quest.title,
+    quest_type: quest.type || "",
+    description: quest.description || "",
+    faction_alignment: quest.faction_alignment || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateQuestRequest = {
+        title: formData.title,
+        quest_type: formData.quest_type || undefined,
+        description: formData.description || undefined,
+        faction_alignment: formData.faction_alignment || undefined,
+      };
+
+      await onSave(quest.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save quest");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="Scroll"
+      iconColor="amber"
+      title="Edit Quest"
+      subtitle={quest.title}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Title *
+          </label>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) =>
+              setFormData({ ...formData, title: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Quest Type
+          </label>
+          <input
+            type="text"
+            value={formData.quest_type}
+            onChange={(e) =>
+              setFormData({ ...formData, quest_type: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Main, Side, Personal..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={5}
+            placeholder="Describe the quest..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Faction Alignment
+          </label>
+          <input
+            type="text"
+            value={formData.faction_alignment}
+            onChange={(e) =>
+              setFormData({ ...formData, faction_alignment: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Which faction does this quest align with..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

@@ -58,6 +58,14 @@ export function useCampaignNavigation() {
       return;
     }
 
+    logger.debug("[useCampaignNavigation] Campaign details", {
+      campaignId,
+      name: campaign.name,
+      role: campaign.role,
+      membership_type: campaign.membership_type,
+      isPlayerResult: isPlayerCampaign(campaign),
+    });
+
     // Check if context is loaded - if not, we need to wait or fetch it first
     if (!userContext) {
       logger.warn(

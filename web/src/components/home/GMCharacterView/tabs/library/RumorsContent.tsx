@@ -7,6 +7,7 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import { updateRumor, UpdateRumorRequest } from "../../../../../api/rumors";
 
 interface Rumor {
   id: string;
@@ -15,8 +16,10 @@ interface Rumor {
   source?: string;
   veracity: string;
   leads_to?: string;
+  related_id?: string;
   context?: string;
   foreshadowing?: boolean;
+  tags?: any;
   revealed: boolean;
   ai_generated?: boolean;
   created_at: string;
@@ -44,6 +47,7 @@ export default function RumorsContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingItem, setEditingItem] = useState<Rumor | null>(null);
 
   const {
     filteredItems,
@@ -73,6 +77,18 @@ export default function RumorsContent({
       } catch (err) {
         logger.error("Failed to delete rumor:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateRumorRequest) => {
+    try {
+      await updateRumor(id, updates);
+      await refresh();
+      setEditingItem(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update rumor:", err);
+      throw err;
     }
   };
 
@@ -176,11 +192,24 @@ export default function RumorsContent({
         </div>
       </ContentListLayout>
 
-      {viewingItem && (
+      {viewingItem && !editingItem && (
         <RumorDetailModal
           rumor={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingItem(viewingItem)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <EditRumorModal
+          rumor={editingItem}
+          onClose={() => {
+            setEditingItem(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -203,11 +232,28 @@ interface RumorDetailModalProps {
   rumor: Rumor;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
-function RumorDetailModal({ rumor, onClose, onDelete }: RumorDetailModalProps) {
+function RumorDetailModal({
+  rumor,
+  onClose,
+  onDelete,
+  onEdit,
+}: RumorDetailModalProps) {
   const veracityColor =
     veracityColors[rumor.veracity] || veracityColors.partially_true;
+
+  let tags: any[] = [];
+  try {
+    tags = rumor.tags
+      ? typeof rumor.tags === "string"
+        ? JSON.parse(rumor.tags)
+        : rumor.tags
+      : [];
+  } catch (err) {
+    logger.error("Failed to parse rumor tags:", err);
+  }
 
   return (
     <ContentDetailModal
@@ -218,6 +264,7 @@ function RumorDetailModal({ rumor, onClose, onDelete }: RumorDetailModalProps) {
       title="Rumor"
       subtitle={rumor.source ? `Source: ${rumor.source}` : undefined}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         <div className="bg-rose-500/5 p-6 rounded-lg border border-rose-500/20">
@@ -259,18 +306,179 @@ function RumorDetailModal({ rumor, onClose, onDelete }: RumorDetailModalProps) {
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Leads To
             </h4>
-            <p className="text-text leading-relaxed">{rumor.leads_to}</p>
+            <p className="text-text leading-relaxed capitalize">
+              {rumor.leads_to}
+              {rumor.related_id && (
+                <span className="text-text-muted ml-2 text-sm">
+                  (ID: {rumor.related_id.substring(0, 8)})
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+
+        {tags.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Tags
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag: string, i: number) => (
+                <span
+                  key={i}
+                  className="px-3 py-1 bg-rose-500/10 text-rose-400 rounded-full text-sm"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
         {rumor.foreshadowing && (
           <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/30">
             <p className="text-amber-400 font-medium">
-              This rumor foreshadows future events
+              ⚡ This rumor foreshadows future events
             </p>
           </div>
         )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditRumorModalProps {
+  rumor: Rumor;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateRumorRequest) => Promise<void>;
+}
+
+function EditRumorModal({ rumor, onClose, onSave }: EditRumorModalProps) {
+  const [formData, setFormData] = useState({
+    text: rumor.text,
+    source: rumor.source || "",
+    truth_level: rumor.veracity,
+    related_id: rumor.related_id || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateRumorRequest = {
+        rumor_text: formData.text,
+        source: formData.source || undefined,
+        truth_level: formData.truth_level,
+        related_id: formData.related_id || undefined,
+      };
+
+      await onSave(rumor.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save rumor");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="Quote"
+      iconColor="rose"
+      title="Edit Rumor"
+      subtitle={rumor.source || undefined}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Rumor Text *
+          </label>
+          <textarea
+            value={formData.text}
+            onChange={(e) => setFormData({ ...formData, text: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={4}
+            placeholder="The rumor text..."
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Source
+          </label>
+          <input
+            type="text"
+            value={formData.source}
+            onChange={(e) =>
+              setFormData({ ...formData, source: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Tavern keeper, Guard, Merchant..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Truth Level *
+          </label>
+          <select
+            value={formData.truth_level}
+            onChange={(e) =>
+              setFormData({ ...formData, truth_level: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          >
+            <option value="true">True</option>
+            <option value="partially_true">Partially True</option>
+            <option value="false">False</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Related ID
+          </label>
+          <input
+            type="text"
+            value={formData.related_id}
+            onChange={(e) =>
+              setFormData({ ...formData, related_id: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="ID of related content..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

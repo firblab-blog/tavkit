@@ -377,21 +377,67 @@ func (h *CampaignHandler) GetCampaignSummary(c *gin.Context) {
 
 	campaignID := c.Param("id")
 
-	// Verify ownership
+	h.logger.Info("GetCampaignSummary called",
+		zap.String("campaign_id", campaignID),
+		zap.String("user_id", userID.(string)))
+
+	// Check if user is the owner
 	_, err := h.db.GetCampaignByIDAndUserID(c.Request.Context(), campaignID, userID.(string))
-	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Campaign not found"})
-		return
-	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		h.logger.Error("Failed to fetch campaign", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch campaign"})
 		return
 	}
 
+	// If not the owner, check if they're a member (player in the campaign)
+	if err == sql.ErrNoRows {
+		h.logger.Info("User is not campaign owner, checking membership",
+			zap.String("campaign_id", campaignID),
+			zap.String("user_id", userID.(string)))
+
+		member, memberErr := h.db.GetCampaignMember(c.Request.Context(), campaignID, userID.(string))
+		if memberErr == sql.ErrNoRows {
+			h.logger.Warn("User is not a campaign member",
+				zap.String("campaign_id", campaignID),
+				zap.String("user_id", userID.(string)))
+			c.JSON(http.StatusNotFound, gin.H{"error": "Campaign not found"})
+			return
+		}
+		if memberErr != nil {
+			h.logger.Error("Failed to check campaign membership", zap.Error(memberErr))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify access"})
+			return
+		}
+		// User is a member but not owner - they can view the summary
+		if member == nil {
+			h.logger.Warn("Member returned nil",
+				zap.String("campaign_id", campaignID),
+				zap.String("user_id", userID.(string)))
+			c.JSON(http.StatusNotFound, gin.H{"error": "Campaign not found"})
+			return
+		}
+		h.logger.Info("User is a campaign member",
+			zap.String("campaign_id", campaignID),
+			zap.String("user_id", userID.(string)),
+			zap.String("member_id", member.ID),
+			zap.String("character_id", func() string {
+				if member.CharacterID != nil {
+					return *member.CharacterID
+				}
+				return "none"
+			}()))
+	} else {
+		h.logger.Info("User is campaign owner",
+			zap.String("campaign_id", campaignID),
+			zap.String("user_id", userID.(string)))
+	}
+
 	summary, err := h.db.GetCampaignSummaryByCampaignID(c.Request.Context(), campaignID)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Summary not found"})
+		// No summary exists yet - return empty instead of 404
+		h.logger.Info("No summary found for campaign, returning empty",
+			zap.String("campaign_id", campaignID))
+		c.JSON(http.StatusOK, gin.H{"summary": ""})
 		return
 	}
 	if err != nil {
@@ -400,6 +446,8 @@ func (h *CampaignHandler) GetCampaignSummary(c *gin.Context) {
 		return
 	}
 
+	h.logger.Info("Returning campaign summary",
+		zap.String("campaign_id", campaignID))
 	c.JSON(http.StatusOK, summary)
 }
 

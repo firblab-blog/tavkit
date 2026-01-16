@@ -155,9 +155,23 @@ export default function PlayerHome({
   // Loading state should be true when:
   // 1. Context is loading
   // 2. Characters are actively loading
-  // 3. Cache was invalidated (lastFetched is null) but we have context
+  // 3. Cache was invalidated (lastFetched is null) but we have context AND no error
+  // If there's an error, don't show loading - show the error state instead
   const isCurrentlyLoading =
-    contextLoading || loading || (lastFetched === null && userContext !== null);
+    contextLoading ||
+    loading ||
+    (lastFetched === null && userContext !== null && !error);
+
+  console.log("[PlayerHome] Loading state check", {
+    isCurrentlyLoading,
+    contextLoading,
+    loading,
+    lastFetched,
+    hasUserContext: !!userContext,
+    charactersCount: characters.length,
+    error,
+  });
+
   const { isTimedOut, elapsedSeconds } = useLoadingTimeout({
     isLoading: Boolean(isCurrentlyLoading),
     timeoutMs: 10000, // Show timeout message after 10 seconds
@@ -184,8 +198,16 @@ export default function PlayerHome({
   // Fetch characters only after context is loaded (so we have the correct campaign ID)
   // Filter characters by active campaign to only show characters assigned to this campaign
   useEffect(() => {
+    console.log("[PlayerHome] fetchCharacters effect triggered", {
+      contextLoading,
+      hasUserContext: !!userContext,
+      activeCampaignId,
+      prevCampaignId: prevCampaignIdRef.current,
+    });
+
     // Wait for context to be loaded before fetching characters
     if (contextLoading || !userContext) {
+      console.log("[PlayerHome] Waiting for context to load");
       return;
     }
 
@@ -194,8 +216,19 @@ export default function PlayerHome({
       prevCampaignIdRef.current !== null &&
       prevCampaignIdRef.current !== activeCampaignId;
     prevCampaignIdRef.current = activeCampaignId;
+
+    console.log("[PlayerHome] Calling fetchCharacters", {
+      campaignChanged,
+      activeCampaignId,
+    });
     fetchCharacters(campaignChanged, activeCampaignId ?? undefined);
-  }, [fetchCharacters, activeCampaignId, contextLoading, userContext]);
+  }, [
+    fetchCharacters,
+    activeCampaignId,
+    contextLoading,
+    userContext,
+    lastFetched,
+  ]);
 
   // Set active character from context or first available
   // Only update when characters array changes (after fetch completes)
@@ -421,9 +454,20 @@ export default function PlayerHome({
           <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
           <p className="text-text-muted">Loading your adventure...</p>
           {isTimedOut && (
-            <p className="text-text-muted text-sm mt-2">
-              Taking longer than expected ({elapsedSeconds}s)...
-            </p>
+            <div className="mt-4">
+              <p className="text-text-muted text-sm">
+                Taking longer than expected ({elapsedSeconds}s)...
+              </p>
+              <button
+                onClick={() => {
+                  // Force a refetch
+                  fetchCharacters(true, activeCampaignId ?? undefined);
+                }}
+                className="mt-3 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary text-sm font-medium rounded-lg transition-colors"
+              >
+                Retry Loading
+              </button>
+            </div>
           )}
         </div>
       </div>

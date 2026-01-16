@@ -7,6 +7,7 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import { updateTrap, UpdateTrapRequest } from "../../../../../api/traps";
 
 interface Trap {
   id: string;
@@ -24,6 +25,7 @@ interface Trap {
   solution_paths?: any;
   complications?: any;
   rewards?: any;
+  scaling?: any;
   dm_notes?: string;
   ai_generated?: boolean;
   created_at: string;
@@ -52,6 +54,7 @@ export default function TrapsContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingTrap, setEditingTrap] = useState<Trap | null>(null);
 
   const {
     filteredItems,
@@ -79,6 +82,18 @@ export default function TrapsContent({
       } catch (err) {
         logger.error("Failed to delete trap:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateTrapRequest) => {
+    try {
+      await updateTrap(id, updates);
+      await refresh();
+      setEditingTrap(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update trap:", err);
+      throw err;
     }
   };
 
@@ -159,11 +174,23 @@ export default function TrapsContent({
         </div>
       </ContentListLayout>
 
-      {viewingItem && (
+      {viewingItem && !editingTrap && (
         <TrapDetailModal
           trap={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingTrap(viewingItem)}
+        />
+      )}
+
+      {editingTrap && (
+        <EditTrapModal
+          trap={editingTrap}
+          onClose={() => {
+            setEditingTrap(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -186,11 +213,20 @@ interface TrapDetailModalProps {
   trap: Trap;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
-function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
+function TrapDetailModal({
+  trap,
+  onClose,
+  onDelete,
+  onEdit,
+}: TrapDetailModalProps) {
   let detection: any = null;
   let solutionPaths: any[] = [];
+  let complications: any[] = [];
+  let rewards: any[] = [];
+  let scaling: any = null;
 
   try {
     detection = trap.detection
@@ -203,6 +239,21 @@ function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
         ? JSON.parse(trap.solution_paths)
         : trap.solution_paths
       : [];
+    complications = trap.complications
+      ? typeof trap.complications === "string"
+        ? JSON.parse(trap.complications)
+        : trap.complications
+      : [];
+    rewards = trap.rewards
+      ? typeof trap.rewards === "string"
+        ? JSON.parse(trap.rewards)
+        : trap.rewards
+      : [];
+    scaling = trap.scaling
+      ? typeof trap.scaling === "string"
+        ? JSON.parse(trap.scaling)
+        : trap.scaling
+      : null;
   } catch (err) {
     logger.error("Failed to parse trap data:", err);
   }
@@ -219,6 +270,7 @@ function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
       title={trap.name}
       subtitle={trap.trap_type.replace(/_/g, " ")}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-3">
@@ -312,17 +364,324 @@ function TrapDetailModal({ trap, onClose, onDelete }: TrapDetailModalProps) {
           </div>
         )}
 
+        {complications.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Complications
+            </h4>
+            <ul className="space-y-2">
+              {complications.map((c: any, i: number) => (
+                <li
+                  key={i}
+                  className="text-text bg-background p-3 rounded-lg border border-border"
+                >
+                  {typeof c === "string" ? c : c.description || c.effect}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {rewards.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Rewards
+            </h4>
+            <ul className="space-y-2">
+              {rewards.map((r: any, i: number) => (
+                <li
+                  key={i}
+                  className="text-amber-400 bg-amber-500/10 p-3 rounded-lg border border-amber-500/30"
+                >
+                  {typeof r === "string" ? r : r.name || r.description}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {scaling && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Scaling
+            </h4>
+            <div className="bg-background p-4 rounded-lg border border-border space-y-3">
+              {typeof scaling === "string" ? (
+                <p className="text-text whitespace-pre-wrap">{scaling}</p>
+              ) : (
+                <>
+                  {scaling.easier && (
+                    <div>
+                      <p className="text-green-400 font-medium mb-1">Easier:</p>
+                      <p className="text-text">{scaling.easier}</p>
+                    </div>
+                  )}
+                  {scaling.harder && (
+                    <div>
+                      <p className="text-red-400 font-medium mb-1">Harder:</p>
+                      <p className="text-text">{scaling.harder}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {trap.dm_notes && (
           <div>
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               DM Notes
             </h4>
-            <p className="text-text leading-relaxed whitespace-pre-wrap">
+            <p className="text-text leading-relaxed whitespace-pre-wrap bg-red-500/10 border border-red-500/20 p-4 rounded-lg">
               {trap.dm_notes}
             </p>
           </div>
         )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditTrapModalProps {
+  trap: Trap;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateTrapRequest) => Promise<void>;
+}
+
+function EditTrapModal({ trap, onClose, onSave }: EditTrapModalProps) {
+  const [formData, setFormData] = useState({
+    name: trap.name,
+    trap_type: trap.trap_type,
+    difficulty: trap.difficulty || "",
+    party_level: trap.party_level?.toString() || "",
+    environment: trap.environment || "",
+    description: trap.description || "",
+    trigger: trap.trigger || "",
+    effect: trap.effect || "",
+    damage: trap.damage || "",
+    dm_notes: trap.dm_notes || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateTrapRequest = {
+        name: formData.name,
+        trap_type: formData.trap_type,
+        difficulty: formData.difficulty || undefined,
+        party_level: formData.party_level
+          ? parseInt(formData.party_level)
+          : undefined,
+        environment: formData.environment || undefined,
+        description: formData.description || undefined,
+        trigger: formData.trigger || undefined,
+        effect: formData.effect || undefined,
+        damage: formData.damage || undefined,
+        dm_notes: formData.dm_notes || undefined,
+      };
+
+      await onSave(trap.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save trap");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="AlertTriangle"
+      iconColor="red"
+      title="Edit Trap"
+      subtitle={trap.name}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Name *
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Type *
+          </label>
+          <select
+            value={formData.trap_type}
+            onChange={(e) =>
+              setFormData({ ...formData, trap_type: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          >
+            <option value="mechanical">Mechanical</option>
+            <option value="magical">Magical</option>
+            <option value="environmental">Environmental</option>
+            <option value="puzzle">Puzzle</option>
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Difficulty
+            </label>
+            <select
+              value={formData.difficulty}
+              onChange={(e) =>
+                setFormData({ ...formData, difficulty: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            >
+              <option value="">Select difficulty</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+              <option value="deadly">Deadly</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Party Level
+            </label>
+            <input
+              type="number"
+              value={formData.party_level}
+              onChange={(e) =>
+                setFormData({ ...formData, party_level: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              min="1"
+              max="20"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Environment
+          </label>
+          <input
+            type="text"
+            value={formData.environment}
+            onChange={(e) =>
+              setFormData({ ...formData, environment: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="dungeon, forest, urban"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={3}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Trigger
+          </label>
+          <textarea
+            value={formData.trigger}
+            onChange={(e) =>
+              setFormData({ ...formData, trigger: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={2}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Effect
+          </label>
+          <textarea
+            value={formData.effect}
+            onChange={(e) =>
+              setFormData({ ...formData, effect: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={2}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Damage
+          </label>
+          <input
+            type="text"
+            value={formData.damage}
+            onChange={(e) =>
+              setFormData({ ...formData, damage: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="3d6 piercing"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            DM Notes
+          </label>
+          <textarea
+            value={formData.dm_notes}
+            onChange={(e) =>
+              setFormData({ ...formData, dm_notes: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={3}
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

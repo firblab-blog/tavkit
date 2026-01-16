@@ -5,6 +5,11 @@ import { authFetch } from "../../../../../utils/authFetch";
 import { getApiUrl } from "../../../../../config/api";
 import { logger } from "../../../../../utils/logger";
 import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import {
+  updateCampaignContent,
+  UpdateCampaignContentRequest,
+  CampaignContent,
+} from "../../../../../api/campaignContent";
 
 interface LocationsContentProps {
   campaignId: string;
@@ -32,6 +37,8 @@ export default function LocationsContent({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
+  const [editingLocation, setEditingLocation] =
+    useState<CampaignContent | null>(null);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -83,6 +90,28 @@ export default function LocationsContent({
       } catch (err) {
         logger.error("Failed to delete location:", err);
       }
+    }
+  };
+
+  const handleSave = async (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => {
+    try {
+      await updateCampaignContent(campaignId, contentId, updates);
+      // Refresh locations list
+      const response = await authFetch(
+        getApiUrl(`/locations?campaign_id=${campaignId}`),
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setLocations(Array.isArray(data) ? data : []);
+      }
+      setEditingLocation(null);
+      setViewingLocation(null);
+    } catch (err) {
+      logger.error("Failed to update location:", err);
+      throw err;
     }
   };
 
@@ -267,11 +296,37 @@ export default function LocationsContent({
       )}
 
       {/* View Modal */}
-      {viewingLocation && (
+      {viewingLocation && !editingLocation && (
         <LocationDetailModal
           location={viewingLocation}
           onClose={() => setViewingLocation(null)}
           onDelete={() => handleDelete(viewingLocation)}
+          onEdit={() => {
+            // Convert Location to CampaignContent for editing
+            const content: CampaignContent = {
+              id: viewingLocation.id,
+              campaign_id: campaignId,
+              section: "locations",
+              subsection: null,
+              title: viewingLocation.name,
+              content: viewingLocation.description,
+              created_at: viewingLocation.created_at,
+              updated_at: viewingLocation.updated_at,
+            };
+            setEditingLocation(content);
+          }}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingLocation && (
+        <EditLocationModal
+          location={editingLocation}
+          onClose={() => {
+            setEditingLocation(null);
+            setViewingLocation(null);
+          }}
+          onSave={handleSave}
         />
       )}
     </div>
@@ -283,12 +338,14 @@ interface LocationDetailModalProps {
   location: Location;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 function LocationDetailModal({
   location,
   onClose,
   onDelete,
+  onEdit,
 }: LocationDetailModalProps) {
   return (
     <div
@@ -343,13 +400,156 @@ function LocationDetailModal({
             <Icon name="Trash2" className="w-4 h-4" />
             Delete
           </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onEdit}
+              className="px-4 py-2 text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors text-sm flex items-center gap-2"
+            >
+              <Icon name="Edit" className="w-4 h-4" />
+              Edit
+            </button>
+            <button
+              onClick={onClose}
+              className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface EditLocationModalProps {
+  location: CampaignContent;
+  onClose: () => void;
+  onSave: (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => Promise<void>;
+}
+
+function EditLocationModal({
+  location,
+  onClose,
+  onSave,
+}: EditLocationModalProps) {
+  const [formData, setFormData] = useState({
+    title: location.title,
+    content: location.content || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateCampaignContentRequest = {
+        title: formData.title,
+        content: formData.content || undefined,
+      };
+
+      await onSave(location.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save location");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-background-panel border border-border rounded-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+              <Icon name="MapPin" className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                Edit Location
+              </h3>
+              <p className="text-sm text-text-muted">{location.title}</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text"
           >
-            Close
+            <Icon name="X" className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Content */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4"
+        >
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Title *
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Content
+            </label>
+            <textarea
+              value={formData.content}
+              onChange={(e) =>
+                setFormData({ ...formData, content: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary font-mono text-sm"
+              rows={20}
+              placeholder="Location description, use Markdown formatting..."
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Supports Markdown formatting
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -7,6 +7,10 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import {
+  updateDialogue,
+  UpdateDialogueRequest,
+} from "../../../../../api/dialogues";
 
 interface Dialogue {
   id: string;
@@ -17,6 +21,7 @@ interface Dialogue {
   dialogue_tree?: any;
   skill_checks?: any;
   information?: any;
+  information_revealed?: any;
   potential_quests?: any;
   ai_generated?: boolean;
   created_at: string;
@@ -38,6 +43,7 @@ export default function DialoguesContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingDialogue, setEditingDialogue] = useState<Dialogue | null>(null);
 
   const {
     filteredItems,
@@ -69,6 +75,18 @@ export default function DialoguesContent({
       } catch (err) {
         logger.error("Failed to delete dialogue:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateDialogueRequest) => {
+    try {
+      await updateDialogue(id, updates);
+      await refresh();
+      setEditingDialogue(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update dialogue:", err);
+      throw err;
     }
   };
 
@@ -132,11 +150,23 @@ export default function DialoguesContent({
         </div>
       </ContentListLayout>
 
-      {viewingItem && (
+      {viewingItem && !editingDialogue && (
         <DialogueDetailModal
           dialogue={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingDialogue(viewingItem)}
+        />
+      )}
+
+      {editingDialogue && (
+        <EditDialogueModal
+          dialogue={editingDialogue}
+          onClose={() => {
+            setEditingDialogue(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -159,14 +189,16 @@ interface DialogueDetailModalProps {
   dialogue: Dialogue;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 function DialogueDetailModal({
   dialogue,
   onClose,
   onDelete,
+  onEdit,
 }: DialogueDetailModalProps) {
-  let dialogueTree: any[] = [];
+  let dialogueTree: any = null;
   let skillChecks: any[] = [];
   let information: any[] = [];
   let potentialQuests: any[] = [];
@@ -176,17 +208,22 @@ function DialogueDetailModal({
       ? typeof dialogue.dialogue_tree === "string"
         ? JSON.parse(dialogue.dialogue_tree)
         : dialogue.dialogue_tree
-      : [];
+      : null;
     skillChecks = dialogue.skill_checks
       ? typeof dialogue.skill_checks === "string"
         ? JSON.parse(dialogue.skill_checks)
         : dialogue.skill_checks
       : [];
-    information = dialogue.information
-      ? typeof dialogue.information === "string"
-        ? JSON.parse(dialogue.information)
-        : dialogue.information
-      : [];
+    // Try information_revealed first (correct field), fall back to information
+    information = dialogue.information_revealed
+      ? typeof dialogue.information_revealed === "string"
+        ? JSON.parse(dialogue.information_revealed)
+        : dialogue.information_revealed
+      : dialogue.information
+        ? typeof dialogue.information === "string"
+          ? JSON.parse(dialogue.information)
+          : dialogue.information
+        : [];
     potentialQuests = dialogue.potential_quests
       ? typeof dialogue.potential_quests === "string"
         ? JSON.parse(dialogue.potential_quests)
@@ -205,6 +242,7 @@ function DialogueDetailModal({
       title={dialogue.character_name}
       subtitle={dialogue.mood || undefined}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         {dialogue.scene_setting && (
@@ -218,7 +256,141 @@ function DialogueDetailModal({
           </div>
         )}
 
-        {dialogueTree.length > 0 && (
+        {/* Opening Line */}
+        {dialogueTree.opening_line && (
+          <div className="bg-blue-500/5 p-4 rounded-lg border border-blue-500/20">
+            <h4 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-2">
+              Opening Line
+            </h4>
+            <p className="text-text italic leading-relaxed">
+              &ldquo;{dialogueTree.opening_line}&rdquo;
+            </p>
+          </div>
+        )}
+
+        {/* Dialogue Options */}
+        {dialogueTree &&
+          (dialogueTree.friendly ||
+            dialogueTree.neutral ||
+            dialogueTree.hostile) && (
+            <div>
+              <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
+                Dialogue Options
+              </h4>
+              <div className="space-y-4">
+                {/* Friendly Approach */}
+                {dialogueTree.friendly && (
+                  <div className="bg-emerald-500/5 p-4 rounded-lg border border-emerald-500/30">
+                    <div className="mb-3">
+                      <h5 className="text-emerald-400 font-semibold">
+                        Friendly Approach
+                      </h5>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-text">
+                        <span className="text-text-muted font-medium">
+                          Player:
+                        </span>{" "}
+                        &ldquo;
+                        {dialogueTree.friendly.player_option ||
+                          dialogueTree.friendly.player}
+                        &rdquo;
+                      </p>
+                      <p className="text-emerald-300">
+                        <span className="text-emerald-400 font-medium">
+                          NPC Response:
+                        </span>{" "}
+                        &ldquo;
+                        {dialogueTree.friendly.npc_response}
+                        &rdquo;
+                      </p>
+                      {dialogueTree.friendly.outcome && (
+                        <p className="text-text-muted text-sm italic">
+                          <span className="font-medium">Outcome:</span>{" "}
+                          {dialogueTree.friendly.outcome}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Neutral Approach */}
+                {dialogueTree.neutral && (
+                  <div className="bg-blue-500/5 p-4 rounded-lg border border-blue-500/30">
+                    <div className="mb-3">
+                      <h5 className="text-blue-400 font-semibold">
+                        Neutral Approach
+                      </h5>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-text">
+                        <span className="text-text-muted font-medium">
+                          Player:
+                        </span>{" "}
+                        &ldquo;
+                        {dialogueTree.neutral.player_option ||
+                          dialogueTree.neutral.player}
+                        &rdquo;
+                      </p>
+                      <p className="text-blue-300">
+                        <span className="text-blue-400 font-medium">
+                          NPC Response:
+                        </span>{" "}
+                        &ldquo;
+                        {dialogueTree.neutral.npc_response}
+                        &rdquo;
+                      </p>
+                      {dialogueTree.neutral.outcome && (
+                        <p className="text-text-muted text-sm italic">
+                          <span className="font-medium">Outcome:</span>{" "}
+                          {dialogueTree.neutral.outcome}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hostile Approach */}
+                {dialogueTree.hostile && (
+                  <div className="bg-red-500/5 p-4 rounded-lg border border-red-500/30">
+                    <div className="mb-3">
+                      <h5 className="text-red-400 font-semibold">
+                        Hostile Approach
+                      </h5>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-text">
+                        <span className="text-text-muted font-medium">
+                          Player:
+                        </span>{" "}
+                        &ldquo;
+                        {dialogueTree.hostile.player_option ||
+                          dialogueTree.hostile.player}
+                        &rdquo;
+                      </p>
+                      <p className="text-red-300">
+                        <span className="text-red-400 font-medium">
+                          NPC Response:
+                        </span>{" "}
+                        &ldquo;
+                        {dialogueTree.hostile.npc_response}
+                        &rdquo;
+                      </p>
+                      {dialogueTree.hostile.outcome && (
+                        <p className="text-text-muted text-sm italic">
+                          <span className="font-medium">Outcome:</span>{" "}
+                          {dialogueTree.hostile.outcome}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+        {/* Legacy dialogue tree format support */}
+        {Array.isArray(dialogueTree) && dialogueTree.length > 0 && (
           <div>
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Dialogue Options
@@ -245,6 +417,18 @@ function DialogueDetailModal({
           </div>
         )}
 
+        {/* Body Language */}
+        {dialogueTree.body_language && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Body Language
+            </h4>
+            <p className="text-text leading-relaxed italic">
+              {dialogueTree.body_language}
+            </p>
+          </div>
+        )}
+
         {skillChecks.length > 0 && (
           <div>
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
@@ -254,12 +438,28 @@ function DialogueDetailModal({
               {skillChecks.map((check: any, i: number) => (
                 <div
                   key={i}
-                  className="bg-background p-3 rounded-lg border border-border flex justify-between items-center"
+                  className="bg-purple-500/5 p-3 rounded-lg border border-purple-500/30"
                 >
-                  <span className="text-text">{check.skill || check.name}</span>
-                  <span className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded text-sm">
-                    DC {check.dc}
-                  </span>
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="text-purple-400 font-medium">
+                      {check.skill || check.name}
+                    </span>
+                    <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-sm font-semibold">
+                      DC {check.dc}
+                    </span>
+                  </div>
+                  {check.success && (
+                    <p className="text-text-muted text-sm mt-2">
+                      <span className="text-emerald-400">Success:</span>{" "}
+                      {check.success}
+                    </p>
+                  )}
+                  {check.failure && (
+                    <p className="text-text-muted text-sm mt-1">
+                      <span className="text-red-400">Failure:</span>{" "}
+                      {check.failure}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -303,6 +503,125 @@ function DialogueDetailModal({
           </div>
         )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditDialogueModalProps {
+  dialogue: Dialogue;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateDialogueRequest) => Promise<void>;
+}
+
+function EditDialogueModal({
+  dialogue,
+  onClose,
+  onSave,
+}: EditDialogueModalProps) {
+  const [formData, setFormData] = useState({
+    character_name: dialogue.character_name,
+    scene_setting: dialogue.scene_setting || "",
+    mood: dialogue.mood || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateDialogueRequest = {
+        npc_name: formData.character_name,
+        context: formData.scene_setting || undefined,
+        emotional_state: formData.mood || undefined,
+      };
+
+      await onSave(dialogue.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save dialogue");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="MessageSquare"
+      iconColor="blue"
+      title="Edit Dialogue"
+      subtitle={dialogue.character_name}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Character Name *
+          </label>
+          <input
+            type="text"
+            value={formData.character_name}
+            onChange={(e) =>
+              setFormData({ ...formData, character_name: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Scene Setting
+          </label>
+          <textarea
+            value={formData.scene_setting}
+            onChange={(e) =>
+              setFormData({ ...formData, scene_setting: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={3}
+            placeholder="Describe where and when this conversation takes place..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Mood
+          </label>
+          <input
+            type="text"
+            value={formData.mood}
+            onChange={(e) => setFormData({ ...formData, mood: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Friendly, Suspicious, Angry..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

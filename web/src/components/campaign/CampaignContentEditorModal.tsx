@@ -13,7 +13,15 @@ import {
 } from "../../store/campaignStore";
 import { logger } from "@/utils/logger";
 
-export type ContentSection = "sessions" | "factions" | "lore" | "gm-notes";
+export type ContentSection =
+  | "sessions"
+  | "factions"
+  | "lore"
+  | "gm-notes"
+  | "monsters"
+  | "locations"
+  | "maps_art"
+  | "pcs";
 
 interface CampaignContentEditorModalProps {
   isOpen: boolean;
@@ -54,6 +62,31 @@ const SECTION_CONFIG: Record<
     icon: "FileEdit",
     color: "rose",
     placeholder: "Write private GM notes, plot ideas, or reminders...",
+  },
+  monsters: {
+    title: "Monster",
+    icon: "Skull",
+    color: "orange",
+    placeholder: "Describe this monster - stats, abilities, lore, tactics...",
+  },
+  locations: {
+    title: "Location",
+    icon: "MapPin",
+    color: "emerald",
+    placeholder: "Describe this location - geography, features, inhabitants...",
+  },
+  maps_art: {
+    title: "Map/Art",
+    icon: "Image",
+    color: "cyan",
+    placeholder: "Add notes or descriptions for this map or artwork...",
+  },
+  pcs: {
+    title: "Character Note",
+    icon: "User",
+    color: "emerald",
+    placeholder:
+      "Add character backstory, notes, or other character information...",
   },
 };
 

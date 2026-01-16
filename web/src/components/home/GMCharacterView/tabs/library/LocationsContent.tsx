@@ -7,6 +7,10 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import {
+  updateLocation,
+  UpdateLocationRequest,
+} from "../../../../../api/locations";
 
 interface Location {
   id: string;
@@ -20,6 +24,7 @@ interface Location {
   factions?: any;
   npcs?: any;
   encounters?: any;
+  treasure?: any;
   map?: string;
   ai_generated?: boolean;
   created_at: string;
@@ -41,6 +46,7 @@ export default function LocationsContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
 
   const {
     filteredItems,
@@ -68,6 +74,18 @@ export default function LocationsContent({
       } catch (err) {
         logger.error("Failed to delete location:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateLocationRequest) => {
+    try {
+      await updateLocation(id, updates);
+      await refresh();
+      setEditingLocation(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update location:", err);
+      throw err;
     }
   };
 
@@ -134,11 +152,23 @@ export default function LocationsContent({
         </div>
       </ContentListLayout>
 
-      {viewingItem && (
+      {viewingItem && !editingLocation && (
         <LocationDetailModal
           location={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingLocation(viewingItem)}
+        />
+      )}
+
+      {editingLocation && (
+        <EditLocationModal
+          location={editingLocation}
+          onClose={() => {
+            setEditingLocation(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -161,16 +191,21 @@ interface LocationDetailModalProps {
   location: Location;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 function LocationDetailModal({
   location,
   onClose,
   onDelete,
+  onEdit,
 }: LocationDetailModalProps) {
   let features: any[] = [];
   let secrets: any[] = [];
+  let factions: any[] = [];
   let npcs: any[] = [];
+  let encounters: any[] = [];
+  let treasure: any[] = [];
 
   try {
     features = location.features
@@ -183,10 +218,25 @@ function LocationDetailModal({
         ? JSON.parse(location.secrets)
         : location.secrets
       : [];
+    factions = location.factions
+      ? typeof location.factions === "string"
+        ? JSON.parse(location.factions)
+        : location.factions
+      : [];
     npcs = location.npcs
       ? typeof location.npcs === "string"
         ? JSON.parse(location.npcs)
         : location.npcs
+      : [];
+    encounters = location.encounters
+      ? typeof location.encounters === "string"
+        ? JSON.parse(location.encounters)
+        : location.encounters
+      : [];
+    treasure = location.treasure
+      ? typeof location.treasure === "string"
+        ? JSON.parse(location.treasure)
+        : location.treasure
       : [];
   } catch (err) {
     logger.error("Failed to parse location data:", err);
@@ -201,6 +251,7 @@ function LocationDetailModal({
       title={location.name}
       subtitle={[location.type, location.theme].filter(Boolean).join(" • ")}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         {location.description && (
@@ -272,6 +323,64 @@ function LocationDetailModal({
           </div>
         )}
 
+        {factions.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Factions Present
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {factions.map((faction: any, i: number) => (
+                <span
+                  key={i}
+                  className="px-3 py-1 bg-indigo-500/10 text-indigo-400 rounded-full text-sm"
+                >
+                  {typeof faction === "string" ? faction : faction.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {encounters.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Potential Encounters
+            </h4>
+            <ul className="space-y-2">
+              {encounters.map((enc: any, i: number) => (
+                <li
+                  key={i}
+                  className="text-text bg-background p-3 rounded-lg border border-border"
+                >
+                  {typeof enc === "string" ? enc : enc.description || enc.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {treasure.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Treasure
+            </h4>
+            <div className="space-y-2">
+              {treasure.map((t: any, i: number) => (
+                <div
+                  key={i}
+                  className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/30"
+                >
+                  <p className="text-amber-400">
+                    {typeof t === "string"
+                      ? t
+                      : `${t.name || t.item}${t.quantity ? ` (${t.quantity})` : ""}${t.found ? " - Found" : ""}`}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {location.map && (
           <div>
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
@@ -285,6 +394,140 @@ function LocationDetailModal({
           </div>
         )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditLocationModalProps {
+  location: Location;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateLocationRequest) => Promise<void>;
+}
+
+function EditLocationModal({
+  location,
+  onClose,
+  onSave,
+}: EditLocationModalProps) {
+  const [formData, setFormData] = useState({
+    name: location.name,
+    type: location.type,
+    theme: location.theme || "",
+    description: location.description || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateLocationRequest = {
+        name: formData.name,
+        location_type: formData.type,
+        description: formData.description || undefined,
+      };
+
+      await onSave(location.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save location");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="MapPin"
+      iconColor="cyan"
+      title="Edit Location"
+      subtitle={location.name}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Name *
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Type *
+          </label>
+          <input
+            type="text"
+            value={formData.type}
+            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Town, Dungeon, Forest, etc."
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Theme
+          </label>
+          <input
+            type="text"
+            value={formData.theme}
+            onChange={(e) =>
+              setFormData({ ...formData, theme: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Gothic, Tropical, Ancient..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={5}
+            placeholder="Describe the location..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

@@ -8,19 +8,17 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import {
+  updateMonster,
+  UpdateMonsterRequest,
+} from "../../../../../api/monsters";
 
 interface Monster {
   id: string;
   name: string;
   campaign_id?: string | null;
   cr: number | string;
-  type?: string;
-  size?: string;
-  alignment?: string;
-  hp?: number;
-  ac?: number;
   lore?: string;
-  abilities?: string;
   tactics?: string;
   stats?: any;
   ai_generated?: boolean;
@@ -43,6 +41,7 @@ export default function MonstersContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingMonster, setEditingMonster] = useState<Monster | null>(null);
 
   const {
     filteredItems,
@@ -60,7 +59,7 @@ export default function MonstersContent({
     contentType: "monsters",
     campaignId,
     showCampaignFilter,
-    searchFields: ["name", "type", "lore"],
+    searchFields: ["name", "lore"],
   });
 
   const handleDelete = async (monster: Monster) => {
@@ -70,6 +69,18 @@ export default function MonstersContent({
       } catch (err) {
         logger.error("Failed to delete monster:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateMonsterRequest) => {
+    try {
+      await updateMonster(id, updates);
+      await refresh();
+      setEditingMonster(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update monster:", err);
+      throw err;
     }
   };
 
@@ -113,56 +124,83 @@ export default function MonstersContent({
         hasItems={filteredItems.length > 0}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredItems.map((monster) => (
-            <ContentCard
-              key={monster.id}
-              title={monster.name}
-              preview={getCRDisplay(monster.cr)}
-              icon="Skull"
-              iconColor="orange"
-              layout="grid"
-              badges={[
-                ...(monster.type ? [{ label: monster.type }] : []),
-                ...(monster.size ? [{ label: monster.size }] : []),
-                ...(monster.hp
-                  ? [
-                      {
-                        label: `HP ${monster.hp}`,
-                        color: "text-orange-400",
-                        bgColor: "bg-orange-500/10",
-                      },
-                    ]
-                  : []),
-                ...(monster.ac
-                  ? [
-                      {
-                        label: `AC ${monster.ac}`,
-                        color: "text-blue-400",
-                        bgColor: "bg-blue-500/10",
-                      },
-                    ]
-                  : []),
-              ]}
-              onClick={() => setViewingItem(monster)}
-              onDelete={() => handleDelete(monster)}
-              onAssign={() =>
-                setAssignModalItem({
-                  id: monster.id,
-                  name: monster.name,
-                  currentCampaignId: monster.campaign_id,
-                })
-              }
-            />
-          ))}
+          {filteredItems.map((monster) => {
+            // Parse stats for card display
+            let stats: any = {};
+            try {
+              stats = monster.stats
+                ? typeof monster.stats === "string"
+                  ? JSON.parse(monster.stats)
+                  : monster.stats
+                : {};
+            } catch (err) {
+              logger.error("Failed to parse monster stats:", err);
+            }
+
+            return (
+              <ContentCard
+                key={monster.id}
+                title={monster.name}
+                preview={getCRDisplay(monster.cr)}
+                icon="Skull"
+                iconColor="orange"
+                layout="grid"
+                badges={[
+                  ...(stats.type ? [{ label: stats.type }] : []),
+                  ...(stats.size ? [{ label: stats.size }] : []),
+                  ...(stats.hp
+                    ? [
+                        {
+                          label: `HP ${stats.hp}`,
+                          color: "text-orange-400",
+                          bgColor: "bg-orange-500/10",
+                        },
+                      ]
+                    : []),
+                  ...(stats.ac
+                    ? [
+                        {
+                          label: `AC ${stats.ac}`,
+                          color: "text-blue-400",
+                          bgColor: "bg-blue-500/10",
+                        },
+                      ]
+                    : []),
+                ]}
+                onClick={() => setViewingItem(monster)}
+                onDelete={() => handleDelete(monster)}
+                onAssign={() =>
+                  setAssignModalItem({
+                    id: monster.id,
+                    name: monster.name,
+                    currentCampaignId: monster.campaign_id,
+                  })
+                }
+              />
+            );
+          })}
         </div>
       </ContentListLayout>
 
       {/* Detail Modal */}
-      {viewingItem && (
+      {viewingItem && !editingMonster && (
         <MonsterDetailModal
           monster={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingMonster(viewingItem)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingMonster && (
+        <EditMonsterModal
+          monster={editingMonster}
+          onClose={() => {
+            setEditingMonster(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -187,16 +225,30 @@ interface MonsterDetailModalProps {
   monster: Monster;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 function MonsterDetailModal({
   monster,
   onClose,
   onDelete,
+  onEdit,
 }: MonsterDetailModalProps) {
   const getCRDisplay = (cr: number | string) => `CR ${cr}`;
 
-  const subtitle = [getCRDisplay(monster.cr), monster.type]
+  // Parse stats JSON
+  let stats: any = {};
+  try {
+    stats = monster.stats
+      ? typeof monster.stats === "string"
+        ? JSON.parse(monster.stats)
+        : monster.stats
+      : {};
+  } catch (err) {
+    logger.error("Failed to parse monster stats:", err);
+  }
+
+  const subtitle = [getCRDisplay(monster.cr), stats.type]
     .filter(Boolean)
     .join(" • ");
 
@@ -209,43 +261,66 @@ function MonsterDetailModal({
       title={monster.name}
       subtitle={subtitle || undefined}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         {/* Stats Row */}
         <div className="flex flex-wrap gap-3">
-          {monster.hp && (
+          {stats.hp && (
             <div className="px-4 py-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
               <p className="text-xs text-text-muted">Hit Points</p>
               <p className="text-lg font-semibold text-orange-400">
-                {monster.hp}
+                {stats.hp}
               </p>
             </div>
           )}
-          {monster.ac && (
+          {stats.ac && (
             <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <p className="text-xs text-text-muted">Armor Class</p>
-              <p className="text-lg font-semibold text-blue-400">
-                {monster.ac}
-              </p>
+              <p className="text-lg font-semibold text-blue-400">{stats.ac}</p>
             </div>
           )}
-          {monster.size && (
+          {stats.size && (
             <div className="px-4 py-2 bg-background border border-border rounded-lg">
               <p className="text-xs text-text-muted">Size</p>
               <p className="text-lg font-semibold text-text capitalize">
-                {monster.size}
+                {stats.size}
               </p>
             </div>
           )}
-          {monster.alignment && (
+          {stats.type && (
+            <div className="px-4 py-2 bg-background border border-border rounded-lg">
+              <p className="text-xs text-text-muted">Type</p>
+              <p className="text-lg font-semibold text-text capitalize">
+                {stats.type}
+              </p>
+            </div>
+          )}
+          {stats.alignment && (
             <div className="px-4 py-2 bg-background border border-border rounded-lg">
               <p className="text-xs text-text-muted">Alignment</p>
               <p className="text-lg font-semibold text-text capitalize">
-                {monster.alignment}
+                {stats.alignment}
               </p>
             </div>
           )}
         </div>
+
+        {/* Full Stats Block */}
+        {stats.stats_block && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Statistics
+            </h4>
+            <div className="prose prose-invert prose-tavern max-w-none bg-background p-4 rounded-lg border border-border">
+              <ReactMarkdown>
+                {typeof stats.stats_block === "string"
+                  ? stats.stats_block.replace(/\\n/g, "\n")
+                  : JSON.stringify(stats.stats_block, null, 2)}
+              </ReactMarkdown>
+            </div>
+          </div>
+        )}
 
         {/* Lore */}
         {monster.lore && (
@@ -261,17 +336,82 @@ function MonsterDetailModal({
           </div>
         )}
 
+        {/* Speed and Senses */}
+        {(stats.speed || stats.senses) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats.speed && (
+              <div>
+                <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+                  Speed
+                </h4>
+                <p className="text-text">
+                  {typeof stats.speed === "string"
+                    ? stats.speed
+                    : typeof stats.speed === "object"
+                      ? Object.entries(stats.speed)
+                          .map(([key, value]) => `${key} ${value} ft.`)
+                          .join(", ")
+                      : JSON.stringify(stats.speed)}
+                </p>
+              </div>
+            )}
+            {stats.senses && (
+              <div>
+                <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+                  Senses
+                </h4>
+                <p className="text-text">
+                  {typeof stats.senses === "string"
+                    ? stats.senses
+                    : typeof stats.senses === "object"
+                      ? Object.entries(stats.senses)
+                          .map(([key, value]) => `${key} ${value} ft.`)
+                          .join(", ")
+                      : JSON.stringify(stats.senses)}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Abilities */}
-        {monster.abilities && (
+        {stats.abilities && (
           <div>
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
               Abilities
             </h4>
-            <div className="prose prose-invert prose-tavern max-w-none">
-              <ReactMarkdown>
-                {monster.abilities.replace(/\\n/g, "\n")}
-              </ReactMarkdown>
-            </div>
+            {typeof stats.abilities === "object" &&
+            !Array.isArray(stats.abilities) ? (
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                {Object.entries(stats.abilities).map(
+                  ([ability, score]: [string, any]) => (
+                    <div
+                      key={ability}
+                      className="bg-background p-3 rounded-lg border border-border text-center"
+                    >
+                      <div className="text-xs text-text-muted uppercase font-semibold">
+                        {ability}
+                      </div>
+                      <div className="text-2xl font-bold text-text">
+                        {score}
+                      </div>
+                      <div className="text-xs text-text-muted">
+                        {Math.floor((score - 10) / 2) >= 0 ? "+" : ""}
+                        {Math.floor((score - 10) / 2)}
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <div className="prose prose-invert prose-tavern max-w-none">
+                <ReactMarkdown>
+                  {typeof stats.abilities === "string"
+                    ? stats.abilities.replace(/\\n/g, "\n")
+                    : JSON.stringify(stats.abilities, null, 2)}
+                </ReactMarkdown>
+              </div>
+            )}
           </div>
         )}
 
@@ -289,10 +429,126 @@ function MonsterDetailModal({
           </div>
         )}
 
-        {!monster.lore && !monster.abilities && !monster.tactics && (
-          <p className="text-text-muted italic">No additional details</p>
-        )}
+        {!monster.lore &&
+          !stats.abilities &&
+          !monster.tactics &&
+          !stats.stats_block && (
+            <p className="text-text-muted italic">No additional details</p>
+          )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditMonsterModalProps {
+  monster: Monster;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateMonsterRequest) => Promise<void>;
+}
+
+function EditMonsterModal({ monster, onClose, onSave }: EditMonsterModalProps) {
+  const [formData, setFormData] = useState({
+    name: monster.name,
+    lore: monster.lore || "",
+    tactics: monster.tactics || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateMonsterRequest = {
+        name: formData.name,
+        lore: formData.lore || undefined,
+        tactics: formData.tactics || undefined,
+      };
+
+      await onSave(monster.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save monster");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="Skull"
+      iconColor="orange"
+      title="Edit Monster"
+      subtitle={monster.name}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Name *
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Lore
+          </label>
+          <textarea
+            value={formData.lore}
+            onChange={(e) => setFormData({ ...formData, lore: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={5}
+            placeholder="Describe the monster's background and lore..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Tactics
+          </label>
+          <textarea
+            value={formData.tactics}
+            onChange={(e) =>
+              setFormData({ ...formData, tactics: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={5}
+            placeholder="Describe combat tactics and strategy..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

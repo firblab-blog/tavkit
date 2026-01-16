@@ -1,41 +1,37 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import Icon from "../../../../common/Icon";
-import { authFetch } from "../../../../../utils/authFetch";
-import { getApiUrl } from "../../../../../config/api";
+import {
+  useCampaignStore,
+  type CampaignContent,
+} from "../../../../../store/campaignStore";
 import { logger } from "../../../../../utils/logger";
-import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
+import CampaignContentEditorModal from "../../../../campaign/CampaignContentEditorModal";
+import {
+  updateCampaignContent,
+  UpdateCampaignContentRequest,
+} from "../../../../../api/campaignContent";
 
 interface MonstersContentProps {
   campaignId: string;
 }
 
-interface Monster {
-  id: string;
-  name: string;
-  cr: number | string;
-  type?: string;
-  size?: string;
-  alignment?: string;
-  hp?: number;
-  ac?: number;
-  lore?: string;
-  abilities?: string;
-  tactics?: string;
-  created_at: string;
-  updated_at: string;
-}
-
 /**
- * MonstersContent - Display monsters from the campaign.
+ * MonstersContent - Display monsters from the campaign using campaign_content system.
  */
 export default function MonstersContent({ campaignId }: MonstersContentProps) {
-  const { openGenerator } = useGeneratorModalStore();
-  const [monsters, setMonsters] = useState<Monster[]>([]);
+  const { fetchCampaignContent, deleteCampaignContent, createCampaignContent } =
+    useCampaignStore();
+
+  const [monsters, setMonsters] = useState<CampaignContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewingMonster, setViewingMonster] = useState<Monster | null>(null);
+  const [viewingMonster, setViewingMonster] = useState<CampaignContent | null>(
+    null,
+  );
+  const [editingItem, setEditingItem] = useState<CampaignContent | null>(null);
+  const [showEditorModal, setShowEditorModal] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -43,12 +39,8 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
       setLoading(true);
       setError(null);
       try {
-        const response = await authFetch(
-          getApiUrl(`/monsters?campaign_id=${campaignId}`),
-        );
-        if (!response.ok) throw new Error("Failed to fetch monsters");
-        const data = await response.json();
-        setMonsters(Array.isArray(data) ? data : []);
+        const content = await fetchCampaignContent(campaignId, "monsters");
+        setMonsters(content);
       } catch (err) {
         setError("Failed to load monsters");
         logger.error("Failed to load monsters:", err);
@@ -57,26 +49,31 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
       }
     };
     loadMonsters();
-  }, [campaignId]);
+  }, [campaignId, fetchCampaignContent]);
+
+  const refreshContent = useCallback(async () => {
+    try {
+      const content = await fetchCampaignContent(campaignId, "monsters");
+      setMonsters(content);
+    } catch (err) {
+      logger.error("Failed to refresh content:", err);
+    }
+  }, [campaignId, fetchCampaignContent]);
 
   const filteredMonsters = useMemo(() => {
     if (!searchQuery) return monsters;
     const query = searchQuery.toLowerCase();
     return monsters.filter(
       (monster) =>
-        monster.name.toLowerCase().includes(query) ||
-        monster.type?.toLowerCase().includes(query) ||
-        monster.lore?.toLowerCase().includes(query),
+        monster.title.toLowerCase().includes(query) ||
+        monster.content?.toLowerCase().includes(query),
     );
   }, [monsters, searchQuery]);
 
-  const handleDelete = async (monster: Monster) => {
-    if (window.confirm(`Delete "${monster.name}"? This cannot be undone.`)) {
+  const handleDelete = async (monster: CampaignContent) => {
+    if (window.confirm(`Delete "${monster.title}"? This cannot be undone.`)) {
       try {
-        const response = await authFetch(getApiUrl(`/monsters/${monster.id}`), {
-          method: "DELETE",
-        });
-        if (!response.ok) throw new Error("Failed to delete monster");
+        await deleteCampaignContent(campaignId, monster.id);
         setMonsters((prev) => prev.filter((m) => m.id !== monster.id));
         if (viewingMonster?.id === monster.id) {
           setViewingMonster(null);
@@ -84,6 +81,21 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
       } catch (err) {
         logger.error("Failed to delete monster:", err);
       }
+    }
+  };
+
+  const handleSave = async (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => {
+    try {
+      await updateCampaignContent(campaignId, contentId, updates);
+      await refreshContent();
+      setEditingItem(null);
+      setViewingMonster(null);
+    } catch (err) {
+      logger.error("Failed to update monster:", err);
+      throw err;
     }
   };
 
@@ -111,29 +123,16 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
         content = content.replace(/\x00/g, "");
       }
 
-      // Create monster via API
-      const response = await authFetch(getApiUrl("/monsters"), {
-        method: "POST",
-        body: JSON.stringify({
-          name: file.name.replace(/\.[^/.]+$/, ""),
-          campaign_id: campaignId,
-          cr: 1,
-          stats: {},
-          lore: content,
-          ai_generated: false,
-        }),
+      await createCampaignContent(campaignId, {
+        section: "monsters",
+        subsection: null,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        content: content,
+        type: "imported",
+        file_name: file.name,
       });
 
-      if (!response.ok) throw new Error("Failed to import monster");
-
-      // Refresh monsters list
-      const refreshResponse = await authFetch(
-        getApiUrl(`/monsters?campaign_id=${campaignId}`),
-      );
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json();
-        setMonsters(Array.isArray(data) ? data : []);
-      }
+      await refreshContent();
     } catch (error) {
       logger.error("File upload failed:", error);
       alert("Failed to import file");
@@ -141,14 +140,6 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
       setUploading(false);
       event.target.value = "";
     }
-  };
-
-  const getCRDisplay = (cr: number | string) => {
-    if (typeof cr === "number") {
-      if (cr < 1) return `CR ${cr}`;
-      return `CR ${cr}`;
-    }
-    return `CR ${cr}`;
   };
 
   return (
@@ -175,7 +166,7 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
             className="hidden"
             onChange={handleFileUpload}
             disabled={uploading}
-            accept=".txt,.md,.markdown,.pdf"
+            accept=".txt,.md,.markdown,.pdf,image/*,.jpg,.jpeg,.png,.gif,.webp"
           />
           <label
             htmlFor="monsters-file-upload"
@@ -185,7 +176,7 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
             {uploading ? "Importing..." : "Import File"}
           </label>
           <button
-            onClick={() => openGenerator("monster")}
+            onClick={() => setShowEditorModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm"
           >
             <Icon name="Plus" className="w-4 h-4" />
@@ -223,13 +214,15 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
               ? "Try adjusting your search."
               : "Add custom monsters, bosses, and creatures."}
           </p>
-          <button
-            onClick={() => openGenerator("monster")}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm mx-auto"
-          >
-            <Icon name="Plus" className="w-4 h-4" />
-            Add Monster
-          </button>
+          {!searchQuery && (
+            <button
+              onClick={() => setShowEditorModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm mx-auto"
+            >
+              <Icon name="Plus" className="w-4 h-4" />
+              Add Monster
+            </button>
+          )}
         </div>
       )}
 
@@ -249,11 +242,13 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
                   </div>
                   <div className="min-w-0">
                     <h4 className="text-text font-medium truncate">
-                      {monster.name}
+                      {monster.title}
                     </h4>
-                    <p className="text-text-muted text-sm">
-                      {getCRDisplay(monster.cr)}
-                    </p>
+                    {monster.subsection && (
+                      <p className="text-text-muted text-sm">
+                        {monster.subsection}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <button
@@ -267,65 +262,68 @@ export default function MonstersContent({ campaignId }: MonstersContentProps) {
                 </button>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {monster.type && (
-                  <span className="px-2 py-1 bg-background rounded-lg text-xs text-text-muted capitalize">
-                    {monster.type}
-                  </span>
-                )}
-                {monster.size && (
-                  <span className="px-2 py-1 bg-background rounded-lg text-xs text-text-muted capitalize">
-                    {monster.size}
-                  </span>
-                )}
-                {monster.hp && (
-                  <span className="px-2 py-1 bg-orange-500/10 rounded-lg text-xs text-orange-400">
-                    HP {monster.hp}
-                  </span>
-                )}
-                {monster.ac && (
-                  <span className="px-2 py-1 bg-blue-500/10 rounded-lg text-xs text-blue-400">
-                    AC {monster.ac}
-                  </span>
-                )}
-              </div>
+              {monster.content && (
+                <p className="text-text-muted text-sm line-clamp-2">
+                  {monster.content.substring(0, 150)}
+                  {monster.content.length > 150 ? "..." : ""}
+                </p>
+              )}
             </div>
           ))}
         </div>
       )}
 
       {/* View Modal */}
-      {viewingMonster && (
+      {viewingMonster && !editingItem && (
         <MonsterDetailModal
           monster={viewingMonster}
           onClose={() => setViewingMonster(null)}
           onDelete={() => handleDelete(viewingMonster)}
+          onEdit={() => setEditingItem(viewingMonster)}
         />
       )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <EditMonsterModal
+          monster={editingItem}
+          onClose={() => {
+            setEditingItem(null);
+            setViewingMonster(null);
+          }}
+          onSave={handleSave}
+        />
+      )}
+
+      {/* New Monster Editor Modal */}
+      <CampaignContentEditorModal
+        isOpen={showEditorModal}
+        campaignId={campaignId}
+        section="monsters"
+        onClose={() => setShowEditorModal(false)}
+        onSaved={async () => {
+          await refreshContent();
+          setShowEditorModal(false);
+        }}
+      />
     </div>
   );
 }
 
 // Monster Detail Modal
 interface MonsterDetailModalProps {
-  monster: Monster;
+  monster: CampaignContent;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 function MonsterDetailModal({
   monster,
   onClose,
   onDelete,
+  onEdit,
 }: MonsterDetailModalProps) {
-  const getCRDisplay = (cr: number | string) => {
-    if (typeof cr === "number") {
-      if (cr < 1) return `CR ${cr}`;
-      return `CR ${cr}`;
-    }
-    return `CR ${cr}`;
-  };
-
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
@@ -340,17 +338,11 @@ function MonsterDetailModal({
             </div>
             <div>
               <h3 className="text-lg sm:text-xl font-semibold text-text">
-                {monster.name}
+                {monster.title}
               </h3>
-              <div className="flex items-center gap-2 text-sm text-text-muted">
-                <span>{getCRDisplay(monster.cr)}</span>
-                {monster.type && (
-                  <>
-                    <span>•</span>
-                    <span className="capitalize">{monster.type}</span>
-                  </>
-                )}
-              </div>
+              {monster.subsection && (
+                <p className="text-sm text-text-muted">{monster.subsection}</p>
+              )}
             </div>
           </div>
           <button
@@ -363,87 +355,14 @@ function MonsterDetailModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {/* Stats Row */}
-          <div className="flex flex-wrap gap-3 mb-6">
-            {monster.hp && (
-              <div className="px-4 py-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                <p className="text-xs text-text-muted">Hit Points</p>
-                <p className="text-lg font-semibold text-orange-400">
-                  {monster.hp}
-                </p>
-              </div>
-            )}
-            {monster.ac && (
-              <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <p className="text-xs text-text-muted">Armor Class</p>
-                <p className="text-lg font-semibold text-blue-400">
-                  {monster.ac}
-                </p>
-              </div>
-            )}
-            {monster.size && (
-              <div className="px-4 py-2 bg-background border border-border rounded-lg">
-                <p className="text-xs text-text-muted">Size</p>
-                <p className="text-lg font-semibold text-text capitalize">
-                  {monster.size}
-                </p>
-              </div>
-            )}
-            {monster.alignment && (
-              <div className="px-4 py-2 bg-background border border-border rounded-lg">
-                <p className="text-xs text-text-muted">Alignment</p>
-                <p className="text-lg font-semibold text-text capitalize">
-                  {monster.alignment}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Lore */}
-          {monster.lore && (
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
-                Lore
-              </h4>
-              <div className="prose prose-invert prose-tavern max-w-none">
-                <ReactMarkdown>
-                  {monster.lore.replace(/\\n/g, "\n")}
-                </ReactMarkdown>
-              </div>
+          {monster.content ? (
+            <div className="prose prose-invert prose-tavern max-w-none">
+              <ReactMarkdown>
+                {monster.content.replace(/\\n/g, "\n")}
+              </ReactMarkdown>
             </div>
-          )}
-
-          {/* Abilities */}
-          {monster.abilities && (
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
-                Abilities
-              </h4>
-              <div className="prose prose-invert prose-tavern max-w-none">
-                <ReactMarkdown>
-                  {monster.abilities.replace(/\\n/g, "\n")}
-                </ReactMarkdown>
-              </div>
-            </div>
-          )}
-
-          {/* Tactics */}
-          {monster.tactics && (
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
-                Tactics
-              </h4>
-              <div className="prose prose-invert prose-tavern max-w-none">
-                <ReactMarkdown>
-                  {monster.tactics.replace(/\\n/g, "\n")}
-                </ReactMarkdown>
-              </div>
-            </div>
-          )}
-
-          {/* No content fallback */}
-          {!monster.lore && !monster.abilities && !monster.tactics && (
-            <p className="text-text-muted italic">No additional details</p>
+          ) : (
+            <p className="text-text-muted italic">No content yet</p>
           )}
         </div>
 
@@ -456,13 +375,152 @@ function MonsterDetailModal({
             <Icon name="Trash2" className="w-4 h-4" />
             Delete
           </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onEdit}
+              className="px-4 py-2 text-orange-400 hover:bg-orange-500/10 rounded-lg transition-colors text-sm flex items-center gap-2"
+            >
+              <Icon name="Edit" className="w-4 h-4" />
+              Edit
+            </button>
+            <button
+              onClick={onClose}
+              className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface EditMonsterModalProps {
+  monster: CampaignContent;
+  onClose: () => void;
+  onSave: (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => Promise<void>;
+}
+
+function EditMonsterModal({ monster, onClose, onSave }: EditMonsterModalProps) {
+  const [formData, setFormData] = useState({
+    title: monster.title,
+    content: monster.content || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateCampaignContentRequest = {
+        title: formData.title,
+        content: formData.content || undefined,
+      };
+
+      await onSave(monster.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save monster");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-background-panel border border-border rounded-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+              <Icon name="Skull" className="w-5 h-5 text-orange-400" />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                Edit Monster
+              </h3>
+              <p className="text-sm text-text-muted">{monster.title}</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text"
           >
-            Close
+            <Icon name="X" className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Content */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4"
+        >
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Title *
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Content
+            </label>
+            <textarea
+              value={formData.content}
+              onChange={(e) =>
+                setFormData({ ...formData, content: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary font-mono text-sm"
+              rows={20}
+              placeholder="Monster description, stats, abilities... (Markdown supported)"
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Supports Markdown formatting
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

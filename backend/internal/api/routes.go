@@ -411,6 +411,9 @@ func SetupRoutes(
 			campaigns.DELETE("/:id/members/:userId", campaignMembersHandler.RemoveMember) // GM removes member
 			campaigns.DELETE("/:id/leave", campaignMembersHandler.LeaveCampaign)          // Player leaves campaign
 
+			// Campaign summary routes
+			campaigns.GET("/:id/summary", campaignHandler.GetCampaignSummary)
+
 			// Chunked summary generation routes (async with progress tracking)
 			campaigns.POST("/:id/summary/generate", campaignHandler.StartChunkedSummaryGeneration)
 			campaigns.GET("/:id/summary/job", campaignHandler.GetActiveSummaryJob)

@@ -5,6 +5,10 @@ import {
   type CampaignContent,
 } from "../../../../../store/campaignStore";
 import { logger } from "../../../../../utils/logger";
+import {
+  updateCampaignContent,
+  UpdateCampaignContentRequest,
+} from "../../../../../api/campaignContent";
 
 interface MapsArtContentProps {
   campaignId: string;
@@ -26,6 +30,9 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [mediaFilter, setMediaFilter] = useState<MediaType>("all");
   const [viewingMedia, setViewingMedia] = useState<CampaignContent | null>(
+    null,
+  );
+  const [editingMedia, setEditingMedia] = useState<CampaignContent | null>(
     null,
   );
   const [uploading, setUploading] = useState(false);
@@ -109,6 +116,21 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
     }
   };
 
+  const handleSave = async (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => {
+    try {
+      await updateCampaignContent(campaignId, contentId, updates);
+      await refreshMedia();
+      setEditingMedia(null);
+      setViewingMedia(null);
+    } catch (err) {
+      logger.error("Failed to update media:", err);
+      throw err;
+    }
+  };
+
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
     section: "maps" | "art",
@@ -151,12 +173,6 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
       setUploading(false);
       event.target.value = "";
     }
-  };
-
-  const isImageFile = (filename?: string) => {
-    if (!filename) return false;
-    const ext = filename.toLowerCase().split(".").pop();
-    return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext || "");
   };
 
   return (
@@ -270,24 +286,68 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
               }`}
             >
               {/* Thumbnail area */}
-              <div className="aspect-square bg-background flex items-center justify-center">
-                {isImageFile(media.file_name) ? (
-                  <div className="w-full h-full flex items-center justify-center text-text-muted">
-                    <Icon
-                      name={media.mediaType === "maps" ? "Map" : "Image"}
-                      className="w-12 h-12"
-                    />
-                  </div>
-                ) : (
-                  <Icon
-                    name={media.mediaType === "maps" ? "Map" : "Image"}
-                    className={`w-12 h-12 ${
-                      media.mediaType === "maps"
-                        ? "text-teal-400"
-                        : "text-pink-400"
-                    }`}
-                  />
-                )}
+              <div className="aspect-square bg-background flex items-center justify-center overflow-hidden">
+                {(() => {
+                  // Check if content is image data (with or without data URL prefix)
+                  const isDataUrl = media.content?.startsWith("data:image/");
+                  const isRawBase64 =
+                    !isDataUrl &&
+                    media.content &&
+                    media.content.length > 100 &&
+                    !media.content.includes(" ") &&
+                    (media.file_name?.match(
+                      /\.(jpg|jpeg|png|gif|webp|svg)$/i,
+                    ) ||
+                      media.content.startsWith("/9j/") ||
+                      media.content.startsWith("iVBORw") ||
+                      media.content.startsWith("R0lGOD"));
+
+                  if (isDataUrl) {
+                    return (
+                      <img
+                        src={media.content}
+                        alt={media.title}
+                        className="w-full h-full object-cover"
+                      />
+                    );
+                  } else if (isRawBase64) {
+                    const ext = media.file_name
+                      ?.split(".")
+                      .pop()
+                      ?.toLowerCase();
+                    let mimeType = "image/png";
+                    if (
+                      media.content?.startsWith("/9j/") ||
+                      ext === "jpg" ||
+                      ext === "jpeg"
+                    )
+                      mimeType = "image/jpeg";
+                    else if (
+                      media.content?.startsWith("R0lGOD") ||
+                      ext === "gif"
+                    )
+                      mimeType = "image/gif";
+                    else if (ext === "webp") mimeType = "image/webp";
+                    return (
+                      <img
+                        src={`data:${mimeType};base64,${media.content}`}
+                        alt={media.title}
+                        className="w-full h-full object-cover"
+                      />
+                    );
+                  } else {
+                    return (
+                      <Icon
+                        name={media.mediaType === "maps" ? "Map" : "Image"}
+                        className={`w-12 h-12 ${
+                          media.mediaType === "maps"
+                            ? "text-teal-400"
+                            : "text-pink-400"
+                        }`}
+                      />
+                    );
+                  }
+                })()}
               </div>
               {/* Info */}
               <div className="p-3">
@@ -317,7 +377,7 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
       )}
 
       {/* View Modal */}
-      {viewingMedia && (
+      {viewingMedia && !editingMedia && (
         <MediaDetailModal
           media={viewingMedia}
           onClose={() => setViewingMedia(null)}
@@ -326,6 +386,19 @@ export default function MapsArtContent({ campaignId }: MapsArtContentProps) {
               viewingMedia as CampaignContent & { mediaType: "maps" | "art" },
             )
           }
+          onEdit={() => setEditingMedia(viewingMedia)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingMedia && (
+        <EditMediaModal
+          media={editingMedia}
+          onClose={() => {
+            setEditingMedia(null);
+            setViewingMedia(null);
+          }}
+          onSave={handleSave}
         />
       )}
     </div>
@@ -337,10 +410,52 @@ interface MediaDetailModalProps {
   media: CampaignContent;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
-function MediaDetailModal({ media, onClose, onDelete }: MediaDetailModalProps) {
+function MediaDetailModal({
+  media,
+  onClose,
+  onDelete,
+  onEdit,
+}: MediaDetailModalProps) {
   const isMap = media.section === "maps" || (media as any).mediaType === "maps";
+
+  // Check if content is a base64 image data URL or raw base64 image data
+  const isBase64DataUrl = media.content?.startsWith("data:image/");
+
+  // Check if it's raw base64 data (long string without spaces, common image file extensions)
+  const isRawBase64Image =
+    !isBase64DataUrl &&
+    media.content &&
+    media.content.length > 100 &&
+    !media.content.includes(" ") &&
+    !media.content.includes("\n") &&
+    (media.file_name?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ||
+      // Base64 image data typically starts with these patterns
+      media.content.startsWith("/9j/") || // JPEG
+      media.content.startsWith("iVBORw") || // PNG
+      media.content.startsWith("R0lGOD")); // GIF
+
+  const isBase64Image = isBase64DataUrl || isRawBase64Image;
+
+  // Build the image src - add data URL prefix if missing
+  const getImageSrc = () => {
+    if (isBase64DataUrl) return media.content;
+    if (isRawBase64Image) {
+      // Detect image type from base64 header or file extension
+      const ext = media.file_name?.split(".").pop()?.toLowerCase();
+      let mimeType = "image/png"; // default
+      if (media.content?.startsWith("/9j/") || ext === "jpg" || ext === "jpeg")
+        mimeType = "image/jpeg";
+      else if (media.content?.startsWith("R0lGOD") || ext === "gif")
+        mimeType = "image/gif";
+      else if (ext === "webp") mimeType = "image/webp";
+      else if (ext === "svg") mimeType = "image/svg+xml";
+      return `data:${mimeType};base64,${media.content}`;
+    }
+    return media.content;
+  };
 
   return (
     <div
@@ -380,13 +495,21 @@ function MediaDetailModal({ media, onClose, onDelete }: MediaDetailModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-          {media.content ? (
-            <div className="text-center">
+          {isBase64Image ? (
+            // Render the image if it's a base64 data URL
+            <img
+              src={getImageSrc()}
+              alt={media.title}
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+          ) : media.content ? (
+            // Render text content if it's not an image
+            <div className="text-center max-w-2xl">
               <Icon
                 name={isMap ? "Map" : "Image"}
-                className={`w-24 h-24 mx-auto mb-4 ${isMap ? "text-teal-400" : "text-pink-400"}`}
+                className={`w-16 h-16 mx-auto mb-4 ${isMap ? "text-teal-400" : "text-pink-400"}`}
               />
-              <p className="text-text">{media.content}</p>
+              <p className="text-text whitespace-pre-wrap">{media.content}</p>
             </div>
           ) : (
             <div className="text-center">
@@ -413,13 +536,161 @@ function MediaDetailModal({ media, onClose, onDelete }: MediaDetailModalProps) {
             <Icon name="Trash2" className="w-4 h-4" />
             Delete
           </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onEdit}
+              className="px-4 py-2 text-teal-400 hover:bg-teal-500/10 rounded-lg transition-colors text-sm flex items-center gap-2"
+            >
+              <Icon name="Edit" className="w-4 h-4" />
+              Edit
+            </button>
+            <button
+              onClick={onClose}
+              className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface EditMediaModalProps {
+  media: CampaignContent;
+  onClose: () => void;
+  onSave: (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => Promise<void>;
+}
+
+function EditMediaModal({ media, onClose, onSave }: EditMediaModalProps) {
+  const [formData, setFormData] = useState({
+    title: media.title,
+    content: media.content || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isMap = media.section === "maps" || (media as any).mediaType === "maps";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateCampaignContentRequest = {
+        title: formData.title,
+        content: formData.content || undefined,
+      };
+
+      await onSave(media.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save media");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-background-panel border border-border rounded-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                isMap ? "bg-teal-500/10" : "bg-pink-500/10"
+              }`}
+            >
+              <Icon
+                name={isMap ? "Map" : "Image"}
+                className={`w-5 h-5 ${isMap ? "text-teal-400" : "text-pink-400"}`}
+              />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                Edit {isMap ? "Map" : "Art"}
+              </h3>
+              <p className="text-sm text-text-muted">{media.title}</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text"
           >
-            Close
+            <Icon name="X" className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Content */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4"
+        >
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Title *
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Content
+            </label>
+            <textarea
+              value={formData.content}
+              onChange={(e) =>
+                setFormData({ ...formData, content: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary font-mono text-sm"
+              rows={20}
+              placeholder="Add notes or description..."
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Supports Markdown formatting
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

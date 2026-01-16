@@ -7,6 +7,10 @@ import {
 } from "../../../../../store/campaignStore";
 import { logger } from "../../../../../utils/logger";
 import CampaignContentEditorModal from "../../../../campaign/CampaignContentEditorModal";
+import {
+  updateCampaignContent,
+  UpdateCampaignContentRequest,
+} from "../../../../../api/campaignContent";
 
 interface FactionsContentProps {
   campaignId: string;
@@ -26,6 +30,7 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
   const [viewingFaction, setViewingFaction] = useState<CampaignContent | null>(
     null,
   );
+  const [editingItem, setEditingItem] = useState<CampaignContent | null>(null);
   const [showEditorModal, setShowEditorModal] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -76,6 +81,21 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
       } catch (err) {
         logger.error("Failed to delete faction:", err);
       }
+    }
+  };
+
+  const handleSave = async (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => {
+    try {
+      await updateCampaignContent(campaignId, contentId, updates);
+      await refreshContent();
+      setEditingItem(null);
+      setViewingFaction(null);
+    } catch (err) {
+      logger.error("Failed to update faction:", err);
+      throw err;
     }
   };
 
@@ -245,11 +265,24 @@ export default function FactionsContent({ campaignId }: FactionsContentProps) {
       )}
 
       {/* View Modal */}
-      {viewingFaction && (
+      {viewingFaction && !editingItem && (
         <FactionDetailModal
           faction={viewingFaction}
           onClose={() => setViewingFaction(null)}
           onDelete={() => handleDelete(viewingFaction)}
+          onEdit={() => setEditingItem(viewingFaction)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <EditModal
+          item={editingItem}
+          onClose={() => {
+            setEditingItem(null);
+            setViewingFaction(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -269,12 +302,14 @@ interface FactionDetailModalProps {
   faction: CampaignContent;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 function FactionDetailModal({
   faction,
   onClose,
   onDelete,
+  onEdit,
 }: FactionDetailModalProps) {
   return (
     <div
@@ -324,13 +359,152 @@ function FactionDetailModal({
             <Icon name="Trash2" className="w-4 h-4" />
             Delete
           </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onEdit}
+              className="px-4 py-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors text-sm flex items-center gap-2"
+            >
+              <Icon name="Edit" className="w-4 h-4" />
+              Edit
+            </button>
+            <button
+              onClick={onClose}
+              className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface EditModalProps {
+  item: CampaignContent;
+  onClose: () => void;
+  onSave: (
+    contentId: string,
+    updates: UpdateCampaignContentRequest,
+  ) => Promise<void>;
+}
+
+function EditModal({ item, onClose, onSave }: EditModalProps) {
+  const [formData, setFormData] = useState({
+    title: item.title,
+    content: item.content || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateCampaignContentRequest = {
+        title: formData.title,
+        content: formData.content || undefined,
+      };
+
+      await onSave(item.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save faction");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-background-panel border border-border rounded-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <Icon name="Shield" className="w-5 h-5 text-purple-400" />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-text">
+                Edit Faction
+              </h3>
+              <p className="text-sm text-text-muted">{item.title}</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text"
           >
-            Close
+            <Icon name="X" className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Content */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4"
+        >
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Title *
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Content
+            </label>
+            <textarea
+              value={formData.content}
+              onChange={(e) =>
+                setFormData({ ...formData, content: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary font-mono text-sm"
+              rows={20}
+              placeholder="Faction details, use Markdown formatting..."
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Supports Markdown formatting
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

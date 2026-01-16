@@ -7,6 +7,7 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import { updateChase, UpdateChaseRequest } from "../../../../../api/chases";
 
 interface Chase {
   id: string;
@@ -16,6 +17,7 @@ interface Chase {
   terrain: string;
   difficulty: string;
   description?: string;
+  starting_distance?: number;
   setting?: string;
   participants?: any;
   starting_conditions?: string;
@@ -54,6 +56,7 @@ export default function ChasesContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingChase, setEditingChase] = useState<Chase | null>(null);
 
   const {
     filteredItems,
@@ -81,6 +84,18 @@ export default function ChasesContent({
       } catch (err) {
         logger.error("Failed to delete chase:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateChaseRequest) => {
+    try {
+      await updateChase(id, updates);
+      await refresh();
+      setEditingChase(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update chase:", err);
+      throw err;
     }
   };
 
@@ -160,11 +175,23 @@ export default function ChasesContent({
         </div>
       </ContentListLayout>
 
-      {viewingItem && (
+      {viewingItem && !editingChase && (
         <ChaseDetailModal
           chase={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingChase(viewingItem)}
+        />
+      )}
+
+      {editingChase && (
+        <EditChaseModal
+          chase={editingChase}
+          onClose={() => {
+            setEditingChase(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -187,12 +214,23 @@ interface ChaseDetailModalProps {
   chase: Chase;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
-function ChaseDetailModal({ chase, onClose, onDelete }: ChaseDetailModalProps) {
+function ChaseDetailModal({
+  chase,
+  onClose,
+  onDelete,
+  onEdit,
+}: ChaseDetailModalProps) {
   let obstacles: any[] = [];
   let complications: any[] = [];
   let shortcuts: any[] = [];
+  let participants: any[] = [];
+  let chasePhases: any[] = [];
+  let endingConditions: any[] = [];
+  let rewards: any = null;
+  let environmentalFactors: any[] = [];
 
   try {
     obstacles = chase.obstacles
@@ -210,6 +248,31 @@ function ChaseDetailModal({ chase, onClose, onDelete }: ChaseDetailModalProps) {
         ? JSON.parse(chase.shortcuts)
         : chase.shortcuts
       : [];
+    participants = chase.participants
+      ? typeof chase.participants === "string"
+        ? JSON.parse(chase.participants)
+        : chase.participants
+      : [];
+    chasePhases = chase.chase_phases
+      ? typeof chase.chase_phases === "string"
+        ? JSON.parse(chase.chase_phases)
+        : chase.chase_phases
+      : [];
+    endingConditions = chase.ending_conditions
+      ? typeof chase.ending_conditions === "string"
+        ? JSON.parse(chase.ending_conditions)
+        : chase.ending_conditions
+      : [];
+    rewards = chase.rewards
+      ? typeof chase.rewards === "string"
+        ? JSON.parse(chase.rewards)
+        : chase.rewards
+      : null;
+    environmentalFactors = chase.environmental_factors
+      ? typeof chase.environmental_factors === "string"
+        ? JSON.parse(chase.environmental_factors)
+        : chase.environmental_factors
+      : [];
   } catch (err) {
     logger.error("Failed to parse chase data:", err);
   }
@@ -226,6 +289,7 @@ function ChaseDetailModal({ chase, onClose, onDelete }: ChaseDetailModalProps) {
       title={chase.name}
       subtitle={chase.chase_type.replace(/_/g, " ")}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-3">
@@ -274,6 +338,35 @@ function ChaseDetailModal({ chase, onClose, onDelete }: ChaseDetailModalProps) {
           </div>
         )}
 
+        {participants.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Participants
+            </h4>
+            <div className="space-y-2">
+              {participants.map((p: any, i: number) => (
+                <div
+                  key={i}
+                  className="bg-purple-500/10 p-3 rounded-lg border border-purple-500/30"
+                >
+                  <p className="text-purple-400 font-medium">
+                    {p.name || p.role || "Participant"}
+                    {p.role && ` (${p.role})`}
+                  </p>
+                  {p.speed && (
+                    <p className="text-text-muted text-sm mt-1">
+                      Speed: {p.speed}
+                    </p>
+                  )}
+                  {p.abilities && (
+                    <p className="text-text text-sm mt-1">{p.abilities}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {obstacles.length > 0 && (
           <div>
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
@@ -290,6 +383,9 @@ function ChaseDetailModal({ chase, onClose, onDelete }: ChaseDetailModalProps) {
                     <p className="text-text-muted text-sm mt-1">
                       {o.description}
                     </p>
+                  )}
+                  {o.dc && (
+                    <p className="text-text-muted text-sm mt-1">DC: {o.dc}</p>
                   )}
                 </div>
               ))}
@@ -329,6 +425,114 @@ function ChaseDetailModal({ chase, onClose, onDelete }: ChaseDetailModalProps) {
                       {s.description}
                     </p>
                   )}
+                  {s.benefit && (
+                    <p className="text-green-400 text-sm mt-1">
+                      Benefit: {s.benefit}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {chasePhases.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Chase Phases
+            </h4>
+            <div className="space-y-2">
+              {chasePhases.map((phase: any, i: number) => (
+                <div
+                  key={i}
+                  className="bg-cyan-500/10 p-3 rounded-lg border border-cyan-500/30"
+                >
+                  <p className="text-cyan-400 font-medium">
+                    Round {phase.round || i + 1}
+                    {phase.name && `: ${phase.name}`}
+                  </p>
+                  {phase.description && (
+                    <p className="text-text text-sm mt-1">
+                      {phase.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {endingConditions.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Ending Conditions
+            </h4>
+            <ul className="list-disc list-inside text-text space-y-1">
+              {endingConditions.map((condition: any, i: number) => (
+                <li key={i}>
+                  {typeof condition === "string"
+                    ? condition
+                    : condition.description || condition.type}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {rewards && (
+          <div className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/30">
+            <h4 className="text-sm font-semibold text-amber-400 uppercase tracking-wider mb-2">
+              Rewards
+            </h4>
+            {typeof rewards === "string" ? (
+              <p className="text-amber-300">{rewards}</p>
+            ) : (
+              <div className="space-y-1 text-amber-300">
+                {rewards.success && (
+                  <p>
+                    <span className="font-semibold">Success:</span>{" "}
+                    {rewards.success}
+                  </p>
+                )}
+                {rewards.failure && (
+                  <p>
+                    <span className="font-semibold">Failure:</span>{" "}
+                    {rewards.failure}
+                  </p>
+                )}
+                {rewards.items && (
+                  <ul className="list-disc list-inside ml-4 mt-2">
+                    {rewards.items.map((item: string, i: number) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {environmentalFactors.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Environmental Factors
+            </h4>
+            <div className="space-y-2">
+              {environmentalFactors.map((factor: any, i: number) => (
+                <div
+                  key={i}
+                  className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/30"
+                >
+                  <p className="text-blue-400 font-medium">
+                    {typeof factor === "string"
+                      ? factor
+                      : factor.name || factor.type}
+                  </p>
+                  {factor.effect && (
+                    <p className="text-text-muted text-sm mt-1">
+                      {factor.effect}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -346,6 +550,160 @@ function ChaseDetailModal({ chase, onClose, onDelete }: ChaseDetailModalProps) {
           </div>
         )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditChaseModalProps {
+  chase: Chase;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateChaseRequest) => Promise<void>;
+}
+
+function EditChaseModal({ chase, onClose, onSave }: EditChaseModalProps) {
+  const [formData, setFormData] = useState({
+    name: chase.name,
+    chase_type: chase.chase_type || "",
+    description: chase.description || "",
+    starting_distance: chase.starting_distance?.toString() || "",
+    dm_notes: chase.special_rules || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateChaseRequest = {
+        name: formData.name,
+        chase_type: formData.chase_type || undefined,
+        description: formData.description || undefined,
+        starting_distance: formData.starting_distance
+          ? parseInt(formData.starting_distance)
+          : undefined,
+        dm_notes: formData.dm_notes || undefined,
+      };
+
+      await onSave(chase.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save chase");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="Zap"
+      iconColor="indigo"
+      title="Edit Chase"
+      subtitle={chase.name}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Name *
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Chase Type
+            </label>
+            <input
+              type="text"
+              value={formData.chase_type}
+              onChange={(e) =>
+                setFormData({ ...formData, chase_type: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              placeholder="urban, wilderness, vehicular"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Starting Distance
+            </label>
+            <input
+              type="number"
+              value={formData.starting_distance}
+              onChange={(e) =>
+                setFormData({ ...formData, starting_distance: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              placeholder="Distance in feet"
+              min="0"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={4}
+            placeholder="Describe the chase scenario..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            DM Notes / Special Rules
+          </label>
+          <textarea
+            value={formData.dm_notes}
+            onChange={(e) =>
+              setFormData({ ...formData, dm_notes: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={4}
+            placeholder="Special rules and notes..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

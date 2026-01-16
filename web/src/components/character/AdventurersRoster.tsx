@@ -14,8 +14,7 @@ export default function AdventurersRoster() {
   const location = useLocation();
   const { characters, loading, error, fetchCharacters, deleteCharacter } =
     useCharacterStore();
-  const { activeCampaignId, unlinkCharacterFromCampaign, getActiveCampaign } =
-    useCampaignStore();
+  const { unlinkCharacterFromCampaign, getActiveCampaign } = useCampaignStore();
   const activeCampaign = getActiveCampaign();
 
   // Determine if we're in sandbox mode (no campaign context)
@@ -52,10 +51,11 @@ export default function AdventurersRoster() {
   }, [searchParams, characters]);
 
   const handleDeleteCharacter = async (id: string) => {
-    // Different behavior based on context
-    // Use activeCampaign (not just activeCampaignId) to handle stale IDs
-    if (isSandboxMode || !activeCampaign) {
-      // Sandbox mode or no valid campaign: permanently delete the character
+    // IMPORTANT: Only allow permanent deletion in explicit sandbox mode
+    // If we're NOT in sandbox mode but activeCampaign is null, that's a loading/timing issue
+    // In that case, we should NOT delete - instead show an error
+    if (isSandboxMode) {
+      // Sandbox mode: permanently delete the character
       if (
         !confirm(
           "Are you sure you want to permanently delete this character? This cannot be undone.",
@@ -77,6 +77,13 @@ export default function AdventurersRoster() {
             "Failed to delete character",
         );
       }
+    } else if (!activeCampaign) {
+      // Not in sandbox mode but no active campaign - this is a bug/timing issue
+      // Don't allow deletion to prevent accidental global deletion
+      alert(
+        "Cannot remove character: Campaign context not loaded. Please refresh the page and try again.",
+      );
+      return;
     } else {
       // Campaign mode: unlink from campaign (character remains in personal library)
       if (
@@ -279,7 +286,7 @@ export default function AdventurersRoster() {
               onUpdate={() =>
                 fetchCharacters(
                   true,
-                  isSandboxMode ? undefined : (activeCampaignId ?? undefined),
+                  isSandboxMode ? undefined : (activeCampaign?.id ?? undefined),
                 )
               }
               onClose={() => setSelectedCharacter(null)}
@@ -416,11 +423,11 @@ export default function AdventurersRoster() {
                       true,
                       isSandboxMode
                         ? undefined
-                        : (activeCampaignId ?? undefined),
+                        : (activeCampaign?.id ?? undefined),
                     );
                   }}
                   onCancel={() => setCreateMethod("choose")}
-                  campaignId={isSandboxMode ? undefined : activeCampaignId}
+                  campaignId={isSandboxMode ? undefined : activeCampaign?.id}
                 />
               </>
             )}
@@ -457,11 +464,11 @@ export default function AdventurersRoster() {
                       true,
                       isSandboxMode
                         ? undefined
-                        : (activeCampaignId ?? undefined),
+                        : (activeCampaign?.id ?? undefined),
                     );
                   }}
                   onCancel={() => setCreateMethod("choose")}
-                  campaignId={isSandboxMode ? undefined : activeCampaignId}
+                  campaignId={isSandboxMode ? undefined : activeCampaign?.id}
                 />
               </>
             )}

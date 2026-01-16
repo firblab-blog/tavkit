@@ -18,6 +18,10 @@ interface ContentDetailModalProps {
   onDelete?: () => void;
   /** Delete button label */
   deleteLabel?: string;
+  /** Edit button handler (shows edit button if provided) */
+  onEdit?: () => void;
+  /** Edit button label */
+  editLabel?: string;
   /** Primary action button label */
   primaryLabel?: string;
   /** Primary action button handler */
@@ -67,6 +71,8 @@ export default function ContentDetailModal({
   subtitle,
   onDelete,
   deleteLabel = "Delete",
+  onEdit,
+  editLabel = "Edit",
   primaryLabel = "Close",
   onPrimaryAction,
   footerLeft,
@@ -168,6 +174,15 @@ export default function ContentDetailModal({
               >
                 <Icon name="Trash2" className="w-4 h-4" />
                 {deleteLabel}
+              </button>
+            )}
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="px-4 py-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors text-sm flex items-center gap-2"
+              >
+                <Icon name="Edit" className="w-4 h-4" />
+                {editLabel}
               </button>
             )}
             {footerLeft}

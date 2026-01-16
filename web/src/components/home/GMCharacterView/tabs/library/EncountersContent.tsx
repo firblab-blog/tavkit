@@ -7,11 +7,16 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import {
+  updateEncounter,
+  UpdateEncounterRequest,
+} from "../../../../../api/encounters";
 
 interface Encounter {
   id: string;
   name?: string;
   campaign_id?: string | null;
+  encounter_type?: string;
   difficulty: string;
   party_level: number;
   party_size: number;
@@ -19,6 +24,7 @@ interface Encounter {
   environment?: any;
   creatures?: any;
   treasure?: any;
+  special_conditions?: string;
   xp_total?: number;
   xp_per_player?: number;
   notes?: string;
@@ -49,6 +55,7 @@ export default function EncountersContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingItem, setEditingItem] = useState<Encounter | null>(null);
 
   const {
     filteredItems,
@@ -77,6 +84,18 @@ export default function EncountersContent({
       } catch (err) {
         logger.error("Failed to delete encounter:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateEncounterRequest) => {
+    try {
+      await updateEncounter(id, updates);
+      await refresh();
+      setEditingItem(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update encounter:", err);
+      throw err;
     }
   };
 
@@ -164,11 +183,24 @@ export default function EncountersContent({
       </ContentListLayout>
 
       {/* Detail Modal */}
-      {viewingItem && (
+      {viewingItem && !editingItem && (
         <EncounterDetailModal
           encounter={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingItem(viewingItem)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <EditEncounterModal
+          encounter={editingItem}
+          onClose={() => {
+            setEditingItem(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -193,12 +225,14 @@ interface EncounterDetailModalProps {
   encounter: Encounter;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 function EncounterDetailModal({
   encounter,
   onClose,
   onDelete,
+  onEdit,
 }: EncounterDetailModalProps) {
   const name = encounter.name || `${encounter.difficulty} Encounter`;
   const diffColor =
@@ -237,6 +271,7 @@ function EncounterDetailModal({
       title={name}
       subtitle={`Party: ${encounter.party_size} at Level ${encounter.party_level}`}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         {/* Stats Row */}
@@ -378,6 +413,199 @@ function EncounterDetailModal({
           </div>
         )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditEncounterModalProps {
+  encounter: Encounter;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateEncounterRequest) => Promise<void>;
+}
+
+function EditEncounterModal({
+  encounter,
+  onClose,
+  onSave,
+}: EditEncounterModalProps) {
+  const [formData, setFormData] = useState({
+    name: encounter.name || "",
+    encounter_type: encounter.encounter_type || "",
+    difficulty: encounter.difficulty,
+    environment: encounter.environment || "",
+    description: encounter.description || "",
+    special_conditions: encounter.special_conditions || "",
+    notes: encounter.notes || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateEncounterRequest = {
+        name: formData.name || undefined,
+        encounter_type: formData.encounter_type || undefined,
+        difficulty: formData.difficulty,
+        environment: formData.environment || undefined,
+        description: formData.description || undefined,
+        special_conditions: formData.special_conditions || undefined,
+        dm_notes: formData.notes || undefined,
+      };
+
+      await onSave(encounter.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save encounter");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="Swords"
+      iconColor="red"
+      title="Edit Encounter"
+      subtitle={encounter.name || `${encounter.difficulty} Encounter`}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Name
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Encounter name..."
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Encounter Type
+            </label>
+            <input
+              type="text"
+              value={formData.encounter_type}
+              onChange={(e) =>
+                setFormData({ ...formData, encounter_type: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              placeholder="Combat, Social, Exploration..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Difficulty *
+            </label>
+            <select
+              value={formData.difficulty}
+              onChange={(e) =>
+                setFormData({ ...formData, difficulty: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              required
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+              <option value="deadly">Deadly</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Environment
+          </label>
+          <input
+            type="text"
+            value={formData.environment}
+            onChange={(e) =>
+              setFormData({ ...formData, environment: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Forest, Dungeon, City..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={4}
+            placeholder="Describe the encounter..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Special Conditions
+          </label>
+          <input
+            type="text"
+            value={formData.special_conditions}
+            onChange={(e) =>
+              setFormData({ ...formData, special_conditions: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="Environmental effects, time limits..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Notes
+          </label>
+          <textarea
+            value={formData.notes}
+            onChange={(e) =>
+              setFormData({ ...formData, notes: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={3}
+            placeholder="DM notes..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

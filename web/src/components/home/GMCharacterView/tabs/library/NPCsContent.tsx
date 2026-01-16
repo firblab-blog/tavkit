@@ -7,6 +7,7 @@ import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useGeneratorModalStore } from "../../../../../store/generatorModalStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import { updateNPC, UpdateNPCRequest } from "../../../../../api/npcs";
 
 interface NPC {
   id: string;
@@ -17,6 +18,7 @@ interface NPC {
   personality?: string;
   backstory?: string;
   stats?: any;
+  inventory?: any;
   ai_generated?: boolean;
   ai_provider?: string;
   created_at: string;
@@ -38,6 +40,7 @@ export default function NPCsContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingNPC, setEditingNPC] = useState<NPC | null>(null);
 
   const {
     filteredItems,
@@ -65,6 +68,18 @@ export default function NPCsContent({
       } catch (err) {
         logger.error("Failed to delete NPC:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateNPCRequest) => {
+    try {
+      await updateNPC(id, updates);
+      await refresh();
+      setEditingNPC(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update NPC:", err);
+      throw err;
     }
   };
 
@@ -133,11 +148,24 @@ export default function NPCsContent({
       </ContentListLayout>
 
       {/* Detail Modal */}
-      {viewingItem && (
+      {viewingItem && !editingNPC && (
         <NPCDetailModal
           npc={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingNPC(viewingItem)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingNPC && (
+        <EditNPCModal
+          npc={editingNPC}
+          onClose={() => {
+            setEditingNPC(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -162,16 +190,30 @@ interface NPCDetailModalProps {
   npc: NPC;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
-function NPCDetailModal({ npc, onClose, onDelete }: NPCDetailModalProps) {
+function NPCDetailModal({
+  npc,
+  onClose,
+  onDelete,
+  onEdit,
+}: NPCDetailModalProps) {
   let stats = null;
+  let inventory: any[] = [];
+
   try {
     if (npc.stats) {
       stats = typeof npc.stats === "string" ? JSON.parse(npc.stats) : npc.stats;
     }
+    if (npc.inventory) {
+      inventory =
+        typeof npc.inventory === "string"
+          ? JSON.parse(npc.inventory)
+          : npc.inventory;
+    }
   } catch (error) {
-    logger.error("Failed to parse NPC stats:", error);
+    logger.error("Failed to parse NPC data:", error);
   }
 
   const subtitle = [npc.race, npc.class].filter(Boolean).join(" ");
@@ -185,6 +227,7 @@ function NPCDetailModal({ npc, onClose, onDelete }: NPCDetailModalProps) {
       title={npc.name}
       subtitle={subtitle || undefined}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         {npc.personality && (
@@ -316,10 +359,184 @@ function NPCDetailModal({ npc, onClose, onDelete }: NPCDetailModalProps) {
           </div>
         )}
 
-        {!npc.personality && !npc.backstory && !stats && (
-          <p className="text-text-muted italic">No additional details</p>
+        {/* Inventory */}
+        {inventory.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Inventory
+            </h4>
+            <div className="bg-background p-4 rounded-lg border border-border">
+              <ul className="space-y-2">
+                {inventory.map((item: any, i: number) => (
+                  <li key={i} className="text-text">
+                    {typeof item === "string"
+                      ? item
+                      : `${item.name || item.item}${item.quantity ? ` (${item.quantity})` : ""}${item.notes ? ` - ${item.notes}` : ""}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         )}
+
+        {!npc.personality &&
+          !npc.backstory &&
+          !stats &&
+          inventory.length === 0 && (
+            <p className="text-text-muted italic">No additional details</p>
+          )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditNPCModalProps {
+  npc: NPC;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateNPCRequest) => Promise<void>;
+}
+
+function EditNPCModal({ npc, onClose, onSave }: EditNPCModalProps) {
+  const [formData, setFormData] = useState({
+    name: npc.name,
+    race: npc.race || "",
+    class: npc.class || "",
+    personality: npc.personality || "",
+    backstory: npc.backstory || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateNPCRequest = {
+        name: formData.name,
+        race: formData.race || undefined,
+        class: formData.class || undefined,
+        personality_traits: formData.personality || undefined,
+        background: formData.backstory || undefined,
+      };
+
+      await onSave(npc.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save NPC");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="Users"
+      iconColor="emerald"
+      title="Edit NPC"
+      subtitle={npc.name}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Name *
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Race
+            </label>
+            <input
+              type="text"
+              value={formData.race}
+              onChange={(e) =>
+                setFormData({ ...formData, race: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              placeholder="Human, Elf, Dwarf..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Class
+            </label>
+            <input
+              type="text"
+              value={formData.class}
+              onChange={(e) =>
+                setFormData({ ...formData, class: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              placeholder="Fighter, Wizard, Rogue..."
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Personality
+          </label>
+          <textarea
+            value={formData.personality}
+            onChange={(e) =>
+              setFormData({ ...formData, personality: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={3}
+            placeholder="Describe their personality traits..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Backstory
+          </label>
+          <textarea
+            value={formData.backstory}
+            onChange={(e) =>
+              setFormData({ ...formData, backstory: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={5}
+            placeholder="Tell their story..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

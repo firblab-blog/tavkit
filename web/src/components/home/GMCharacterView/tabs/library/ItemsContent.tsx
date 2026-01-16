@@ -7,6 +7,7 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import { updateItem, UpdateItemRequest } from "../../../../../api/items";
 
 interface Item {
   id: string;
@@ -17,9 +18,13 @@ interface Item {
   description?: string;
   properties?: any;
   origin?: string;
+  previous_owner?: string;
+  complication?: string;
   requires_attunement?: boolean;
   curse?: string;
   value?: any;
+  weight?: number;
+  location_found?: string;
   ai_generated?: boolean;
   created_at: string;
 }
@@ -49,6 +54,7 @@ export default function ItemsContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
 
   const {
     filteredItems,
@@ -76,6 +82,18 @@ export default function ItemsContent({
       } catch (err) {
         logger.error("Failed to delete item:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateItemRequest) => {
+    try {
+      await updateItem(id, updates);
+      await refresh();
+      setEditingItem(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update item:", err);
+      throw err;
     }
   };
 
@@ -165,11 +183,23 @@ export default function ItemsContent({
         </div>
       </ContentListLayout>
 
-      {viewingItem && (
+      {viewingItem && !editingItem && (
         <ItemDetailModal
           item={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingItem(viewingItem)}
+        />
+      )}
+
+      {editingItem && (
+        <EditItemModal
+          item={editingItem}
+          onClose={() => {
+            setEditingItem(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -192,9 +222,15 @@ interface ItemDetailModalProps {
   item: Item;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
-function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
+function ItemDetailModal({
+  item,
+  onClose,
+  onDelete,
+  onEdit,
+}: ItemDetailModalProps) {
   let properties: any[] = [];
   let value: any = null;
 
@@ -226,6 +262,7 @@ function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
       title={item.name}
       subtitle={item.type}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         {/* Info Row */}
@@ -295,6 +332,24 @@ function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
           </div>
         )}
 
+        {item.previous_owner && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Previous Owner
+            </h4>
+            <p className="text-text leading-relaxed">{item.previous_owner}</p>
+          </div>
+        )}
+
+        {item.complication && (
+          <div className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/30">
+            <h4 className="text-sm font-semibold text-amber-400 uppercase tracking-wider mb-2">
+              Complication
+            </h4>
+            <p className="text-amber-300">{item.complication}</p>
+          </div>
+        )}
+
         {item.curse && (
           <div className="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
             <h4 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">
@@ -303,7 +358,215 @@ function ItemDetailModal({ item, onClose, onDelete }: ItemDetailModalProps) {
             <p className="text-red-300">{item.curse}</p>
           </div>
         )}
+
+        {(item.weight || item.location_found) && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Additional Details
+            </h4>
+            <div className="bg-background p-4 rounded-lg border border-border space-y-2">
+              {item.weight && (
+                <p className="text-text">
+                  <span className="text-text-muted">Weight: </span>
+                  {item.weight} lbs
+                </p>
+              )}
+              {item.location_found && (
+                <p className="text-text">
+                  <span className="text-text-muted">Found at: </span>
+                  {item.location_found}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditItemModalProps {
+  item: Item;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateItemRequest) => Promise<void>;
+}
+
+function EditItemModal({ item, onClose, onSave }: EditItemModalProps) {
+  const [formData, setFormData] = useState({
+    name: item.name,
+    type: item.type,
+    rarity: item.rarity || "",
+    description: item.description || "",
+    weight: item.weight?.toString() || "",
+    value:
+      typeof item.value === "object" && item.value !== null
+        ? item.value.amount?.toString() || ""
+        : item.value?.toString() || "",
+    dm_notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateItemRequest = {
+        name: formData.name,
+        type: formData.type,
+        rarity: formData.rarity || undefined,
+        description: formData.description || undefined,
+        weight: formData.weight ? parseFloat(formData.weight) : undefined,
+        value: formData.value ? parseFloat(formData.value) : undefined,
+      };
+
+      await onSave(item.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save item");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="Package"
+      iconColor="purple"
+      title="Edit Item"
+      subtitle={item.name}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Name *
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Type *
+          </label>
+          <select
+            value={formData.type}
+            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          >
+            <option value="weapon">Weapon</option>
+            <option value="armor">Armor</option>
+            <option value="consumable">Consumable</option>
+            <option value="treasure">Treasure</option>
+            <option value="tool">Tool</option>
+            <option value="quest_item">Quest Item</option>
+            <option value="relic">Relic</option>
+            <option value="wondrous">Wondrous Item</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Rarity
+          </label>
+          <select
+            value={formData.rarity}
+            onChange={(e) =>
+              setFormData({ ...formData, rarity: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+          >
+            <option value="">Select rarity</option>
+            <option value="common">Common</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option>
+            <option value="very_rare">Very Rare</option>
+            <option value="legendary">Legendary</option>
+            <option value="artifact">Artifact</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={4}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Weight (lbs)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={formData.weight}
+              onChange={(e) =>
+                setFormData({ ...formData, weight: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              min="0"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-2">
+              Value (gp)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.value}
+              onChange={(e) =>
+                setFormData({ ...formData, value: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+              min="0"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }

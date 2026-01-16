@@ -12,9 +12,11 @@ import Icon from "./Icon";
  */
 export default function CampaignSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { campaigns, openCreateCampaignModal } = useCampaignStore();
+  const { campaigns, openCreateCampaignModal, deleteCampaign } =
+    useCampaignStore();
   const { activateCampaignWithNavigation, switchToLibrary } =
     useCampaignNavigation();
 
@@ -60,6 +62,7 @@ export default function CampaignSwitcher() {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
+        setConfirmingDelete(null); // Reset delete confirmation when closing
       }
     };
 
@@ -67,6 +70,13 @@ export default function CampaignSwitcher() {
       document.addEventListener("mousedown", handleClickOutside);
       return () =>
         document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  // Reset delete confirmation when dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      setConfirmingDelete(null);
     }
   }, [isOpen]);
 
@@ -89,6 +99,37 @@ export default function CampaignSwitcher() {
     setIsOpen(false);
     openCreateCampaignModal();
   }, [openCreateCampaignModal]);
+
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent, campaignId: string) => {
+      e.stopPropagation(); // Prevent campaign selection
+      setConfirmingDelete(campaignId);
+    },
+    [],
+  );
+
+  const handleConfirmDelete = useCallback(
+    async (e: React.MouseEvent, campaignId: string) => {
+      e.stopPropagation();
+      try {
+        await deleteCampaign(campaignId);
+        setConfirmingDelete(null);
+        // If we deleted the active campaign, switch to library
+        if (campaignId === activeCampaignId) {
+          switchToLibrary();
+        }
+      } catch (error) {
+        console.error("Failed to delete campaign:", error);
+        alert("Failed to delete campaign. Please try again.");
+      }
+    },
+    [deleteCampaign, activeCampaignId, switchToLibrary],
+  );
+
+  const handleCancelDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmingDelete(null);
+  }, []);
 
   // Get display info based on current context
   const getContextLabel = () => {
@@ -168,29 +209,72 @@ export default function CampaignSwitcher() {
             <div className="max-h-[280px] overflow-y-auto">
               {allCampaigns.map((campaign, index) => {
                 const isActive = isCampaignActive(campaign);
+                const isConfirmingThisDelete = confirmingDelete === campaign.id;
                 return (
-                  <button
+                  <div
                     key={campaign.id}
-                    onClick={() => handleCampaignClick(campaign)}
-                    className={`w-full px-3 py-2.5 text-left flex items-center gap-3 transition-colors ${
+                    className={`w-full px-3 py-2.5 text-left flex items-center gap-2 transition-colors ${
                       index !== 0 ? "border-t border-border" : ""
-                    } ${isActive ? "bg-primary/10" : "hover:bg-background"}`}
+                    } ${isActive ? "bg-primary/10" : "hover:bg-background"} ${isConfirmingThisDelete ? "bg-red-500/10" : ""}`}
                   >
-                    {isActive ? (
-                      <Icon
-                        name="Check"
-                        className="w-4 h-4 text-primary flex-shrink-0"
-                      />
+                    {isConfirmingThisDelete ? (
+                      // Delete confirmation UI
+                      <div className="flex items-center gap-2 w-full">
+                        <Icon
+                          name="AlertTriangle"
+                          className="w-4 h-4 text-red-400 flex-shrink-0"
+                        />
+                        <span className="text-sm text-red-400 flex-1 truncate">
+                          Delete "{campaign.name}"?
+                        </span>
+                        <button
+                          onClick={(e) => handleConfirmDelete(e, campaign.id)}
+                          className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={handleCancelDelete}
+                          className="px-2 py-1 text-xs bg-background hover:bg-background-panel text-text-muted rounded transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     ) : (
-                      <div className="w-4 h-4 flex-shrink-0" />
+                      // Normal campaign item
+                      <>
+                        <button
+                          onClick={() => handleCampaignClick(campaign)}
+                          className="flex items-center gap-2 flex-1 min-w-0"
+                        >
+                          {isActive ? (
+                            <Icon
+                              name="Check"
+                              className="w-4 h-4 text-primary flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-4 h-4 flex-shrink-0" />
+                          )}
+                          <span
+                            className={`truncate flex-1 text-left ${isActive ? "font-medium text-text" : "text-text"}`}
+                          >
+                            {campaign.name}
+                          </span>
+                        </button>
+                        <RoleBadge type={campaign.roleType} />
+                        <button
+                          onClick={(e) => handleDeleteClick(e, campaign.id)}
+                          className="p-1 hover:bg-red-500/20 rounded transition-colors opacity-50 hover:opacity-100"
+                          title="Delete campaign"
+                        >
+                          <Icon
+                            name="Trash2"
+                            className="w-3.5 h-3.5 text-red-400"
+                          />
+                        </button>
+                      </>
                     )}
-                    <span
-                      className={`truncate flex-1 ${isActive ? "font-medium text-text" : "text-text"}`}
-                    >
-                      {campaign.name}
-                    </span>
-                    <RoleBadge type={campaign.roleType} />
-                  </button>
+                  </div>
                 );
               })}
             </div>

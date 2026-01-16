@@ -7,6 +7,10 @@ import { useLibraryContent } from "../../../../../hooks/useLibraryContent";
 import { useCampaignStore } from "../../../../../store/campaignStore";
 import { useState } from "react";
 import { logger } from "@/utils/logger";
+import {
+  updateCritter,
+  UpdateCritterRequest,
+} from "../../../../../api/critters";
 
 interface Critter {
   id: string;
@@ -47,6 +51,7 @@ export default function CrittersContent({
     name: string;
     currentCampaignId?: string | null;
   } | null>(null);
+  const [editingCritter, setEditingCritter] = useState<Critter | null>(null);
 
   const {
     filteredItems,
@@ -74,6 +79,18 @@ export default function CrittersContent({
       } catch (err) {
         logger.error("Failed to delete critter:", err);
       }
+    }
+  };
+
+  const handleSave = async (id: string, updates: UpdateCritterRequest) => {
+    try {
+      await updateCritter(id, updates);
+      await refresh();
+      setEditingCritter(null);
+      setViewingItem(null);
+    } catch (err) {
+      logger.error("Failed to update critter:", err);
+      throw err;
     }
   };
 
@@ -153,11 +170,23 @@ export default function CrittersContent({
         </div>
       </ContentListLayout>
 
-      {viewingItem && (
+      {viewingItem && !editingCritter && (
         <CritterDetailModal
           critter={viewingItem}
           onClose={() => setViewingItem(null)}
           onDelete={() => handleDelete(viewingItem)}
+          onEdit={() => setEditingCritter(viewingItem)}
+        />
+      )}
+
+      {editingCritter && (
+        <EditCritterModal
+          critter={editingCritter}
+          onClose={() => {
+            setEditingCritter(null);
+            setViewingItem(null);
+          }}
+          onSave={handleSave}
         />
       )}
 
@@ -180,16 +209,19 @@ interface CritterDetailModalProps {
   critter: Critter;
   onClose: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 function CritterDetailModal({
   critter,
   onClose,
   onDelete,
+  onEdit,
 }: CritterDetailModalProps) {
   let specialAbilities: any[] = [];
   let uses: any[] = [];
   let interestingFacts: any[] = [];
+  let stats: any = null;
 
   try {
     specialAbilities = critter.special_abilities
@@ -207,6 +239,11 @@ function CritterDetailModal({
         ? JSON.parse(critter.interesting_facts)
         : critter.interesting_facts
       : [];
+    stats = critter.stats
+      ? typeof critter.stats === "string"
+        ? JSON.parse(critter.stats)
+        : critter.stats
+      : null;
   } catch (err) {
     logger.error("Failed to parse critter data:", err);
   }
@@ -220,6 +257,7 @@ function CritterDetailModal({
       title={critter.name}
       subtitle={critter.species || critter.critter_type.replace(/_/g, " ")}
       onDelete={onDelete}
+      onEdit={onEdit}
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-3">
@@ -262,6 +300,42 @@ function CritterDetailModal({
               Behavior
             </h4>
             <p className="text-text leading-relaxed">{critter.behavior}</p>
+          </div>
+        )}
+
+        {stats && (
+          <div>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">
+              Statistics
+            </h4>
+            <div className="bg-background p-4 rounded-lg border border-border">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {stats.ac && (
+                  <div className="text-center">
+                    <p className="text-xs text-text-muted">AC</p>
+                    <p className="text-xl font-bold text-text">{stats.ac}</p>
+                  </div>
+                )}
+                {stats.hp && (
+                  <div className="text-center">
+                    <p className="text-xs text-text-muted">HP</p>
+                    <p className="text-xl font-bold text-text">{stats.hp}</p>
+                  </div>
+                )}
+                {stats.speed && (
+                  <div className="text-center">
+                    <p className="text-xs text-text-muted">Speed</p>
+                    <p className="text-xl font-bold text-text">{stats.speed}</p>
+                  </div>
+                )}
+                {stats.cr !== undefined && (
+                  <div className="text-center">
+                    <p className="text-xs text-text-muted">CR</p>
+                    <p className="text-xl font-bold text-text">{stats.cr}</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -342,6 +416,172 @@ function CritterDetailModal({
           </div>
         )}
       </div>
+    </ContentDetailModal>
+  );
+}
+
+interface EditCritterModalProps {
+  critter: Critter;
+  onClose: () => void;
+  onSave: (id: string, updates: UpdateCritterRequest) => Promise<void>;
+}
+
+function EditCritterModal({ critter, onClose, onSave }: EditCritterModalProps) {
+  const [formData, setFormData] = useState({
+    name: critter.name,
+    description: critter.description || "",
+    behavior: critter.behavior || "",
+    habitat: critter.habitat || "",
+    special_abilities: critter.special_abilities || "",
+    dm_notes: critter.encounter_notes || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updates: UpdateCritterRequest = {
+        name: formData.name,
+        description: formData.description || undefined,
+        behavior: formData.behavior || undefined,
+        habitat: formData.habitat || undefined,
+        special_abilities: formData.special_abilities || undefined,
+        dm_notes: formData.dm_notes || undefined,
+      };
+
+      await onSave(critter.id, updates);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save critter");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ContentDetailModal
+      isOpen={true}
+      onClose={onClose}
+      icon="PawPrint"
+      iconColor="green"
+      title="Edit Critter"
+      subtitle={critter.name}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Name *
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={4}
+            placeholder="Describe the critter's appearance..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Behavior
+          </label>
+          <textarea
+            value={formData.behavior}
+            onChange={(e) =>
+              setFormData({ ...formData, behavior: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={3}
+            placeholder="How does it behave?"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Habitat
+          </label>
+          <input
+            type="text"
+            value={formData.habitat}
+            onChange={(e) =>
+              setFormData({ ...formData, habitat: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            placeholder="forest, desert, mountains"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            Special Abilities
+          </label>
+          <textarea
+            value={formData.special_abilities}
+            onChange={(e) =>
+              setFormData({ ...formData, special_abilities: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={3}
+            placeholder="List special abilities..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            DM Notes
+          </label>
+          <textarea
+            value={formData.dm_notes}
+            onChange={(e) =>
+              setFormData({ ...formData, dm_notes: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+            rows={3}
+            placeholder="Encounter notes..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-text-muted hover:text-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </ContentDetailModal>
   );
 }
