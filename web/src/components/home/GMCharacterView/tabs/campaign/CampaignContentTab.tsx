@@ -296,28 +296,31 @@ export default function CampaignContentTab({
 
   return (
     <div className="space-y-4">
-      {/* Sub-tabs */}
-      <div className="flex gap-1 sm:gap-2 border-b border-border pb-1 overflow-x-auto items-center">
-        {allTabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveSubTab(tab.id)}
-            className={`px-3 sm:px-4 py-2 font-medium text-sm rounded-t-lg transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap
+      {/* Sub-tabs with fixed settings button */}
+      <div className="flex items-center border-b border-border">
+        {/* Scrollable tabs container */}
+        <div className="flex-1 flex gap-1 sm:gap-2 pb-1 overflow-x-auto">
+          {allTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSubTab(tab.id)}
+              className={`px-3 sm:px-4 py-2 font-medium text-sm rounded-t-lg transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0
               ${
                 activeSubTab === tab.id
                   ? `${tabColors[tab.color]} border-b-2 -mb-[3px]`
                   : "text-text-muted hover:text-text"
               }`}
-          >
-            <Icon name={tab.icon} className="w-4 h-4" />
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+            >
+              <Icon name={tab.icon} className="w-4 h-4" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
 
-        {/* Settings button */}
+        {/* Fixed settings button */}
         <button
           onClick={() => setShowSettingsModal(true)}
-          className="ml-auto px-2 py-2 text-text-muted hover:text-text hover:bg-background rounded-lg transition-colors flex items-center gap-1"
+          className="flex-shrink-0 ml-2 px-2 py-2 text-text-muted hover:text-text hover:bg-background rounded-lg transition-colors flex items-center gap-1 border-l border-border pl-3"
           title="Configure visible tabs"
         >
           <Icon name="Settings" className="w-4 h-4" />

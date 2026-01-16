@@ -22,7 +22,8 @@ export default function GlobalModals() {
     setEditingCampaignId,
     addCampaign,
     updateCampaign,
-    setActiveCampaign,
+    setActiveCampaignSync,
+    persistActiveCampaign,
   } = useCampaignStore();
 
   const { updateContext } = useContextStore();
@@ -65,15 +66,23 @@ export default function GlobalModals() {
 
       // Activate the new campaign, update context, and navigate
       if (newCampaign) {
-        await setActiveCampaign(newCampaign.id);
+        // Use sync version to immediately update state before navigation
+        setActiveCampaignSync(newCampaign.id);
+
         const contextType: ContextType =
           role === "player" ? "player_campaign" : "gm_campaign";
-        await updateContext({
+
+        // Navigate first for instant feedback
+        navigate(role === "player" ? "/dashboard/player" : "/dashboard/gm");
+
+        // Persist activation and context in background (non-blocking)
+        persistActiveCampaign(newCampaign.id).catch((err) =>
+          logger.error("Failed to persist campaign activation:", err),
+        );
+        updateContext({
           last_context_type: contextType,
           last_campaign_id: newCampaign.id,
-        });
-        // Navigate to the appropriate dashboard
-        navigate(role === "player" ? "/dashboard/player" : "/dashboard/gm");
+        }).catch((err) => logger.error("Failed to update context:", err));
       }
     }
 
