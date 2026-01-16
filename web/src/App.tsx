@@ -44,6 +44,8 @@ function App() {
                     <ProtectedRoute>
                       <AppDataProvider>
                         <Dashboard />
+                        {/* GlobalModals inside AppDataProvider ensures context is loaded */}
+                        <GlobalModals />
                       </AppDataProvider>
                     </ProtectedRoute>
                   }
@@ -55,7 +57,6 @@ function App() {
               </Routes>
             </Suspense>
             <ToastContainer />
-            <GlobalModals />
           </BrowserRouter>
         </AIProvider>
       </ThemeProvider>

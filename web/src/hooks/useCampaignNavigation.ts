@@ -66,14 +66,13 @@ export function useCampaignNavigation() {
       isPlayerResult: isPlayerCampaign(campaign),
     });
 
-    // Check if context is loaded - if not, we need to wait or fetch it first
+    // AppDataProvider guarantees context is loaded before dashboard renders,
+    // so userContext should always exist when this hook is called.
+    // If it's null, that's a bug in the app structure.
     if (!userContext) {
-      logger.warn(
-        "[useCampaignNavigation] Context not loaded yet, fetching before navigation",
+      logger.error(
+        "[useCampaignNavigation] Context not loaded - this should never happen if AppDataProvider is working correctly",
       );
-      // Queue the navigation to happen after context loads
-      // This is a failsafe - ideally context should always be loaded before switching campaigns
-      return;
     }
 
     // Determine if it's a player or GM campaign

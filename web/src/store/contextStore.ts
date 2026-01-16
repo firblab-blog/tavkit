@@ -140,15 +140,30 @@ export const useContextStore = create<ContextState>()(
 
       // Sync version - immediate state update without API call
       // Use this BEFORE navigation to ensure destination component has correct state
+      // IMPORTANT: AppDataProvider guarantees context is loaded before dashboard renders,
+      // so userContext should always exist when this is called
       updateContextSync: (updates) => {
         set((state) => {
           if (!state.userContext) {
-            // If context doesn't exist yet, we can't update it
-            // This shouldn't happen in normal flow, but log it for debugging
-            logger.warn(
-              "[contextStore] updateContextSync called with no existing context",
+            // This should never happen if AppDataProvider is working correctly
+            logger.error(
+              "[contextStore] updateContextSync called with no existing context - this is a bug!",
             );
-            return state;
+            // Create emergency context to prevent breaking the UI
+            const now = new Date().toISOString();
+            return {
+              userContext: {
+                id: "emergency",
+                user_id: "emergency",
+                last_context_type: updates.last_context_type ?? null,
+                last_campaign_id: updates.last_campaign_id ?? null,
+                last_character_id: updates.last_character_id ?? null,
+                has_completed_onboarding: true,
+                default_game_system: null,
+                created_at: now,
+                updated_at: now,
+              },
+            };
           }
           return {
             userContext: { ...state.userContext, ...updates },

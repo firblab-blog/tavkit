@@ -149,6 +149,20 @@ export function AppDataProvider({ children }: AppDataProviderProps) {
     refreshCharacters,
   };
 
+  // Block rendering until initial data is loaded
+  // This prevents race conditions where components try to use data before it's ready
+  if (!isReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+          <div className="text-text-muted">Loading your data...</div>
+          {error && <div className="text-red-400 text-sm">{error}</div>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
   );

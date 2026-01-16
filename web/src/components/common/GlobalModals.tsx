@@ -72,9 +72,17 @@ export default function GlobalModals() {
         const previousCampaignId = userContext?.last_campaign_id ?? null;
         const previousContextType = userContext?.last_context_type ?? null;
 
+        logger.debug("[GlobalModals] Campaign created, updating context", {
+          campaignId: newCampaign.id,
+          contextType,
+          previousCampaignId,
+          hasUserContext: !!userContext,
+        });
+
         // 1. Update BOTH stores synchronously BEFORE navigation
         // contextStore is the source of truth (useActiveCampaign reads from it)
         // campaignStore is kept in sync for backwards compatibility
+        // Note: updateContextSync will create a minimal context if none exists
         updateContextSync({
           last_context_type: contextType,
           last_campaign_id: newCampaign.id,

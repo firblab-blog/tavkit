@@ -105,11 +105,7 @@ export default function PlayerHome({
   const [searchParams, setSearchParams] = useSearchParams();
   const { characters, fetchCharacters, loading, lastFetched, error } =
     useCharacterStore();
-  const {
-    userContext,
-    fetchContext,
-    loading: contextLoading,
-  } = useContextStore();
+  const { userContext, loading: contextLoading } = useContextStore();
   const { activeCampaignId } = useActiveCampaign(); // Single source of truth
   const enabledGenerators = useUISettingsStore(
     (state) => state.enabledGenerators,
@@ -177,10 +173,9 @@ export default function PlayerHome({
     }
   }, [activeCampaignId, characterCampaignId]);
 
-  // Fetch context on mount (campaigns are loaded by AppDataProvider)
-  useEffect(() => {
-    fetchContext();
-  }, [fetchContext]);
+  // Note: Context is loaded by AppDataProvider at the app root level.
+  // Do NOT call fetchContext() here - it would overwrite local context updates
+  // made during campaign creation/switching before they're persisted to backend.
 
   // Fetch characters only after context is loaded (so we have the correct campaign ID)
   // Filter characters by active campaign to only show characters assigned to this campaign
