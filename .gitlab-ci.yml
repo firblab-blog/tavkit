@@ -10,8 +10,6 @@ variables:
   # GitLab configuration - override registry if custom host/port provided
   # GITLAB_HOST: Custom GitLab host (optional, defaults to CI_SERVER_HOST)
   # GITLAB_REGISTRY_PORT: Custom registry port (optional, defaults to standard port)
-  REGISTRY_HOST: "${GITLAB_HOST:-$CI_SERVER_HOST}"
-  REGISTRY_PORT: "${GITLAB_REGISTRY_PORT}"
 
 stages:
   - wiki-sync
@@ -633,8 +631,9 @@ build:
     # Login to GitLab registry
     - |
       if [ -n "$GITLAB_REGISTRY_PORT" ]; then
-        # Custom registry with port
-        REGISTRY_URL="${REGISTRY_HOST}:${REGISTRY_PORT}"
+        # Custom registry with port - resolve host at runtime (CI variables not available in variables section)
+        REGISTRY_HOST="${GITLAB_HOST:-$CI_SERVER_HOST}"
+        REGISTRY_URL="${REGISTRY_HOST}:${GITLAB_REGISTRY_PORT}"
         echo "Logging into custom GitLab registry at $REGISTRY_URL"
         echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY_URL"
         # Override CI_REGISTRY variables for custom setup
@@ -765,8 +764,9 @@ build:ollama-mirror:
     # Login to GitLab registry
     - |
       if [ -n "$GITLAB_REGISTRY_PORT" ]; then
-        # Custom registry with port
-        REGISTRY_URL="${REGISTRY_HOST}:${REGISTRY_PORT}"
+        # Custom registry with port - resolve host at runtime (CI variables not available in variables section)
+        REGISTRY_HOST="${GITLAB_HOST:-$CI_SERVER_HOST}"
+        REGISTRY_URL="${REGISTRY_HOST}:${GITLAB_REGISTRY_PORT}"
         echo "Logging into custom GitLab registry at $REGISTRY_URL"
         echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY_URL"
         # Override CI_REGISTRY variables for custom setup
