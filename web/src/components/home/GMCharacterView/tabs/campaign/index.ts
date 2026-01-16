@@ -3,7 +3,6 @@ export { default as SessionsContent } from "./SessionsContent";
 export { default as PlayerCharactersContent } from "./PlayerCharactersContent";
 export { default as FactionsContent } from "./FactionsContent";
 export { default as LoreContent } from "./LoreContent";
-export { default as LocationsContent } from "./LocationsContent";
 export { default as GMNotesContent } from "./GMNotesContent";
 export { default as MapsArtContent } from "./MapsArtContent";
-export { default as MonstersContent } from "./MonstersContent";
+export { default as ContentVisibilityModal } from "./ContentVisibilityModal";

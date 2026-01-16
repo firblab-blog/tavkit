@@ -423,6 +423,10 @@ func SetupRoutes(
 			campaigns.GET("/:id/summary-content", campaignHandler.GetSummaryContent)
 			campaigns.PUT("/:id/summary-content", campaignHandler.UpdateSummaryContent)
 
+			// Content type visibility settings routes (for campaign tabs)
+			campaigns.GET("/:id/content-visibility", campaignHandler.GetContentTypeVisibility)
+			campaigns.PUT("/:id/content-visibility", campaignHandler.UpdateContentTypeVisibility)
+
 			// Campaign activity feed (aggregated endpoint - replaces 13 individual API calls)
 			campaigns.GET("/:id/activity", campaignHandler.GetCampaignActivity)
 

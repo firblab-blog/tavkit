@@ -1233,3 +1233,138 @@ func (h *CampaignHandler) GetCampaignActivity(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"activity": activity})
 }
+
+// Valid content types that can be shown in campaign tabs
+var validContentTypes = map[string]bool{
+	"npcs":       true,
+	"monsters":   true,
+	"encounters": true,
+	"dialogues":  true,
+	"locations":  true,
+	"quests":     true,
+	"items":      true,
+	"rumors":     true,
+	"taverns":    true,
+	"merchants":  true,
+	"traps":      true,
+	"critters":   true,
+	"chases":     true,
+}
+
+// Default content types shown in campaign tabs
+var defaultVisibleContentTypes = []string{"npcs", "locations", "quests"}
+
+// GetContentTypeVisibility returns the visible content types for a campaign
+func (h *CampaignHandler) GetContentTypeVisibility(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	campaignID := c.Param("id")
+
+	// Verify access to campaign
+	campaign, err := h.db.GetCampaignByIDAndUserID(c.Request.Context(), campaignID, userID.(string))
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Campaign not found"})
+		return
+	}
+	if err != nil {
+		h.logger.Error("Failed to get campaign", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+
+	// Get visible content types from campaign settings
+	visibleTypes := defaultVisibleContentTypes
+	if campaign.Setting != nil {
+		var settingMap map[string]interface{}
+		if err := json.Unmarshal(campaign.Setting, &settingMap); err == nil {
+			if types, ok := settingMap["visible_content_types"].([]interface{}); ok {
+				visibleTypes = make([]string, 0, len(types))
+				for _, t := range types {
+					if typeStr, ok := t.(string); ok && validContentTypes[typeStr] {
+						visibleTypes = append(visibleTypes, typeStr)
+					}
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"visible_content_types": visibleTypes})
+}
+
+// UpdateContentTypeVisibility updates the visible content types for a campaign
+func (h *CampaignHandler) UpdateContentTypeVisibility(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	campaignID := c.Param("id")
+
+	// Verify ownership (only owner can change settings)
+	campaign, err := h.db.GetCampaignByIDAndUserID(c.Request.Context(), campaignID, userID.(string))
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Campaign not found"})
+		return
+	}
+	if err != nil {
+		h.logger.Error("Failed to get campaign", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+
+	// Check if user is owner
+	if campaign.Role != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only campaign owner can change visibility settings"})
+		return
+	}
+
+	var req struct {
+		Types []string `json:"types"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Validate content types
+	validTypes := make([]string, 0, len(req.Types))
+	for _, t := range req.Types {
+		if validContentTypes[t] {
+			validTypes = append(validTypes, t)
+		}
+	}
+
+	// Parse existing settings
+	settingMap := make(map[string]interface{})
+	if campaign.Setting != nil {
+		if err := json.Unmarshal(campaign.Setting, &settingMap); err != nil {
+			h.logger.Warn("Failed to parse existing campaign settings", zap.Error(err))
+		}
+	}
+
+	// Update visible content types
+	settingMap["visible_content_types"] = validTypes
+
+	// Marshal back to JSON
+	newSetting, err := json.Marshal(settingMap)
+	if err != nil {
+		h.logger.Error("Failed to marshal campaign settings", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update settings"})
+		return
+	}
+
+	// Update campaign
+	campaign.Setting = newSetting
+	if err := h.db.UpdateCampaign(c.Request.Context(), campaign); err != nil {
+		h.logger.Error("Failed to update campaign", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"visible_content_types": validTypes})
+}
