@@ -5,7 +5,10 @@ import Icon from "../../../../common/Icon";
 import CharacterSheet from "../../../../character/CharacterSheet";
 import ManualCharacterForm from "../../../../character/ManualCharacterForm";
 import ImportCharacter from "../../../../character/ImportCharacter";
-import { useCharacterStore, Character } from "../../../../../store/characterStore";
+import {
+  useCharacterStore,
+  Character,
+} from "../../../../../store/characterStore";
 import { useCampaignStore, Campaign } from "../../../../../store/campaignStore";
 import { apiClient } from "@/api/client";
 import { logger } from "@/utils/logger";
@@ -46,7 +49,9 @@ function LinkCharacterModal({
       onClose();
     } catch (err: any) {
       setError(
-        err.response?.data?.error || err.message || "Failed to link character to campaign"
+        err.response?.data?.error ||
+          err.message ||
+          "Failed to link character to campaign",
       );
     } finally {
       setLoading(false);
@@ -166,14 +171,15 @@ export default function CharactersContent({
 }: CharactersContentProps) {
   const { characters, fetchCharacters, loading, error, deleteCharacter } =
     useCharacterStore();
-  const { campaigns, unlinkCharacterFromCampaign, linkCharacterToCampaign } = useCampaignStore();
+  const { campaigns, unlinkCharacterFromCampaign, linkCharacterToCampaign } =
+    useCampaignStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>(
-    campaignId || ""
+    campaignId || "",
   );
   const [viewingCharacter, setViewingCharacter] = useState<Character | null>(
-    null
+    null,
   );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createMethod, setCreateMethod] = useState<
@@ -212,7 +218,7 @@ export default function CharactersContent({
       // Campaign context: unlink from campaign
       if (
         !window.confirm(
-          `Remove "${character.name}" from this campaign? The character will still be available in your personal library.`
+          `Remove "${character.name}" from this campaign? The character will still be available in your personal library.`,
         )
       ) {
         return;
@@ -232,7 +238,7 @@ export default function CharactersContent({
       // Sandbox/library context: permanent delete
       if (
         !window.confirm(
-          `Permanently delete "${character.name}"? This cannot be undone.`
+          `Permanently delete "${character.name}"? This cannot be undone.`,
         )
       ) {
         return;
@@ -516,7 +522,10 @@ export default function CharactersContent({
           character={linkModalCharacter}
           campaigns={campaigns}
           onLink={async (targetCampaignId) => {
-            await linkCharacterToCampaign(targetCampaignId, linkModalCharacter.id);
+            await linkCharacterToCampaign(
+              targetCampaignId,
+              linkModalCharacter.id,
+            );
             refresh();
           }}
         />

@@ -120,8 +120,11 @@ export default function PlayerHome({
     null,
   );
   const [showCharacterSheet, setShowCharacterSheet] = useState(false);
-  const [showCreateCharacterModal, setShowCreateCharacterModal] = useState(false);
-  const [createMethod, setCreateMethod] = useState<"choose" | "manual" | "import">("choose");
+  const [showCreateCharacterModal, setShowCreateCharacterModal] =
+    useState(false);
+  const [createMethod, setCreateMethod] = useState<
+    "choose" | "manual" | "import"
+  >("choose");
 
   // Get tab from URL, default to 'overview'
   const tabParam = searchParams.get("tab");
@@ -487,7 +490,9 @@ export default function PlayerHome({
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
-                onClick={() => navigate(`${basePath}?tab=library&subtab=characters`)}
+                onClick={() =>
+                  navigate(`${basePath}?tab=library&subtab=characters`)
+                }
                 className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-colors flex items-center gap-2"
               >
                 <Icon name="Plus" className="w-5 h-5" />
@@ -552,7 +557,9 @@ export default function PlayerHome({
                         : undefined
                     }
                     path={
-                      activeCharacter ? undefined : `${basePath}?tab=library&subtab=characters`
+                      activeCharacter
+                        ? undefined
+                        : `${basePath}?tab=library&subtab=characters`
                     }
                     icon="FileText"
                     description="View full character details"
