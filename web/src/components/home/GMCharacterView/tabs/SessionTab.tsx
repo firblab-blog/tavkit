@@ -18,7 +18,7 @@ const SESSION_TOOLS: SessionTool[] = [
     label: "Guild Roster",
     description: "Manage party characters",
     icon: "Users",
-    path: "/dashboard/gm/characters",
+    path: "/dashboard/gm?tab=library&subtab=characters",
     color: "purple",
   },
   {

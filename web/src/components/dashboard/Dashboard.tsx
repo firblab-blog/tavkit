@@ -15,7 +15,7 @@ import SandboxHome from "../sandbox/SandboxHome";
 
 // Lazy load all other components
 const CampaignToolkit = lazy(() => import("../campaign/CampaignToolkit"));
-const AdventurersRoster = lazy(() => import("../character/AdventurersRoster"));
+// Note: AdventurersRoster routes now redirect to Library tab with characters subtab
 const ItemManager = lazy(() => import("../items/ItemManager"));
 const ChaseManager = lazy(() => import("../chase/ChaseManager"));
 const SessionChat = lazy(() => import("../chat/SessionChat"));
@@ -149,7 +149,16 @@ export default function Dashboard() {
               {/* GM Mode */}
               <Route path="gm" element={<HomeWrapper contextMode="gm" />} />
               <Route path="gm/campaign" element={<CampaignToolkit />} />
-              <Route path="gm/characters" element={<AdventurersRoster />} />
+              {/* Redirect legacy characters route to Library tab */}
+              <Route
+                path="gm/characters"
+                element={
+                  <Navigate
+                    to="/dashboard/gm?tab=library&subtab=characters"
+                    replace
+                  />
+                }
+              />
               <Route path="gm/items" element={<ItemManager />} />
               {/* Redirect legacy saved content route to Library tab */}
               <Route
@@ -207,7 +216,16 @@ export default function Dashboard() {
                 path="player"
                 element={<HomeWrapper contextMode="player" />}
               />
-              <Route path="player/characters" element={<AdventurersRoster />} />
+              {/* Redirect legacy characters route to Library tab */}
+              <Route
+                path="player/characters"
+                element={
+                  <Navigate
+                    to="/dashboard/player?tab=library&subtab=characters"
+                    replace
+                  />
+                }
+              />
               {/* Redirect legacy saved content route to Player home */}
               <Route
                 path="player/saved"
@@ -229,6 +247,16 @@ export default function Dashboard() {
 
               {/* Sandbox Mode - Personal Library */}
               <Route path="sandbox" element={<SandboxHome />} />
+              {/* Redirect legacy characters route to Library tab */}
+              <Route
+                path="sandbox/characters"
+                element={
+                  <Navigate
+                    to="/dashboard/sandbox?tab=library&subtab=characters"
+                    replace
+                  />
+                }
+              />
               {/* Redirect legacy saved content route to Sandbox home */}
               <Route
                 path="sandbox/saved"

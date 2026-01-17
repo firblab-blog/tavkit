@@ -1,5 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import Icon, { IconName } from "../../../../common/Icon";
+import CharactersContent from "./CharactersContent";
 import NPCsContent from "./NPCsContent";
 import MonstersContent from "./MonstersContent";
 import EncountersContent from "./EncountersContent";
@@ -15,6 +16,7 @@ import CrittersContent from "./CrittersContent";
 import ChasesContent from "./ChasesContent";
 
 export type LibrarySubTab =
+  | "characters"
   | "npcs"
   | "monsters"
   | "encounters"
@@ -37,6 +39,7 @@ interface SubTabConfig {
 }
 
 const SUB_TABS: SubTabConfig[] = [
+  { id: "characters", label: "Characters", icon: "User", color: "blue" },
   { id: "npcs", label: "NPCs", icon: "Users", color: "emerald" },
   { id: "monsters", label: "Monsters", icon: "Skull", color: "orange" },
   { id: "encounters", label: "Encounters", icon: "Swords", color: "red" },
@@ -79,10 +82,10 @@ interface LibraryContentTabProps {
 /**
  * LibraryContentTab - Browse saved content library with sub-tabs.
  *
- * Shows 13 content types: NPCs, Monsters, Encounters, Dialogues, Locations,
- * Quests, Items, Rumors, Taverns, Merchants, Traps, Critters, Chases.
+ * Shows 14 content types: Characters, NPCs, Monsters, Encounters, Dialogues,
+ * Locations, Quests, Items, Rumors, Taverns, Merchants, Traps, Critters, Chases.
  *
- * URL state: ?tab=library&subtab=npcs
+ * URL state: ?tab=library&subtab=characters
  */
 export default function LibraryContentTab({
   campaignId,
@@ -90,13 +93,13 @@ export default function LibraryContentTab({
 }: LibraryContentTabProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Get sub-tab from URL, default to 'npcs'
+  // Get sub-tab from URL, default to 'characters'
   const subTabParam = searchParams.get("subtab");
   const activeSubTab: LibrarySubTab = VALID_SUB_TABS.includes(
     subTabParam as LibrarySubTab,
   )
     ? (subTabParam as LibrarySubTab)
-    : "npcs";
+    : "characters";
 
   const setActiveSubTab = (tab: LibrarySubTab) => {
     setSearchParams(
@@ -131,6 +134,12 @@ export default function LibraryContentTab({
 
       {/* Content */}
       <div className="min-h-[300px]">
+        {activeSubTab === "characters" && (
+          <CharactersContent
+            campaignId={campaignId}
+            showCampaignFilter={showCampaignFilter}
+          />
+        )}
         {activeSubTab === "npcs" && (
           <NPCsContent
             campaignId={campaignId}

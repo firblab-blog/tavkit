@@ -7,6 +7,7 @@ import { useContextStore } from "../../store/contextStore";
 interface CharacterSwitcherProps {
   activeCharacterId?: string | null;
   onCharacterSelect?: (character: Character) => void;
+  onCreateCharacter?: () => void;
 }
 
 /**
@@ -18,6 +19,7 @@ interface CharacterSwitcherProps {
 export default function CharacterSwitcher({
   activeCharacterId,
   onCharacterSelect,
+  onCreateCharacter,
 }: CharacterSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -60,7 +62,12 @@ export default function CharacterSwitcher({
 
   const handleCreateCharacter = () => {
     setIsOpen(false);
-    navigate("/dashboard/player/characters");
+    if (onCreateCharacter) {
+      onCreateCharacter();
+    } else {
+      // Fallback to navigation if no callback provided
+      navigate("/dashboard/player?tab=library&subtab=characters");
+    }
   };
 
   // Get display info for active character

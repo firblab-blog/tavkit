@@ -6,7 +6,8 @@ export type PlayerTabId =
   | "journal"
   | "loot"
   | "combat"
-  | "library";
+  | "library"
+  | "chat";
 
 export interface TabConfig {
   id: PlayerTabId;
@@ -22,6 +23,7 @@ export const PLAYER_TABS: TabConfig[] = [
   { id: "loot", label: "Party Loot", icon: "Package", shortLabel: "Loot" },
   { id: "combat", label: "Combat", icon: "Swords", shortLabel: "Combat" },
   { id: "library", label: "Library", icon: "Library", shortLabel: "Library" },
+  { id: "chat", label: "Chat", icon: "MessageCircle", shortLabel: "Chat" },
 ];
 
 interface PlayerTabsProps {

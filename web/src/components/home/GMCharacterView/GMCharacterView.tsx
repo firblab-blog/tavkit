@@ -125,7 +125,7 @@ export default function GMCharacterView() {
     },
     {
       label: "Guild Roster",
-      path: "/dashboard/gm/characters",
+      path: "/dashboard/gm?tab=library&subtab=characters",
       icon: "Users",
       description: "Manage characters",
     },
