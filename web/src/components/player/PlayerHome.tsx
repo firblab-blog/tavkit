@@ -505,6 +505,149 @@ export default function PlayerHome({
             </div>
           </div>
         </div>
+
+        {/* Create Character Modal */}
+        {showCreateCharacterModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-background-panel border border-border rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              {createMethod === "choose" && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-text">
+                      Create New Character
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setShowCreateCharacterModal(false);
+                        setCreateMethod("choose");
+                      }}
+                      className="text-text-muted hover:text-text transition-colors"
+                    >
+                      <Icon name="X" className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <p className="text-text-muted mb-6">
+                    Choose how you'd like to add your character:
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setCreateMethod("manual")}
+                      className="flex flex-col items-center gap-4 p-6 border-2 border-border hover:border-primary rounded-lg transition-all group"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                        <Icon
+                          name="FileEdit"
+                          className="w-8 h-8 text-primary"
+                        />
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-lg font-semibold text-text mb-2">
+                          Create Manually
+                        </h3>
+                        <p className="text-sm text-text-muted">
+                          Build your character from scratch with our
+                          step-by-step form
+                        </p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setCreateMethod("import")}
+                      className="flex flex-col items-center gap-4 p-6 border-2 border-border hover:border-primary rounded-lg transition-all group"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                        <Icon name="Upload" className="w-8 h-8 text-primary" />
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-lg font-semibold text-text mb-2">
+                          Import from D&D Beyond
+                        </h3>
+                        <p className="text-sm text-text-muted">
+                          Import an existing character from your D&D Beyond
+                          account
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {createMethod === "manual" && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <button
+                      onClick={() => setCreateMethod("choose")}
+                      className="flex items-center gap-2 text-text-muted hover:text-text transition-colors"
+                    >
+                      <Icon name="ArrowLeft" className="w-4 h-4" />
+                      Back
+                    </button>
+                    <h2 className="text-xl font-bold text-text">
+                      Create Character Manually
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setShowCreateCharacterModal(false);
+                        setCreateMethod("choose");
+                      }}
+                      className="text-text-muted hover:text-text transition-colors"
+                    >
+                      <Icon name="X" className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <ManualCharacterForm
+                    onSuccess={() => {
+                      setShowCreateCharacterModal(false);
+                      setCreateMethod("choose");
+                      fetchCharacters(true, activeCampaignId ?? undefined);
+                    }}
+                    onCancel={() => setCreateMethod("choose")}
+                    campaignId={activeCampaignId ?? undefined}
+                  />
+                </>
+              )}
+
+              {createMethod === "import" && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <button
+                      onClick={() => setCreateMethod("choose")}
+                      className="flex items-center gap-2 text-text-muted hover:text-text transition-colors"
+                    >
+                      <Icon name="ArrowLeft" className="w-4 h-4" />
+                      Back
+                    </button>
+                    <h2 className="text-xl font-bold text-text">
+                      Import from D&D Beyond
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setShowCreateCharacterModal(false);
+                        setCreateMethod("choose");
+                      }}
+                      className="text-text-muted hover:text-text transition-colors"
+                    >
+                      <Icon name="X" className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <ImportCharacter
+                    onSuccess={() => {
+                      setShowCreateCharacterModal(false);
+                      setCreateMethod("choose");
+                      fetchCharacters(true, activeCampaignId ?? undefined);
+                    }}
+                    onCancel={() => setCreateMethod("choose")}
+                    campaignId={activeCampaignId ?? undefined}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
