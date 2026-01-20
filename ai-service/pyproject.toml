@@ -9,11 +9,11 @@ packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-fastapi = "^0.115.5"
+fastapi = "^0.116.0"
 uvicorn = {extras = ["standard"], version = "^0.32.1"}
 pydantic = "^2.10.3"
 pydantic-settings = "^2.6.1"
-aiohttp = "^3.11.11"
+aiohttp = "^3.13.3"
 anthropic = "^0.42.0"
 openai = "^1.59.6"
 
@@ -22,7 +22,9 @@ asyncpg = "^0.30.0"                  # Async PostgreSQL driver
 pgvector = "^0.3.6"                  # pgvector Python bindings
 beautifulsoup4 = "^4.12.3"           # HTML parsing for wiki scraping
 lxml = "^5.3.0"                      # Fast XML/HTML parser
-tiktoken = "^0.8.0"                  # Token counting for chunking
+tiktoken = "^0.8.0"
+urllib3 = "^2.6.3"                     # Latest available (CVE-2026-21441 not yet fixed upstream)
+starlette = "^0.47.0"                  # Security: CVE-2025-62727                  # Token counting for chunking
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"

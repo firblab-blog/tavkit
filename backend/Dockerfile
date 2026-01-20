@@ -1,4 +1,4 @@
-FROM golang:1.25.1-alpine AS builder
+FROM golang:1.25.3-alpine AS builder
 
 # Install build dependencies for CGO/SQLite (this step is cached after first run)
 RUN apk add --no-cache gcc musl-dev
@@ -29,8 +29,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Final stage
 FROM alpine:3.20
 
-# Install runtime dependencies (including curl for healthcheck)
-RUN apk add --no-cache ca-certificates tzdata curl
+# Upgrade packages to fix vulnerabilities and install runtime dependencies
+RUN apk upgrade --no-cache && apk add --no-cache ca-certificates tzdata curl
 
 # Create non-root user
 RUN addgroup -g 1000 tavkit && \

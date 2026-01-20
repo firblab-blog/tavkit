@@ -30,8 +30,8 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Upgrade all packages to fix vulnerabilities and install curl for healthcheck
+RUN apk upgrade --no-cache && apk add --no-cache curl
 
 # Create cache directories
 RUN mkdir -p /var/cache/nginx/client_temp \
